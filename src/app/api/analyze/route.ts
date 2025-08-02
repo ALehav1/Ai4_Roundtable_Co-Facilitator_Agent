@@ -90,7 +90,7 @@ export async function POST(request: Request) {
       console.error(`Rate limit exceeded for client: ${clientId}`);
       return NextResponse.json(
         { 
-          error: 'Rate limit exceeded. Please wait before making more requests.',
+          error: 'Too Many Requests',
           retryAfter: 3600 // 1 hour in seconds
         }, 
         { status: 429 }

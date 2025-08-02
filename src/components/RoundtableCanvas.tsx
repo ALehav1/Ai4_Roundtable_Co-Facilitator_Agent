@@ -237,6 +237,26 @@ const RoundtableCanvas: React.FC = () => {
     setIsAIThinking(true);
     setError(null);
 
+    // FIX: Honor test mode flag to prevent real API calls during testing
+    if (isTestMode) {
+      setTimeout(() => {
+        const mockInsight: AIInsight = {
+          content: `[TEST MODE] This is a mock AI insight for "${analysisType}". The analysis would normally appear here based on participant responses.`,
+          type: analysisType,
+          timestamp: isClient ? new Date() : new Date(0),
+          questionId: currentQuestion.id
+        };
+        
+        setSessionData(prev => ({
+          ...prev,
+          aiInsights: [...prev.aiInsights, mockInsight]
+        }));
+        
+        setIsAIThinking(false);
+      }, 1500); // Simulate network delay
+      return;
+    }
+
     try {
 
       // Enhanced API call with full session context
