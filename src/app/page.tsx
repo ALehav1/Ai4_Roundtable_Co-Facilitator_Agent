@@ -1,0 +1,38 @@
+/**
+ * Main Page - AI Roundtable Application
+ * 
+ * This is the entry point for the AI Roundtable Canvas application.
+ * It renders the main RoundtableCanvas component and provides the
+ * primary user interface for the facilitated discussion.
+ * 
+ * The page is server-side rendered initially, then becomes interactive
+ * through the client-side RoundtableCanvas component.
+ */
+
+import RoundtableCanvas from '@/components/RoundtableCanvas';
+import { sessionConfig, uiText } from '@/config/roundtable-config';
+
+export default function Home() {
+  return (
+    <main className="min-h-screen">
+      {/* 
+        The RoundtableCanvas component handles all the interactive functionality:
+        - Question progression and timing
+        - Participant response collection
+        - AI analysis integration
+        - Session data management
+        - Export capabilities
+      */}
+      <RoundtableCanvas />
+    </main>
+  );
+}
+
+// Metadata for SEO and social sharing
+export const metadata = {
+  title: sessionConfig.title,
+  description: sessionConfig.description,
+  keywords: 'AI, roundtable, discussion, facilitation, reflexive systems, strategic planning',
+  authors: [{ name: 'AI4 Roundtable Team' }],
+  robots: 'noindex, nofollow', // Prevent search engine indexing for live sessions
+};
