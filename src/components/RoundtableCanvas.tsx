@@ -24,6 +24,7 @@ import {
   getCurrentQuestion,
   getTotalQuestions 
 } from '@/config/roundtable-config';
+import SessionSummary from './SessionSummary';
 
 // Web Speech API type declarations
 declare global {
@@ -194,6 +195,11 @@ const RoundtableCanvas: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
+
+  // Summary generation state
+  const [sessionSummary, setSessionSummary] = useState<any>(null);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
 
   // Get current question data
   const currentQuestion = getCurrentQuestion(sessionData.currentQuestionIndex);
@@ -412,15 +418,65 @@ const RoundtableCanvas: React.FC = () => {
     const blob = new Blob([JSON.stringify(exportData, null, 2)], {
       type: 'application/json'
     });
+
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `roundtable-results-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `AI_Roundtable_Session_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
     URL.revokeObjectURL(url);
   }, [sessionData]);
+
+  /**
+   * Generate comprehensive session summary
+   * Calls backend API to create narrative summaries for each section and overall conclusion
+   */
+  const generateSummary = useCallback(async () => {
+    if (sessionData.responses.length === 0) {
+      setError('No responses captured yet. Complete at least one question to generate a summary.');
+      return;
+    }
+
+    setIsGeneratingSummary(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/generate-summary', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          sessionData,
+          questions: roundtableQuestions
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
+      const summaryData = await response.json();
+      setSessionSummary(summaryData);
+      setShowSummary(true);
+
+      console.log('✅ Session summary generated successfully');
+    } catch (error) {
+      console.error('❌ Failed to generate session summary:', error);
+      setError(
+        error instanceof Error 
+          ? `Failed to generate summary: ${error.message}` 
+          : 'Failed to generate summary. Please try again.'
+      );
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  }, [sessionData]);
+
+  const closeSummary = useCallback(() => {
+    setShowSummary(false);
+  }, []);
 
   // Don't render if no questions configured
   if (!currentQuestion) {
@@ -799,9 +855,45 @@ const RoundtableCanvas: React.FC = () => {
                 </div>
               </div>
             </div>
+            
+            {/* Summary Generation */}
+            {sessionData.responses.length > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 shadow-sm">
+                <h4 className="text-lg font-semibold text-blue-800 mb-3">
+                  📊 Session Summary
+                </h4>
+                <p className="text-sm text-blue-700 mb-4">
+                  Generate a comprehensive summary with narrative analysis, strategic insights, and actionable recommendations.
+                </p>
+                <button
+                  onClick={generateSummary}
+                  disabled={isGeneratingSummary}
+                  className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center gap-2"
+                >
+                  {isGeneratingSummary ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                      Generating Summary...
+                    </>
+                  ) : (
+                    <>
+                      📋 Generate Comprehensive Summary
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
+      
+      {/* Session Summary Modal */}
+      {showSummary && sessionSummary && (
+        <SessionSummary 
+          summary={sessionSummary} 
+          onClose={closeSummary} 
+        />
+      )}
     </div>
   );
 };
