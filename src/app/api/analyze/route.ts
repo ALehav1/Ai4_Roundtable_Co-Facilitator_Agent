@@ -87,10 +87,23 @@ export async function POST(request: Request) {
       participantNames = [] // Active participant names
     } = await request.json();
 
+    // Define valid analysis types
+    const validAnalysisTypes = ['insights', 'followup', 'cross_reference', 'synthesis'] as const;
+    
     // Validate required fields
     if (!question || !responses || !context) {
       return NextResponse.json(
         { error: 'Missing required fields: question, responses, context' }, 
+        { status: 400 }
+      );
+    }
+
+    // Validate analysisType
+    if (!validAnalysisTypes.includes(analysisType as any)) {
+      return NextResponse.json(
+        { 
+          error: `Invalid analysisType: ${analysisType}. Must be one of: ${validAnalysisTypes.join(', ')}` 
+        }, 
         { status: 400 }
       );
     }

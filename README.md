@@ -1,4 +1,4 @@
-# Enterprise AI Roundtable Co-Facilitator Agent
+# AI Roundtable Facilitator Agent
 
 A sophisticated AI-powered co-facilitation platform for strategic leadership discussions and AI transformation planning. Designed for single facilitators leading senior executive teams through structured strategic conversations with real-time AI insights, speech-to-text transcription, and comprehensive narrative summaries.
 
@@ -637,6 +637,13 @@ theme: {
 - 📊 Monitor usage in OpenAI dashboard to set appropriate limits
 
 #### **🎤 Speech-to-Text Issues**
+
+**"Network error" / "Speech recognition fails immediately"**
+- 🔒 **HTTPS Requirement**: Web Speech API requires HTTPS to function in modern browsers (Chrome 47+)
+- 🌐 **Local Development**: Speech recognition will NOT work on `http://localhost` - this is a browser security limitation
+- ✅ **Production Environment**: Feature works perfectly on deployed sites with HTTPS (Vercel, Netlify, etc.)
+- 🧪 **During Development**: Use keyboard input for testing; speech recognition is production-only
+- ℹ️ **Not a Bug**: This is standard browser security policy affecting all Web Speech API implementations
 
 **"Microphone not working" / "Speech recognition unavailable"**
 - 🌐 **Browser Compatibility**: Use Chrome/Edge for best results, Safari secondary

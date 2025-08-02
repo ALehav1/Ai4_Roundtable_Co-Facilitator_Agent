@@ -35,6 +35,13 @@ export interface SessionConfig {
   enableTestMode: boolean;
   rateLimitPerHour: number;
   autoExportResults: boolean;
+  // NEW: Introduction phase configuration
+  introSection: {
+    title: string;
+    description: string;
+    objectives: string[];
+    facilitatorNotes: string[];
+  };
 }
 
 // =============================================================================
@@ -47,7 +54,23 @@ export const sessionConfig: SessionConfig = {
   maxParticipants: 20,
   enableTestMode: true, // Set to false for live sessions
   rateLimitPerHour: 100, // Max AI calls per hour
-  autoExportResults: true
+  autoExportResults: true,
+  // NEW: Introduction phase content
+  introSection: {
+    title: "Welcome & Session Objectives",
+    description: "Take a moment to understand the session goals and facilitator guidance before beginning the strategic discussion.",
+    objectives: [
+      "Align on the strategic implications of advancing AI capabilities.",
+      "Assess our organization's readiness for intelligent, learning systems.",
+      "Identify key tensions between short-term AI wins and long-term transformation.",
+      "Define actionable next steps for our AI strategy."
+    ],
+    facilitatorNotes: [
+      "Your role is to guide, not to have the answers.",
+      "Use the AI insights to provoke deeper strategic thought.",
+      "Keep the conversation focused on business outcomes, not just technology."
+    ]
+  }
 };
 
 

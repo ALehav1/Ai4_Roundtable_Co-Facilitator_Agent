@@ -111,6 +111,11 @@ const RoundtableCanvas: React.FC = () => {
   
   const [isClient, setIsClient] = useState(false);
   
+  // Speech-to-text state
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
+
   // Initialize client-side only values after hydration
   useEffect(() => {
     setIsClient(true);
@@ -131,6 +136,20 @@ const RoundtableCanvas: React.FC = () => {
   const initializeSpeechRecognition = useCallback(() => {
     if (typeof window === 'undefined') return;
     
+    // Check if already initialized to prevent multiple attempts
+    if (recognition) return;
+    
+    // Check for HTTPS requirement (except localhost)
+    const isSecureContext = window.location.protocol === 'https:' || 
+                           window.location.hostname === 'localhost' ||
+                           window.location.hostname === '127.0.0.1';
+    
+    if (!isSecureContext) {
+      console.warn('Speech recognition requires HTTPS in production');
+      setSpeechSupported(false);
+      return;
+    }
+    
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
     if (!SpeechRecognition) {
@@ -139,49 +158,87 @@ const RoundtableCanvas: React.FC = () => {
       return;
     }
     
-    setSpeechSupported(true);
-    
-    const recognitionInstance = new SpeechRecognition();
-    recognitionInstance.continuous = true;
-    recognitionInstance.interimResults = true;
-    recognitionInstance.lang = 'en-US';
-    
-    recognitionInstance.onstart = () => {
-      setIsListening(true);
-      setError(null);
-    };
-    
-    recognitionInstance.onend = () => {
-      setIsListening(false);
-    };
-    
-    recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
-      let finalTranscript = '';
-      let interimTranscript = '';
+    try {
+      const recognitionInstance = new SpeechRecognition();
+      recognitionInstance.continuous = false; // Changed to false to prevent network issues
+      recognitionInstance.interimResults = true;
+      recognitionInstance.lang = 'en-US';
+      // maxAlternatives property removed due to TypeScript compatibility
       
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript + ' ';
-        } else {
-          interimTranscript += transcript;
+      recognitionInstance.onstart = () => {
+        console.log('Speech recognition started');
+        setIsListening(true);
+        setError(null);
+      };
+      
+      recognitionInstance.onend = () => {
+        console.log('Speech recognition ended');
+        setIsListening(false);
+      };
+      
+      recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
+        console.log('Speech recognition result:', event);
+        let finalTranscript = '';
+        let interimTranscript = '';
+        
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript + ' ';
+          } else {
+            interimTranscript += transcript;
+          }
         }
-      }
+        
+        console.log('Final transcript:', finalTranscript, 'Interim:', interimTranscript);
+        
+        // Update response with final transcript
+        if (finalTranscript) {
+          setCurrentResponse(prev => prev + finalTranscript);
+        }
+      };
       
-      // Update response with final transcript
-      if (finalTranscript) {
-        setCurrentResponse(prev => prev + finalTranscript);
-      }
-    };
-    
-    recognitionInstance.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error('Speech recognition error:', event.error);
-      setError(`Speech recognition error: ${event.error}`);
-      setIsListening(false);
-    };
-    
-    setRecognition(recognitionInstance);
-  }, []);
+      recognitionInstance.onerror = (event: SpeechRecognitionErrorEvent) => {
+        console.log('Speech recognition error event:', event);
+        const errorMessage = event.error;
+        
+        // Handle different error types
+        switch (errorMessage) {
+          case 'no-speech':
+            console.log('No speech detected - this is normal');
+            setIsListening(false);
+            break;
+          case 'network':
+            console.warn('Speech recognition network issue - retrying may help');
+            setError('Network issue with speech recognition. Please try again.');
+            setIsListening(false);
+            break;
+          case 'not-allowed':
+            console.warn('Speech recognition permission denied');
+            setError('Microphone permission required for speech recognition');
+            setSpeechSupported(false);
+            setIsListening(false);
+            break;
+          case 'aborted':
+            console.log('Speech recognition was aborted');
+            setIsListening(false);
+            break;
+          default:
+            console.warn('Speech recognition error:', errorMessage);
+            setError(`Speech recognition error: ${errorMessage}`);
+            setIsListening(false);
+        }
+      };
+      
+      setRecognition(recognitionInstance);
+      setSpeechSupported(true);
+      console.log('Speech recognition initialized successfully');
+      
+    } catch (error) {
+      console.error('Failed to initialize speech recognition:', error);
+      setSpeechSupported(false);
+    }
+  }, [recognition]);
 
   // UI state
   const [currentResponse, setCurrentResponse] = useState('');
@@ -191,15 +248,17 @@ const RoundtableCanvas: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
 
-  // Speech-to-text state
-  const [isListening, setIsListening] = useState(false);
-  const [speechSupported, setSpeechSupported] = useState(false);
-  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
-
-  // Summary generation state
+  // Summary and export state
   const [sessionSummary, setSessionSummary] = useState<any>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  
+  // Session lifecycle state management
+  const [sessionStage, setSessionStage] = useState<'intro' | 'discussion' | 'summary'>('intro');
+  
+  // UI state for collapsible sections (default closed for decluttered experience)
+  const [isInstructionsExpanded, setIsInstructionsExpanded] = useState(false);
+  const [isFacilitatorNotesExpanded, setIsFacilitatorNotesExpanded] = useState(false);
 
   // Get current question data
   const currentQuestion = getCurrentQuestion(sessionData.currentQuestionIndex);
@@ -398,6 +457,21 @@ const RoundtableCanvas: React.FC = () => {
   }, [isListening, startListening, stopListening]);
 
   /**
+   * Start the discussion phase from introduction
+   * Transitions session from intro -> discussion stage
+   */
+  const startDiscussion = useCallback(() => {
+    setSessionStage('discussion');
+    // Reset to first question when starting discussion
+    setSessionData(prev => ({
+      ...prev,
+      currentQuestionIndex: 0
+    }));
+    setCurrentResponse('');
+    setError(null);
+  }, []);
+
+  /**
    * Move to next question
    */
   const nextQuestion = useCallback(() => {
@@ -555,39 +629,131 @@ const RoundtableCanvas: React.FC = () => {
         </div>
       </header>
 
-      {/* Facilitator Instructions */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200">
-        <div className="max-w-6xl mx-auto px-4 py-6">
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-lg font-semibold text-roundtable-text mb-3 flex items-center gap-2">
-                📋 {uiText.instructionsTitle}
-              </h3>
-              <ul className="space-y-2 text-sm text-roundtable-muted">
-                {uiText.instructions.map((instruction: string, index: number) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <span className="text-roundtable-secondary mt-1 text-xs">▶</span>
-                    <span dangerouslySetInnerHTML={{ __html: instruction.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold text-roundtable-text mb-3">{uiText.facilitatorInstructions.title}:</h4>
-              <ol className="space-y-2 text-sm text-roundtable-muted">
-                {uiText.facilitatorInstructions.steps.map((step: string, index: number) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <span className="bg-roundtable-secondary text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-medium mt-0.5 flex-shrink-0">
-                      {index + 1}
-                    </span>
-                    <span>{step}</span>
-                  </li>
-                ))}
-              </ol>
+      {/* Introduction View - Session Lifecycle Stage: intro */}
+      {sessionStage === 'intro' && (
+        <div className="animate-fade-in">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200">
+            <div className="max-w-4xl mx-auto px-4 py-12 text-center">
+              <div className="mb-8">
+                <h2 className="text-4xl font-bold text-roundtable-text mb-4">
+                  {sessionConfig.introSection.title}
+                </h2>
+                <p className="text-xl text-roundtable-muted max-w-3xl mx-auto">
+                  {sessionConfig.introSection.description}
+                </p>
+              </div>
+              
+              <div className="grid md:grid-cols-2 gap-8 mb-12">
+                <div className="bg-white rounded-xl p-6 shadow-sm">
+                  <h3 className="text-xl font-semibold text-roundtable-text mb-4 flex items-center gap-2">
+                    🎯 Session Objectives
+                  </h3>
+                  <ul className="space-y-3 text-left">
+                    {sessionConfig.introSection.objectives.map((objective: string, index: number) => (
+                      <li key={index} className="flex items-start gap-3">
+                        <span className="bg-roundtable-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-medium mt-0.5 flex-shrink-0">
+                          {index + 1}
+                        </span>
+                        <span className="text-roundtable-text">{objective}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                
+                <div className="bg-white rounded-xl p-6 shadow-sm">
+                  <h3 className="text-xl font-semibold text-roundtable-text mb-4 flex items-center gap-2">
+                    📋 Facilitator Notes
+                  </h3>
+                  <ul className="space-y-3 text-left">
+                    {sessionConfig.introSection.facilitatorNotes.map((note: string, index: number) => (
+                      <li key={index} className="flex items-start gap-3">
+                        <span className="text-roundtable-secondary mt-1 text-sm">▶</span>
+                        <span className="text-roundtable-muted text-sm">{note}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              
+              <button
+                onClick={startDiscussion}
+                className="btn-primary text-lg px-8 py-4 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                data-testid="start-discussion-button"
+              >
+                🚀 Start Discussion
+              </button>
             </div>
           </div>
         </div>
-      </div>
+      )}
+      
+      {/* Discussion View - Session Lifecycle Stage: discussion */}
+      {sessionStage === 'discussion' && (
+        <div className="animate-fade-in">
+          {/* Collapsible Facilitator Instructions */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200">
+            <div className="max-w-6xl mx-auto px-4 py-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                {/* Session Instructions Accordion */}
+                <div className="bg-white rounded-lg shadow-sm border border-blue-100">
+                  <button
+                    onClick={() => setIsInstructionsExpanded(!isInstructionsExpanded)}
+                    className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-blue-50 transition-colors rounded-lg"
+                    data-testid="facilitator-instructions-toggle"
+                  >
+                    <span className="flex items-center gap-2 font-medium text-roundtable-text">
+                      📋 {uiText.instructionsTitle}
+                    </span>
+                    <span className={`transition-transform duration-200 ${isInstructionsExpanded ? 'rotate-180' : ''}`}>
+                      ⬇️
+                    </span>
+                  </button>
+                  {isInstructionsExpanded && (
+                    <div className="px-4 pb-4 animate-fade-in" data-testid="facilitator-instructions-content">
+                      <ul className="space-y-2 text-sm text-roundtable-muted">
+                        {uiText.instructions.map((instruction: string, index: number) => (
+                          <li key={index} className="flex items-start gap-2">
+                            <span className="text-roundtable-secondary mt-1 text-xs">▶</span>
+                            <span dangerouslySetInnerHTML={{ __html: instruction.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Facilitator Notes Accordion */}
+                <div className="bg-white rounded-lg shadow-sm border border-blue-100">
+                  <button
+                    onClick={() => setIsFacilitatorNotesExpanded(!isFacilitatorNotesExpanded)}
+                    className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-blue-50 transition-colors rounded-lg"
+                    data-testid="ai-notes-toggle"
+                  >
+                    <span className="flex items-center gap-2 font-medium text-roundtable-text">
+                      👥 {uiText.facilitatorInstructions.title}
+                    </span>
+                    <span className={`transition-transform duration-200 ${isFacilitatorNotesExpanded ? 'rotate-180' : ''}`}>
+                      ⬇️
+                    </span>
+                  </button>
+                  {isFacilitatorNotesExpanded && (
+                    <div className="px-4 pb-4 animate-fade-in" data-testid="ai-notes-content">
+                      <ol className="space-y-2 text-sm text-roundtable-muted">
+                        {uiText.facilitatorInstructions.steps.map((step: string, index: number) => (
+                          <li key={index} className="flex items-start gap-2">
+                            <span className="bg-roundtable-secondary text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-medium mt-0.5 flex-shrink-0">
+                              {index + 1}
+                            </span>
+                            <span>{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
 
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -595,37 +761,39 @@ const RoundtableCanvas: React.FC = () => {
           {/* Main Discussion Area */}
           <div className="lg:col-span-2 space-y-6">
             
-            {/* Question Progress */}
-            <div className="bg-roundtable-surface rounded-lg p-6 shadow-sm">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-roundtable-text">
-                  Question {sessionData.currentQuestionIndex + 1} of {getTotalQuestions()}
-                </h2>
+            {/* FOCUSED: Current Question & Progress */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-8 shadow-lg border-2 border-blue-200" data-testid="focused-question-container">
+              {/* Compact Progress Header */}
+              <div className="flex justify-between items-center mb-6" data-testid="question-progress">
+                <div className="flex items-center gap-3">
+                  <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-bold">
+                    {sessionData.currentQuestionIndex + 1}/{getTotalQuestions()}
+                  </span>
+                  <div className="w-32 bg-gray-200 rounded-full h-2" data-testid="progress-bar">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{
+                        width: `${((sessionData.currentQuestionIndex + 1) / getTotalQuestions()) * 100}%`
+                      }}
+                    ></div>
+                  </div>
+                </div>
                 {timeRemaining > 0 && (
-                  <span className="text-sm text-roundtable-muted">
-                    {timeRemaining} minutes remaining
+                  <span className="text-sm text-blue-700 font-medium">
+                    ⏱️ {timeRemaining}m left
                   </span>
                 )}
               </div>
               
-              <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-                <div
-                  className="bg-roundtable-primary h-2 rounded-full transition-all duration-300"
-                  style={{
-                    width: `${((sessionData.currentQuestionIndex + 1) / getTotalQuestions()) * 100}%`
-                  }}
-                ></div>
+              {/* Prominent Question Display */}
+              <div className="bg-white rounded-lg p-6 shadow-sm border border-blue-100 mb-6">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4 leading-tight">
+                  {currentQuestion.title}
+                </h3>
+                <p className="text-gray-700 text-lg leading-relaxed question-text">
+                  {currentQuestion.description}
+                </p>
               </div>
-            </div>
-
-            {/* Current Question */}
-            <div className="bg-roundtable-surface rounded-lg p-6 shadow-sm">
-              <h3 className="text-xl font-bold text-roundtable-text mb-3">
-                {currentQuestion.title}
-              </h3>
-              <p className="text-roundtable-muted mb-6 question-text">
-                {currentQuestion.description}
-              </p>
 
               {/* Facilitator Response Input */}
               <div className="space-y-4">
@@ -643,6 +811,7 @@ const RoundtableCanvas: React.FC = () => {
                     value={participantName}
                     onChange={(e) => setParticipantName(e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-roundtable-primary focus:border-transparent"
+                    data-testid="participant-name-input"
                   />
                 </div>
                 
@@ -656,6 +825,7 @@ const RoundtableCanvas: React.FC = () => {
                       value={currentResponse}
                       onChange={(e) => setCurrentResponse(e.target.value)}
                       className="w-full h-32 px-4 py-3 pr-16 border border-gray-300 rounded-lg focus:ring-2 focus:ring-roundtable-primary focus:border-transparent resize-none"
+                      data-testid="response-textarea"
                     />
                     
                     {/* Speech-to-Text Controls */}
@@ -670,6 +840,7 @@ const RoundtableCanvas: React.FC = () => {
                               : 'bg-blue-500 text-white hover:bg-blue-600'
                           } disabled:bg-gray-300 disabled:cursor-not-allowed`}
                           title={isListening ? 'Stop speech recognition' : 'Start speech recognition'}
+                          data-testid="speech-recognition-button"
                         >
                           {isListening ? '🔴' : '🎤'}
                         </button>
@@ -716,6 +887,7 @@ const RoundtableCanvas: React.FC = () => {
                       onClick={submitResponse}
                       disabled={!currentResponse.trim()}
                       className="px-6 py-2 bg-roundtable-primary text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
+                      data-testid="submit-response-button"
                     >
                       📝 Capture Response
                     </button>
@@ -723,6 +895,7 @@ const RoundtableCanvas: React.FC = () => {
                       <button
                         onClick={nextQuestion}
                         className="px-6 py-2 bg-roundtable-accent text-white rounded-lg hover:bg-green-600 transition-colors font-medium"
+                        data-testid="next-question-button"
                       >
                         Next Question →
                       </button>
@@ -772,47 +945,49 @@ const RoundtableCanvas: React.FC = () => {
                 {uiText.coFacilitatorIntro}
               </p>
 
-              {/* Facilitator AI Action Buttons */}
-              <div className="space-y-3 mb-4">
-                <div className="grid grid-cols-1 gap-2">
-                  <button
-                    onClick={() => callAIAnalysis('insights')}
-                    disabled={isAIThinking}
-                    className="px-4 py-3 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 transition-colors font-medium text-left flex items-center gap-2"
-                  >
-                    <span className="text-lg">{uiText.getInsightsButton.split(' ')[0]}</span>
-                    <span>Analyze Patterns & Strategic Insights</span>
-                  </button>
-                  <button
-                    onClick={() => callAIAnalysis('followup')}
-                    disabled={isAIThinking}
-                    className="px-4 py-3 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 transition-colors font-medium text-left flex items-center gap-2"
-                  >
-                    <span className="text-lg">{uiText.followUpButton.split(' ')[0]}</span>
-                    <span>Suggest Probing Questions</span>
-                  </button>
-                  <button
-                    onClick={() => callAIAnalysis('cross_reference')}
-                    disabled={isAIThinking}
-                    className="px-4 py-3 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 transition-colors font-medium text-left flex items-center gap-2"
-                  >
-                    <span className="text-lg">{uiText.connectIdeasButton.split(' ')[0]}</span>
-                    <span>Link to Earlier Discussion</span>
-                  </button>
-                  <button
-                    onClick={() => callAIAnalysis('synthesis')}
-                    disabled={isAIThinking}
-                    className="px-4 py-3 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 transition-colors font-medium text-left flex items-center gap-2"
-                  >
-                    <span className="text-lg">{uiText.synthesizeButton.split(' ')[0]}</span>
-                    <span>Synthesize Key Themes</span>
-                  </button>
-                </div>
+              {/* Simplified AI Action Buttons */}
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                <button
+                  onClick={() => callAIAnalysis('insights')}
+                  disabled={isAIThinking}
+                  className="px-3 py-2 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 transition-colors font-medium flex items-center justify-center gap-1"
+                  title="Analyze patterns and strategic insights"
+                  data-testid="ai-button-insights"
+                >
+                  💡 <span>Insights</span>
+                </button>
+                <button
+                  onClick={() => callAIAnalysis('followup')}
+                  disabled={isAIThinking}
+                  className="px-3 py-2 text-xs bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 transition-colors font-medium flex items-center justify-center gap-1"
+                  title="Suggest probing questions"
+                  data-testid="ai-button-followup"
+                >
+                  ❓ <span>Follow-up</span>
+                </button>
+                <button
+                  onClick={() => callAIAnalysis('cross_reference')}
+                  disabled={isAIThinking}
+                  className="px-3 py-2 text-xs bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-gray-300 transition-colors font-medium flex items-center justify-center gap-1"
+                  title="Link to earlier discussion points"
+                  data-testid="ai-button-connect"
+                >
+                  🔗 <span>Connect</span>
+                </button>
+                <button
+                  onClick={() => callAIAnalysis('synthesis')}
+                  disabled={isAIThinking}
+                  className="px-3 py-2 text-xs bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-300 transition-colors font-medium flex items-center justify-center gap-1"
+                  title="Synthesize key themes"
+                  data-testid="ai-button-synthesize"
+                >
+                  🧠 <span>Synthesize</span>
+                </button>
               </div>
 
               {/* AI Thinking Animation */}
               {isAIThinking && (
-                <div className="ai-thinking mb-4 p-4 bg-gray-50 rounded-lg">
+                <div className="ai-thinking mb-4 p-4 bg-gray-50 rounded-lg" data-testid="ai-thinking-indicator">
                   <div className="flex items-center gap-3">
                     <div className="animate-pulse-slow w-3 h-3 bg-roundtable-secondary rounded-full"></div>
                     <span className="text-sm text-roundtable-muted">
@@ -824,7 +999,7 @@ const RoundtableCanvas: React.FC = () => {
 
               {/* Error Display */}
               {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg" data-testid="error-message">
                   <p className="text-sm text-red-600">
                     ⚠️ {error}
                   </p>
@@ -832,11 +1007,11 @@ const RoundtableCanvas: React.FC = () => {
               )}
 
               {/* AI Insights */}
-              <div id="aiInsights" className="space-y-4 max-h-96 overflow-y-auto">
+              <div id="aiInsights" className="space-y-4 max-h-96 overflow-y-auto" data-testid="ai-insights-list">
                 {sessionData.aiInsights
                   .filter(insight => insight.questionId === currentQuestion.id)
                   .map((insight, index) => (
-                    <div key={index} className="insight-item p-4 bg-gray-50 rounded-lg border-l-4 border-roundtable-secondary">
+                    <div key={index} className="insight-item p-4 bg-gray-50 rounded-lg border-l-4 border-roundtable-secondary" data-testid="ai-insight-item">
                       <div className="flex justify-between items-start mb-2">
                         <span className="text-xs font-medium text-roundtable-secondary uppercase tracking-wide">
                           {insight.type}
@@ -906,6 +1081,8 @@ const RoundtableCanvas: React.FC = () => {
           </div>
         </div>
       </div>
+        </div>
+      )}
       
       {/* Session Summary Modal */}
       {showSummary && sessionSummary && (

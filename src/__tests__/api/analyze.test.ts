@@ -83,4 +83,56 @@ describe('POST /api/analyze', () => {
     const responseJson = await rateLimitedResponse.json();
     expect(responseJson.error).toBe('Too Many Requests');
   });
+
+  it('should reject invalid analysisType', async () => {
+    const firstQuestion = roundtableQuestions[0];
+    const mockRequest = {
+      question: firstQuestion.id,
+      responses: [],
+      context: `${firstQuestion.title}: ${firstQuestion.description}`,
+      analysisType: 'invalid_type', // Invalid analysis type
+      clientId: 'roundtable-session',
+      allResponses: [],
+      allInsights: [],
+      sessionProgress: 0,
+      participantNames: ['Test Participant']
+    };
+
+    const req = {
+      json: jest.fn().mockResolvedValue(mockRequest)
+    };
+
+    const response = await POST(req as any);
+    expect(response.status).toBe(400);
+
+    const responseJson = await response.json();
+    expect(responseJson.error).toContain('Invalid analysisType: invalid_type');
+    expect(responseJson.error).toContain('Must be one of: insights, followup, cross_reference, synthesis');
+  });
+
+  it('should accept all valid analysisTypes', async () => {
+    const firstQuestion = roundtableQuestions[0];
+    const validTypes = ['insights', 'followup', 'cross_reference', 'synthesis'];
+    
+    for (const analysisType of validTypes) {
+      const mockRequest = {
+        question: firstQuestion.id,
+        responses: [],
+        context: `${firstQuestion.title}: ${firstQuestion.description}`,
+        analysisType,
+        clientId: 'roundtable-session',
+        allResponses: [],
+        allInsights: [],
+        sessionProgress: 0,
+        participantNames: ['Test Participant']
+      };
+
+      const req = {
+        json: jest.fn().mockResolvedValue(mockRequest)
+      };
+
+      const response = await POST(req as any);
+      expect(response.status).toBe(200); // Should succeed for valid types
+    }
+  });
 });

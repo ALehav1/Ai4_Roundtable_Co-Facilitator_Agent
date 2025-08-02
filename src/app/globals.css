@@ -157,6 +157,10 @@
     animation: glow 2s ease-in-out infinite alternate;
   }
   
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+  
   /* Focus ring utilities */
   .focus-ring {
     @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;

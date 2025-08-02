@@ -210,11 +210,24 @@ Format your response as JSON with the exact structure:
     });
 
     const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('No response from OpenAI');
+    if (!content || content.trim() === '') {
+      console.warn(`Empty AI response for question ${question.id}, using fallback`);
+      throw new Error('Empty response from OpenAI');
     }
 
-    const parsedResponse = JSON.parse(content);
+    // Enhanced JSON parsing with fallback
+    let parsedResponse;
+    try {
+      parsedResponse = JSON.parse(content);
+      
+      // Validate required fields exist
+      if (!parsedResponse || typeof parsedResponse !== 'object') {
+        throw new Error('Invalid JSON structure from AI response');
+      }
+    } catch (parseError) {
+      console.warn(`JSON parsing failed for question ${question.id}:`, parseError);
+      throw new Error('Invalid JSON format in AI response');
+    }
     
     return {
       questionId: question.id,

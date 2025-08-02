@@ -11,16 +11,8 @@
  */
 
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
 import './globals.css';
 import { sessionConfig } from '@/config/roundtable-config';
-
-// Optimize font loading with Next.js built-in optimization
-const inter = Inter({ 
-  subsets: ['latin'],
-  display: 'swap', // Improve loading performance
-  variable: '--font-inter'
-});
 
 // Application metadata for SEO and social sharing
 export const metadata: Metadata = {
@@ -82,7 +74,7 @@ interface RootLayoutProps {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Additional meta tags for better performance */}
         <meta name="theme-color" content="#2563eb" />
@@ -92,7 +84,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <link rel="preconnect" href="https://api.openai.com" />
         <link rel="dns-prefetch" href="https://api.openai.com" />
       </head>
-      <body className={`${inter.className} antialiased bg-roundtable-background text-roundtable-text`}>
+      <body className="antialiased bg-roundtable-background text-roundtable-text">
         {/* 
           Main application content
           The children prop contains the page content (page.tsx)
