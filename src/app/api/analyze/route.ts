@@ -45,8 +45,9 @@ function checkRateLimit(clientId: string): boolean {
     return false; // Rate limit exceeded
   }
   
-  // Increment count
+  // Increment count and persist back to store
   clientData.count++;
+  rateLimitStore.set(clientId, clientData);
   return true;
 }
 
@@ -63,6 +64,15 @@ function checkRateLimit(clientId: string): boolean {
  * - clientId: Simple client identifier for rate limiting
  */
 export async function POST(request: Request) {
+  // Critical: Validate API key configuration
+  if (!process.env.OPENAI_API_KEY) {
+    console.error('CRITICAL: OPENAI_API_KEY is not configured.');
+    return NextResponse.json(
+      { error: 'AI service is not configured correctly. Please contact support.' }, 
+      { status: 500 }
+    );
+  }
+
   try {
     // Parse request body with enhanced session context
     const { 
@@ -206,8 +216,7 @@ export async function POST(request: Request) {
     // Generic error response (don't expose internal details)
     return NextResponse.json(
       { 
-        error: 'AI analysis temporarily unavailable. The session can continue without AI insights.',
-        fallbackMessage: 'Discussion continues - AI insights will return shortly.'
+        error: 'AI analysis temporarily unavailable. The session can continue without AI insights.'
       }, 
       { status: 500 }
     );

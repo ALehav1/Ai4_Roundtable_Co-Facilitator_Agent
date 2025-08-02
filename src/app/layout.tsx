@@ -24,6 +24,11 @@ const inter = Inter({
 
 // Application metadata for SEO and social sharing
 export const metadata: Metadata = {
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+  },
   title: {
     default: sessionConfig.title,
     template: `%s | ${sessionConfig.title}`
