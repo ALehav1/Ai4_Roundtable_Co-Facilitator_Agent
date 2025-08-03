@@ -72,13 +72,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get environment variable with Vercel-specific access pattern
+    const openaiApiKey = process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY;
+    
     // Debug: Log environment variable status
     console.log('DEBUG: OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY);
     console.log('DEBUG: OPENAI_API_KEY length:', process.env.OPENAI_API_KEY?.length || 0);
+    console.log('DEBUG: Alternative key exists:', !!process.env.NEXT_PUBLIC_OPENAI_API_KEY);
+    console.log('DEBUG: Final key exists:', !!openaiApiKey);
     console.log('DEBUG: All env vars starting with OPENAI:', Object.keys(process.env).filter(key => key.startsWith('OPENAI')));
     
     // Validate OpenAI API key
-    if (!process.env.OPENAI_API_KEY) {
+    if (!openaiApiKey) {
       return NextResponse.json(
         { error: 'OpenAI API key not configured' },
         { status: 500 }
@@ -112,13 +117,13 @@ export async function POST(request: NextRequest) {
           };
         }
 
-        return await generateQuestionSummary(question, questionResponses, questionInsights);
+        return await generateQuestionSummary(question, questionResponses, questionInsights, openaiApiKey);
       })
     );
 
     // Generate executive summary and overall conclusion
-    const executiveSummary = await generateExecutiveSummary(sessionData, questionSummaries);
-    const fullNarrativeConclusion = await generateOverallConclusion(sessionData, questionSummaries);
+    const executiveSummary = await generateExecutiveSummary(sessionData, questionSummaries, openaiApiKey);
+    const fullNarrativeConclusion = await generateOverallConclusion(sessionData, questionSummaries, executiveSummary, openaiApiKey);
 
     // Calculate session overview metrics
     const sessionOverview = calculateSessionOverview(sessionData, questions);
@@ -150,11 +155,12 @@ export async function POST(request: NextRequest) {
 async function generateQuestionSummary(
   question: any, 
   responses: ParticipantResponse[], 
-  insights: AIInsight[]
+  insights: AIInsight[],
+  apiKey: string
 ): Promise<QuestionSummary> {
   // Initialize OpenAI client at runtime to avoid build-time env var issues
   const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+    apiKey: openaiApiKey,
   });
   
   const responseTexts = responses.map(r => 
@@ -271,11 +277,12 @@ Format your response as JSON with the exact structure:
 
 async function generateExecutiveSummary(
   sessionData: SessionData,
-  questionSummaries: QuestionSummary[]
+  questionSummaries: QuestionSummary[],
+  apiKey: string
 ) {
   // Initialize OpenAI client at runtime to avoid build-time env var issues
   const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+    apiKey: apiKey,
   });
   
   const allInsights = questionSummaries.flatMap(q => q.criticalInsights);
@@ -367,11 +374,13 @@ Format as JSON:
 
 async function generateOverallConclusion(
   sessionData: SessionData,
-  questionSummaries: QuestionSummary[]
+  questionSummaries: QuestionSummary[], 
+  executiveSummary: string,
+  apiKey: string
 ): Promise<string> {
   // Initialize OpenAI client at runtime to avoid build-time env var issues
   const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+    apiKey: apiKey,
   });
   
   const prompt = `As an expert strategic facilitator, write a comprehensive narrative conclusion for this AI transformation roundtable session.
