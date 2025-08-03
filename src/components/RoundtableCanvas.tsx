@@ -296,8 +296,17 @@ const RoundtableCanvas: React.FC = () => {
     setIsAIThinking(true);
     setError(null);
 
+    // 🔍 DEBUG: Trace test mode behavior
+    console.log('🔍 DEBUG callAIAnalysis:', {
+      analysisType,
+      isTestMode,
+      currentQuestionId: currentQuestion.id,
+      timestamp: new Date().toISOString()
+    });
+
     // FIX: Honor test mode flag to prevent real API calls during testing
     if (isTestMode) {
+      console.log('⚠️ DEBUG: Using TEST MODE - blocking real API call');
       setTimeout(() => {
         const mockInsight: AIInsight = {
           content: `[TEST MODE] This is a mock AI insight for "${analysisType}". The analysis would normally appear here based on participant responses.`,
