@@ -144,20 +144,10 @@ function createWebSpeechEngine(): SpeechEngine {
   const MAX_CONSECUTIVE_NETWORK_ERRORS = 5;
 
   const isSupported = () => {
-    // Check for Web Speech API support with comprehensive validation
-    if (typeof window === 'undefined') return false;
-    if (!window.isSecureContext) return false;
-    if (!('webkitSpeechRecognition' in window)) return false;
-    
-    // Additional check: try to instantiate to catch permission/security blocks
-    try {
-      const testRecognition = new (window as any).webkitSpeechRecognition();
-      // Test successful - cleanup and return true
-      return true;
-    } catch (error) {
-      console.log('🚨 Speech Recognition blocked by browser security:', error);
-      return false;
-    }
+    // Simple browser detection (from working Nuclear Fix commit)
+    return typeof window !== 'undefined' && 
+           window.isSecureContext && 
+           'webkitSpeechRecognition' in window;
   };
 
   const start = async () => {
