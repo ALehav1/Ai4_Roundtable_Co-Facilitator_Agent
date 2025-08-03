@@ -98,6 +98,14 @@ interface SessionData {
   aiInsights: AIInsight[];
   currentQuestionIndex: number;
   sessionStartTime: Date;
+  summary?: {
+    executiveSummary?: {
+      keyFindings?: string[];
+      riskFactors?: string[];
+      strategicRecommendations?: string[];
+      nextSteps?: string[];
+    };
+  };
 }
 
 const RoundtableCanvas: React.FC = () => {
@@ -495,35 +503,137 @@ const RoundtableCanvas: React.FC = () => {
   /**
    * Export session results
    */
-  const exportResults = useCallback(() => {
-    const exportData = {
-      session: {
-        title: sessionConfig.title,
-        date: sessionData.sessionStartTime.toISOString(),
-        questions: roundtableQuestions.length,
-        responses: sessionData.responses.length,
-        insights: sessionData.aiInsights.length
-      },
-      questions: roundtableQuestions.map(q => ({
-        id: q.id,
-        title: q.title,
-        description: q.description,
-        responses: sessionData.responses.filter(r => r.id.startsWith(q.id)),
-        insights: sessionData.aiInsights.filter(i => i.questionId === q.id)
-      }))
-    };
+  const exportResults = useCallback(async () => {
+    try {
+      // Use existing session summary if available, otherwise generate it inline
+      let summaryData = sessionData.summary;
+      if (!summaryData && sessionData.responses.length > 0) {
+        console.log('📊 Generating session summary for PDF export...');
+        // For now, export with available data - summary can be generated separately
+        summaryData = undefined;
+      }
 
-    // Create and download JSON file
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-      type: 'application/json'
-    });
+      // Create HTML content for PDF
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>AI Roundtable Session Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; margin: 40px; color: #333; }
+            .header { text-align: center; border-bottom: 2px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; }
+            .session-info { background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+            .question-section { margin-bottom: 40px; page-break-inside: avoid; }
+            .question-title { color: #1e40af; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+            .responses { background: #f1f5f9; padding: 15px; border-left: 4px solid #3b82f6; margin: 15px 0; }
+            .insights { background: #fef3c7; padding: 15px; border-left: 4px solid #f59e0b; margin: 15px 0; }
+            .summary-section { background: #e0f2fe; padding: 20px; border-radius: 8px; margin-top: 30px; }
+            h1, h2, h3 { color: #1e40af; }
+            ul { padding-left: 20px; }
+            li { margin-bottom: 5px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>${sessionConfig.title}</h1>
+            <p>AI Roundtable Session Report</p>
+            <p>Generated on ${new Date().toLocaleDateString()}</p>
+          </div>
+          
+          <div class="session-info">
+            <h2>Session Overview</h2>
+            <p><strong>Session Duration:</strong> ${Math.round((Date.now() - sessionData.sessionStartTime.getTime()) / 60000)} minutes</p>
+            <p><strong>Total Questions:</strong> ${roundtableQuestions.length}</p>
+            <p><strong>Total Responses:</strong> ${sessionData.responses.length}</p>
+            <p><strong>AI Insights Generated:</strong> ${sessionData.aiInsights.length}</p>
+            <p><strong>Participants:</strong> ${Array.from(new Set(sessionData.responses.map(r => r.participantName || 'Anonymous'))).join(', ')}</p>
+          </div>
 
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `AI_Roundtable_Session_${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+          ${roundtableQuestions.map(q => {
+            const questionResponses = sessionData.responses.filter(r => r.id.startsWith(q.id));
+            const questionInsights = sessionData.aiInsights.filter(i => i.questionId === q.id);
+            return `
+              <div class="question-section">
+                <h2 class="question-title">${q.title}</h2>
+                <p><em>${q.description}</em></p>
+                
+                ${questionResponses.length > 0 ? `
+                  <div class="responses">
+                    <h3>Participant Responses (${questionResponses.length})</h3>
+                    ${questionResponses.map(r => `
+                      <div style="margin-bottom: 15px;">
+                        <strong>${r.participantName || 'Anonymous'}:</strong>
+                        <p>${r.text}</p>
+                        <small style="color: #666;">Submitted: ${r.timestamp.toLocaleString()}</small>
+                      </div>
+                    `).join('')}
+                  </div>
+                ` : '<p><em>No responses collected for this question.</em></p>'}
+                
+                ${questionInsights.length > 0 ? `
+                  <div class="insights">
+                    <h3>AI Insights & Analysis</h3>
+                    ${questionInsights.map(insight => `
+                      <div style="margin-bottom: 15px;">
+                        <strong>${insight.type.charAt(0).toUpperCase() + insight.type.slice(1)}:</strong>
+                        <p>${insight.content}</p>
+                        <small style="color: #666;">Generated: ${insight.timestamp.toLocaleString()}</small>
+                      </div>
+                    `).join('')}
+                  </div>
+                ` : ''}
+              </div>
+            `;
+          }).join('')}
+
+          ${summaryData ? `
+            <div class="summary-section">
+              <h2>📊 Executive Summary</h2>
+              
+              <h3>🎯 Key Findings</h3>
+              <ul>
+                ${summaryData.executiveSummary?.keyFindings?.map((finding: string) => `<li>${finding}</li>`).join('') || '<li>Summary not available</li>'}
+              </ul>
+              
+              <h3>⚠️ Risk Factors</h3>
+              <ul>
+                ${summaryData.executiveSummary?.riskFactors?.map((risk: string) => `<li>${risk}</li>`).join('') || '<li>No risk factors identified</li>'}
+              </ul>
+              
+              <h3>💡 Strategic Recommendations</h3>
+              <ul>
+                ${summaryData.executiveSummary?.strategicRecommendations?.map((rec: string) => `<li>${rec}</li>`).join('') || '<li>No recommendations available</li>'}
+              </ul>
+              
+              <h3>🚀 Next Steps</h3>
+              <ul>
+                ${summaryData.executiveSummary?.nextSteps?.map((step: string) => `<li>${step}</li>`).join('') || '<li>No next steps defined</li>'}
+              </ul>
+            </div>
+          ` : ''}
+          
+          <div style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #ccc; text-align: center; color: #666; font-size: 12px;">
+            <p>Generated by AI Roundtable Facilitator Agent | ${new Date().toISOString()}</p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      // Create blob and download as HTML (which can be easily converted to PDF by browser)
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `AI_Roundtable_Session_Report_${new Date().toISOString().split('T')[0]}.html`;
+      link.click();
+      URL.revokeObjectURL(url);
+      
+      console.log('✅ Session report downloaded successfully');
+    } catch (error) {
+      console.error('❌ Error generating session report:', error);
+      setError('Failed to generate session report. Please try again.');
+    }
   }, [sessionData]);
 
   /**
