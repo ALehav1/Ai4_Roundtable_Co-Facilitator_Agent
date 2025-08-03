@@ -72,6 +72,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Debug: Log environment variable status
+    console.log('DEBUG: OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY);
+    console.log('DEBUG: OPENAI_API_KEY length:', process.env.OPENAI_API_KEY?.length || 0);
+    console.log('DEBUG: All env vars starting with OPENAI:', Object.keys(process.env).filter(key => key.startsWith('OPENAI')));
+    
     // Validate OpenAI API key
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
