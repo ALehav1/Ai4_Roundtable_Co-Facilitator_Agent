@@ -12,7 +12,17 @@
 import OpenAI from 'openai';
 import { NextRequest, NextResponse } from 'next/server';
 import { unstable_noStore as noStore } from 'next/cache';
+import { z } from 'zod';
 import { aiConfig, sessionConfig, getAIPromptForContext } from '@/config/roundtable-config';
+
+// GEMINI PHASE 1.1: Define schema for incoming requests (bulletproof validation)
+const AnalyzeRequestSchema = z.object({
+  questionContext: z.string().min(1),
+  currentTranscript: z.string(),
+  analysisType: z.enum(['insights', 'synthesis', 'followup', 'cross_reference']),
+  fullHistorySummary: z.string().optional(),
+  clientId: z.string().optional()
+});
 
 // OpenAI client will be initialized at runtime to avoid build-time env var issues
 // IMPORTANT: Never expose API keys in client-side code!
@@ -61,26 +71,22 @@ function checkRateLimit(clientId: string): boolean {
  * - analysisType: 'insights' | 'synthesis' | 'followup'
  * - clientId: Simple client identifier for rate limiting
  */
-// Phase 1.1 - Unified strict prompt builder with anti-hallucination rules
-function buildStrictPrompt(type: string, context: string, transcript: string, history: string): string {
+// GEMINI PHASE 1.1: NEW, STRICT PROMPT BUILDER - Enhanced version
+function buildStrictPrompt(type: string, context: string, transcript: string): string {
   const baseInstruction = `
-You are an AI co-facilitator. Your task is to analyze the provided "CURRENT TRANSCRIPT" and provide specific, concise outputs.
-
-CRITICAL RULE: Your entire response MUST be grounded ONLY in the provided "CURRENT TRANSCRIPT". Do NOT invent, assume, or reference outside information. Do NOT invent participant names.
-
+You are an expert AI co-facilitator. Your task is to analyze the provided "CURRENT TRANSCRIPT" and provide specific, concise outputs.
+CRITICAL RULE: Your entire response MUST be grounded ONLY in the provided "CURRENT TRANSCRIPT". Do NOT invent, assume, or reference outside information. Do NOT invent participant names or dialogue.
 Session Context: The current question is about "${context}".
-Previous Discussion Summary: ${history || "No previous discussion yet."}
-
 CURRENT TRANSCRIPT:
 ${transcript.trim() || "No comments have been added to the transcript for this question yet."}`;
-
+  
   switch (type) {
     case 'synthesis':
       return `${baseInstruction}\n**Your Task:** Synthesize the key themes from the CURRENT TRANSCRIPT into 3-4 bullet points. If the transcript is empty, state that no synthesis is possible yet.`;
     case 'followup':
       return `${baseInstruction}\n**Your Task:** Generate 2 probing follow-up questions based directly on statements in the CURRENT TRANSCRIPT. If the transcript is empty, suggest 2 general opening questions related to the Session Context.`;
     case 'cross_reference':
-       return `${baseInstruction}\n**Your Task:** Identify one specific connection between the CURRENT TRANSCRIPT and the "Previous Discussion Summary". If no connection exists, state that.`;
+      return `${baseInstruction}\n**Your Task:** Identify one specific connection between the CURRENT TRANSCRIPT and previous insights. If the transcript is empty, state that no cross-reference is possible yet.`;
     default: // 'insights'
       return `${baseInstruction}\n**Your Task:** Identify 2-3 key strategic insights or patterns emerging from the CURRENT TRANSCRIPT. If the transcript is empty, state that insights will be generated once comments are added.`;
   }
@@ -91,22 +97,25 @@ export async function POST(request: NextRequest) {
   noStore();
   
   try {
-    // Parse request body - Phase 1.1 focused payload structure
-    const { 
-      questionContext, 
-      currentTranscript,
-      fullHistorySummary,
-      analysisType = 'insights'
-    } = await request.json();
+    const body = await request.json();
     
-    // 🚨 PHASE 1.1 DEBUG: Log focused payload data
-    console.log('🔍 PHASE 1.1 - /api/analyze focused payload:');
+    // GEMINI PHASE 1.1: VALIDATE THE INCOMING DATA with schema validation
+    const validationResult = AnalyzeRequestSchema.safeParse(body);
+    if (!validationResult.success) {
+      console.error('❌ Schema validation failed:', validationResult.error.errors);
+      return NextResponse.json({ 
+        error: 'Invalid request data', 
+        details: validationResult.error.errors 
+      }, { status: 400 });
+    }
+
+    const { questionContext, currentTranscript, analysisType } = validationResult.data;
+
+    console.log('🔍 GEMINI PHASE 1.1 - /api/analyze schema validated payload:');
     console.log('📝 Question Context:', questionContext);
-    console.log('📊 Current Transcript:', currentTranscript.substring(0, 200) + '...');
-    console.log('📈 History Summary Length:', fullHistorySummary?.length || 0);
+    console.log('📊 Current Transcript:', currentTranscript?.substring(0, 200) + '...' || 'Empty transcript');
     console.log('🔧 Analysis Type:', analysisType);
 
-    // Define valid analysis types
     const validAnalysisTypes = ['insights', 'followup', 'cross_reference', 'synthesis'] as const;
     
     // Validate required fields
@@ -148,12 +157,11 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString()
     });
 
-    // Phase 1.1 - Use unified strict prompt builder with anti-hallucination rules
+    // GEMINI PHASE 1.1 - Use new strict prompt builder with bulletproof validation
     const userPrompt = buildStrictPrompt(
       analysisType,
       questionContext,
-      currentTranscript,
-      fullHistorySummary
+      currentTranscript
     );
 
     // Initialize OpenAI client at runtime to avoid build-time env var issues
@@ -211,7 +219,7 @@ export async function POST(request: NextRequest) {
 
     // Log successful analysis for monitoring
     console.log(`AI Analysis Success:`, {
-      question,
+      questionContext,
       analysisType,
       responseLength: aiResponse.length,
       tokensUsed: completion.usage?.total_tokens || 0
