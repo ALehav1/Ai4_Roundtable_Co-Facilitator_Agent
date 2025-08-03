@@ -246,8 +246,7 @@ const RoundtableCanvas: React.FC = () => {
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [isTestMode, setIsTestMode] = useState(false);
   
-  // 🚨 AGGRESSIVE DEBUG: Log test mode initialization
-  console.log('🚨 DEPLOYMENT VERIFICATION: Component mounted with isTestMode:', isTestMode);
+  // Test mode initialization (cleaned up debug logging)
   const [error, setError] = useState<string | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
 
@@ -299,18 +298,11 @@ const RoundtableCanvas: React.FC = () => {
     setIsAIThinking(true);
     setError(null);
 
-      // 🚨 AGGRESSIVE DEBUG: Multiple logging points to verify deployment
-    console.log('🚨 DEPLOYMENT VERIFICATION: callAIAnalysis function executing!');
-    console.log('🚨 DEBUG isTestMode value:', isTestMode);
-    console.log('🚨 DEBUG analysisType:', analysisType);
-    console.log('🚨 DEBUG currentQuestion:', currentQuestion?.id);
-    console.log('🚨 DEBUG timestamp:', new Date().toISOString());
-    console.log('🚨 DEBUG sessionData responses count:', sessionData.responses.length);
+    // AI analysis execution (debug logging cleaned up)
     
     // FIX: Honor test mode flag to prevent real API calls during testing
     if (isTestMode) {
-      console.log('🚨 DEBUG: TEST MODE IS TRUE - BLOCKING REAL API CALL');
-      console.error('🚨 CRITICAL: isTestMode is still true in production!');
+      // Test mode active - using mock data
       setTimeout(() => {
         const mockInsight: AIInsight = {
           content: `[TEST MODE] This is a mock AI insight for "${analysisType}". The analysis would normally appear here based on participant responses.`,
@@ -609,7 +601,7 @@ const RoundtableCanvas: React.FC = () => {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold mb-2">
-                {uiText.welcomeMessage} <span style={{color: 'yellow', fontSize: '14px'}}>[DEPLOY v2.1]</span>
+                {uiText.welcomeMessage}
               </h1>
               <p className="text-blue-100 text-lg">
                 {sessionConfig.description}
