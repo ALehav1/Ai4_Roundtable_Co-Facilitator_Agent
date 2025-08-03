@@ -9,7 +9,7 @@
  * through the client-side RoundtableCanvas component.
  */
 
-import RoundtableCanvas from '@/components/RoundtableCanvas';
+import RoundtableCanvasV2 from '@/components/RoundtableCanvasV2';
 import { sessionConfig, uiText } from '@/config/roundtable-config';
 
 export default function Home() {
@@ -23,7 +23,7 @@ export default function Home() {
         - Session data management
         - Export capabilities
       */}
-      <RoundtableCanvas />
+      <RoundtableCanvasV2 />
     </main>
   );
 }
