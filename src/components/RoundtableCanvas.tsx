@@ -244,7 +244,7 @@ const RoundtableCanvas: React.FC = () => {
   const [currentResponse, setCurrentResponse] = useState('');
   const [participantName, setParticipantName] = useState('');
   const [isAIThinking, setIsAIThinking] = useState(false);
-  const [isTestMode, setIsTestMode] = useState(true);
+  const [isTestMode, setIsTestMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
 
