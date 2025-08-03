@@ -166,7 +166,7 @@ async function generateQuestionSummary(
 ): Promise<QuestionSummary> {
   // Initialize OpenAI client at runtime to avoid build-time env var issues
   const openai = new OpenAI({
-    apiKey: openaiApiKey,
+    apiKey: apiKey,
   });
   
   const responseTexts = responses.map(r => 
