@@ -169,62 +169,19 @@ const RoundtableCanvasV2: React.FC = () => {
   // AI analysis with live transcript context
   const callAIAnalysis = useCallback(async (analysisType: string = 'insights') => {
     try {
+      // DEBUG: Log current session context state
+      console.log('🔍 AI Analysis Debug - Session Context:', sessionContext);
+      console.log('🔍 Live Transcript Array:', sessionContext.liveTranscript);
+      console.log('🔍 Transcript Count:', sessionContext.liveTranscript.length);
+      
       // Build live transcript for AI context
       const transcriptText = sessionContext.liveTranscript
         .map(entry => `${entry.speaker}: ${entry.text}`)
         .join('\n');
       
-      console.log('🔍 Starting AI Analysis:', {
-        type: analysisType,
-        transcriptLength: transcriptText.length,
-        entryCount: sessionContext.liveTranscript.length,
-        topic: sessionContext.currentTopic
-      });
+      console.log('🔍 Built Transcript Text:', transcriptText);
+      console.log('🔍 Transcript Text Length:', transcriptText.length);
 
-      // TRY NEW /api/analyze-live endpoint first (strict JSON)
-      try {
-        const liveResponse = await fetch('/api/analyze-live', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionTopic: sessionContext.currentTopic || 'Strategic Planning Session',
-            liveTranscript: transcriptText || "No conversation content has been captured yet in this live session.",
-            analysisType,
-            participantCount: sessionContext.participantCount || 5,
-            sessionDuration: Math.floor((Date.now() - sessionContext.startTime.getTime()) / 60000),
-            clientId: 'live-session'
-          }),
-        });
-
-        if (liveResponse.ok) {
-          const liveData = await liveResponse.json();
-          console.log('✅ Live AI Analysis (new endpoint):', liveData);
-          
-          if (liveData.success) {
-            // Add AI insight to session context with enhanced metadata
-            setSessionContext(prev => ({
-              ...prev,
-              aiInsights: [...prev.aiInsights, {
-                id: `insight_${Date.now()}`,
-                type: analysisType,
-                content: liveData.content,
-                timestamp: new Date(),
-                confidence: liveData.confidence,
-                suggestions: liveData.suggestions || [],
-                metadata: liveData.metadata
-              }],
-            }));
-            
-            return liveData;
-          }
-        }
-        
-        console.log('⚠️ Live endpoint failed, falling back to legacy endpoint');
-      } catch (liveError) {
-        console.log('⚠️ Live endpoint error, using fallback:', liveError);
-      }
-
-      // FALLBACK to legacy /api/analyze endpoint
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -240,9 +197,12 @@ const RoundtableCanvasV2: React.FC = () => {
       }
 
       const data = await response.json();
-      console.log('✅ Legacy AI Analysis (fallback):', data);
+      console.log('✅ Live AI Analysis:', data);
+      console.log('🔍 AI Response Keys:', Object.keys(data));
+      console.log('🔍 AI Analysis Content:', data.analysis);
+      console.log('🔍 AI Result Content:', data.result);
 
-      // Add AI insight to session context (legacy format)
+      // Add AI insight to session context
       setSessionContext(prev => ({
         ...prev,
         aiInsights: [...prev.aiInsights, {
@@ -250,28 +210,12 @@ const RoundtableCanvasV2: React.FC = () => {
           type: analysisType,
           content: data.insights || data.analysis || data.result,
           timestamp: new Date(),
-          confidence: 0.8, // Default confidence for legacy endpoint
-          isLegacy: true
         }],
       }));
 
       return data;
     } catch (error) {
-      console.error('❌ AI Analysis Error (both endpoints failed):', error);
-      
-      // Add error insight to maintain UX
-      setSessionContext(prev => ({
-        ...prev,
-        aiInsights: [...prev.aiInsights, {
-          id: `error_${Date.now()}`,
-          type: 'error',
-          content: 'AI analysis temporarily unavailable. Please try again or continue with manual facilitation.',
-          timestamp: new Date(),
-          confidence: 0,
-          isError: true
-        }],
-      }));
-      
+      console.error('❌ AI Analysis Error:', error);
       throw error;
     }
   }, [sessionContext]);
@@ -491,129 +435,6 @@ const RoundtableCanvasV2: React.FC = () => {
     </div>
   );
 
-  // Render AI Assistance Panel (RIGHT PANE)
-  const renderAIAssistancePanel = () => (
-    <div className="h-full">
-      {/* AI Panel Header */}
-      <div className="bg-white p-4 border-b border-gray-200 mb-4">
-        <h2 className="text-lg font-bold text-gray-800 mb-2">
-          🧠 AI Co-Facilitator
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => callAIAnalysis('insights')}
-            disabled={sessionContext.liveTranscript.length === 0}
-            className="text-xs px-3 py-1 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
-          >
-            💡 Get Insights
-          </button>
-          <button
-            onClick={() => callAIAnalysis('followup')}
-            disabled={sessionContext.liveTranscript.length === 0}
-            className="text-xs px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
-          >
-            ❓ Follow-up Questions
-          </button>
-          <button
-            onClick={() => callAIAnalysis('synthesis')}
-            disabled={sessionContext.liveTranscript.length === 0}
-            className="text-xs px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
-          >
-            📊 Synthesize
-          </button>
-        </div>
-      </div>
-
-      {/* AI Insights Display */}
-      {sessionContext.aiInsights.length > 0 ? (
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-gray-600 px-4">Live AI Insights</h3>
-          <div className="space-y-3 px-4">
-            {sessionContext.aiInsights.map((insight) => (
-              <div key={insight.id} className={`bg-white p-3 rounded shadow-sm ${
-                insight.isError 
-                  ? 'border-l-4 border-red-500' 
-                  : insight.isLegacy 
-                    ? 'border-l-4 border-yellow-500' 
-                    : 'border-l-4 border-purple-500'
-              }`}>
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-semibold uppercase ${
-                      insight.isError 
-                        ? 'text-red-600' 
-                        : insight.isLegacy 
-                          ? 'text-yellow-600' 
-                          : 'text-purple-600'
-                    }`}>
-                      {insight.type}
-                    </span>
-                    {insight.confidence !== undefined && (
-                      <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                        {Math.round(insight.confidence * 100)}% confidence
-                      </span>
-                    )}
-                    {insight.isLegacy && (
-                      <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded">
-                        Legacy
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-xs text-gray-500">
-                    {insight.timestamp.toLocaleTimeString()}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-800 leading-relaxed mb-2">{insight.content}</p>
-                
-                {/* Display suggestions if available */}
-                {insight.suggestions && insight.suggestions.length > 0 && (
-                  <div className="mt-3 pt-2 border-t border-gray-100">
-                    <p className="text-xs font-semibold text-gray-600 mb-2">Suggestions:</p>
-                    <ul className="text-xs text-gray-700 space-y-1">
-                      {insight.suggestions.slice(0, 3).map((suggestion: string, idx: number) => (
-                        <li key={idx} className="flex items-start gap-1">
-                          <span className="text-purple-500 mt-0.5">•</span>
-                          <span>{suggestion}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                
-                {/* Display metadata for new endpoint */}
-                {insight.metadata && (
-                  <div className="mt-2 text-xs text-gray-500">
-                    Tokens: {insight.metadata.tokensUsed} | Length: {insight.metadata.transcriptLength}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="text-center text-gray-500 p-8">
-          <div className="text-4xl mb-4">🤖</div>
-          <p className="text-sm">AI insights will appear here</p>
-          <p className="text-xs text-gray-400 mt-2">
-            Start recording or add manual entries to enable AI analysis
-          </p>
-        </div>
-      )}
-
-      {/* Session Stats */}
-      {sessionState === 'discussion' && (
-        <div className="mt-6 bg-blue-50 p-4 rounded">
-          <h4 className="text-sm font-semibold text-blue-800 mb-2">Session Stats</h4>
-          <div className="text-xs text-blue-600 space-y-1">
-            <p><strong>Entries:</strong> {sessionContext.liveTranscript.length}</p>
-            <p><strong>Duration:</strong> {Math.floor((Date.now() - sessionContext.startTime.getTime()) / 60000)}min</p>
-            <p><strong>AI Insights:</strong> {sessionContext.aiInsights.length}</p>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
   // Render summary state
   const renderSummaryState = () => (
     <div className="bg-white rounded-lg shadow-lg p-8">
@@ -653,59 +474,41 @@ const RoundtableCanvasV2: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-blue-600 text-white p-4">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">
-              🎙️ AI Roundtable Co-Facilitator
-            </h1>
-            <p className="text-blue-100 text-sm">
-              MVP Split-Pane • State: {sessionState} • Topic: {sessionContext.currentTopic || 'No topic'}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-blue-100 text-sm">
-              {sessionContext.liveTranscript.length} entries captured
-            </p>
-          </div>
-        </div>
+      <header className="bg-blue-600 text-white p-6">
+        <h1 className="text-3xl font-bold">
+          AI Roundtable Co-Facilitator V2
+        </h1>
+        <p className="text-blue-100">
+          Phase 2: Live Transcript Model • Session State: {sessionState}
+        </p>
       </header>
 
-      <main className="h-screen-minus-header split-pane-container">
-        {/* LEFT PANE: Discussion */}
-        <div className="left-pane bg-white p-6">
-          {sessionState === 'intro' && renderIntroState()}
-          {sessionState === 'discussion' && renderDiscussionState()}
-          {sessionState === 'summary' && renderSummaryState()}
-          
-          {sessionState === 'completed' && (
-            <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-              <h2 className="text-3xl font-bold mb-4">🎉 Session Complete!</h2>
-              <p className="text-gray-600 mb-6">Your roundtable session has been successfully captured and analyzed.</p>
-              <button
-                onClick={() => {
-                  setSessionState('intro');
-                  setSessionContext({
-                    state: 'intro',
-                    startTime: new Date(),
-                    participantCount: 5,
-                    currentTopic: 'when ai becomes how the enterprise operates',
-                    liveTranscript: [],
-                    aiInsights: [],
-                  });
-                }}
-                className="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                🔄 Start New Session
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* RIGHT PANE: AI Assistance Panel */}
-        <div className="right-pane bg-gray-50 p-4">
-          {renderAIAssistancePanel()}
-        </div>
+      <main className="max-w-6xl mx-auto p-6">
+        {sessionState === 'intro' && renderIntroState()}
+        {sessionState === 'discussion' && renderDiscussionState()}
+        {sessionState === 'summary' && renderSummaryState()}
+        
+        {sessionState === 'completed' && (
+          <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+            <h2 className="text-3xl font-bold mb-4">🎉 Session Complete!</h2>
+            <p className="text-gray-600 mb-6">Your roundtable session has been successfully captured and analyzed.</p>
+            <button
+              onClick={() => {
+                setSessionState('intro');
+                setSessionContext({
+                  state: 'intro',
+                  startTime: new Date(),
+                  participantCount: 0,
+                  liveTranscript: [],
+                  aiInsights: [],
+                });
+              }}
+              className="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              🔄 Start New Session
+            </button>
+          </div>
+        )}
       </main>
       
       {/* Manual Entry Modal */}

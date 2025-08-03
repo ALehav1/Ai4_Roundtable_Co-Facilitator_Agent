@@ -48,6 +48,28 @@
 
 /* Component-specific styles */
 @layer components {
+  /* Split-pane layout utilities for MVP */
+  .h-screen-minus-header {
+    height: calc(100vh - 4rem); /* Adjust based on header height */
+  }
+  
+  .split-pane-container {
+    display: flex;
+    height: 100%;
+  }
+  
+  .left-pane {
+    flex: 1;
+    min-width: 0; /* Allow flex shrinking */
+    overflow-y: auto;
+  }
+  
+  .right-pane {
+    width: 24rem; /* 384px - fixed width for AI panel */
+    flex-shrink: 0;
+    overflow-y: auto;
+    border-left: 1px solid #d1d5db;
+  }
   /* AI Thinking Animation */
   .ai-thinking {
     @apply flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100;
