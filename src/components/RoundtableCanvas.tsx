@@ -346,6 +346,13 @@ const RoundtableCanvas: React.FC = () => {
           responses: sessionData.responses.filter(r => 
             r.id.startsWith(currentQuestion.id)
           ),
+          // DEBUG: Add response count logging
+          debugInfo: {
+            totalResponses: sessionData.responses.length,
+            filteredResponses: sessionData.responses.filter(r => r.id.startsWith(currentQuestion.id)).length,
+            currentQuestionId: currentQuestion.id,
+            allResponseIds: sessionData.responses.map(r => ({ id: r.id, questionMatch: r.id.startsWith(currentQuestion.id) }))
+          },
           context: `${currentQuestion.title}: ${currentQuestion.description}`,
           analysisType,
           clientId: 'roundtable-session',
