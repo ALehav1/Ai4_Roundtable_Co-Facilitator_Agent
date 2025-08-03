@@ -10,7 +10,8 @@
  */
 
 import OpenAI from 'openai';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { unstable_noStore as noStore } from 'next/cache';
 import { aiConfig, sessionConfig, getAIPromptForContext } from '@/config/roundtable-config';
 
 // OpenAI client will be initialized at runtime to avoid build-time env var issues
@@ -60,16 +61,10 @@ function checkRateLimit(clientId: string): boolean {
  * - analysisType: 'insights' | 'synthesis' | 'followup'
  * - clientId: Simple client identifier for rate limiting
  */
-export async function POST(request: Request) {
-  // Critical: Validate API key configuration
-  if (!process.env.OPENAI_API_KEY) {
-    console.error('CRITICAL: OPENAI_API_KEY is not configured.');
-    return NextResponse.json(
-      { error: 'AI service is not configured correctly. Please contact support.' }, 
-      { status: 500 }
-    );
-  }
-
+export async function POST(request: NextRequest) {
+  // Prevent Next.js from prebuilding this route at build time
+  noStore();
+  
   try {
     // Parse request body with enhanced session context
     const { 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { unstable_noStore as noStore } from 'next/cache';
 import OpenAI from 'openai';
 
 // OpenAI client will be initialized at runtime to avoid build-time env var issues
@@ -58,6 +59,9 @@ interface SessionSummary {
 }
 
 export async function POST(request: NextRequest) {
+  // Prevent Next.js from prebuilding this route at build time
+  noStore();
+  
   try {
     const { sessionData, questions } = await request.json();
 
