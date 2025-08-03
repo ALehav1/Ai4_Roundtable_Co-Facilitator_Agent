@@ -72,8 +72,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get environment variable with Vercel-specific access pattern
-    const openaiApiKey = process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY;
+    // Get environment variable with multiple fallback patterns for Vercel
+    const openaiApiKey = process.env.OPENAI_API_KEY || 
+                         process.env.NEXT_PUBLIC_OPENAI_API_KEY ||
+                         process.env.OPENAI_KEY ||
+                         process.env.NEXT_OPENAI_API_KEY ||  
+                         process.env.AI_API_KEY;
     
     // Debug: Log environment variable status
     console.log('DEBUG: OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY);
