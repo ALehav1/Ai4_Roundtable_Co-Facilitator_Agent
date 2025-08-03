@@ -245,6 +245,9 @@ const RoundtableCanvas: React.FC = () => {
   const [participantName, setParticipantName] = useState('');
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [isTestMode, setIsTestMode] = useState(false);
+  
+  // 🚨 AGGRESSIVE DEBUG: Log test mode initialization
+  console.log('🚨 DEPLOYMENT VERIFICATION: Component mounted with isTestMode:', isTestMode);
   const [error, setError] = useState<string | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
 
@@ -296,17 +299,18 @@ const RoundtableCanvas: React.FC = () => {
     setIsAIThinking(true);
     setError(null);
 
-    // 🔍 DEBUG: Trace test mode behavior
-    console.log('🔍 DEBUG callAIAnalysis:', {
-      analysisType,
-      isTestMode,
-      currentQuestionId: currentQuestion.id,
-      timestamp: new Date().toISOString()
-    });
-
+      // 🚨 AGGRESSIVE DEBUG: Multiple logging points to verify deployment
+    console.log('🚨 DEPLOYMENT VERIFICATION: callAIAnalysis function executing!');
+    console.log('🚨 DEBUG isTestMode value:', isTestMode);
+    console.log('🚨 DEBUG analysisType:', analysisType);
+    console.log('🚨 DEBUG currentQuestion:', currentQuestion?.id);
+    console.log('🚨 DEBUG timestamp:', new Date().toISOString());
+    console.log('🚨 DEBUG sessionData responses count:', sessionData.responses.length);
+    
     // FIX: Honor test mode flag to prevent real API calls during testing
     if (isTestMode) {
-      console.log('⚠️ DEBUG: Using TEST MODE - blocking real API call');
+      console.log('🚨 DEBUG: TEST MODE IS TRUE - BLOCKING REAL API CALL');
+      console.error('🚨 CRITICAL: isTestMode is still true in production!');
       setTimeout(() => {
         const mockInsight: AIInsight = {
           content: `[TEST MODE] This is a mock AI insight for "${analysisType}". The analysis would normally appear here based on participant responses.`,
