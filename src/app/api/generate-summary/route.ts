@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// OpenAI client will be initialized at runtime to avoid build-time env var issues
 
 // Types matching the frontend session data structure
 interface ParticipantResponse {
@@ -146,6 +143,10 @@ async function generateQuestionSummary(
   responses: ParticipantResponse[], 
   insights: AIInsight[]
 ): Promise<QuestionSummary> {
+  // Initialize OpenAI client at runtime to avoid build-time env var issues
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
   
   const responseTexts = responses.map(r => 
     `${r.participantName || 'Participant'}: ${r.text}`
@@ -263,6 +264,11 @@ async function generateExecutiveSummary(
   sessionData: SessionData,
   questionSummaries: QuestionSummary[]
 ) {
+  // Initialize OpenAI client at runtime to avoid build-time env var issues
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+  
   const allInsights = questionSummaries.flatMap(q => q.criticalInsights);
   const allConcerns = questionSummaries.flatMap(q => q.emergingConcerns);
   const allImplications = questionSummaries.flatMap(q => q.strategicImplications);
@@ -354,6 +360,10 @@ async function generateOverallConclusion(
   sessionData: SessionData,
   questionSummaries: QuestionSummary[]
 ): Promise<string> {
+  // Initialize OpenAI client at runtime to avoid build-time env var issues
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
   
   const prompt = `As an expert strategic facilitator, write a comprehensive narrative conclusion for this AI transformation roundtable session.
 
