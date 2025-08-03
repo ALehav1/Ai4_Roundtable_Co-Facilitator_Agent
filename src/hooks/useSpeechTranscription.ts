@@ -137,6 +137,9 @@ function createWebSpeechEngine(): SpeechEngine {
   let errorCallback: ((error: string) => void) | null = null;
   let networkErrorCount = 0;
   const MAX_NETWORK_ERRORS = 3;
+  let totalRestartCount = 0;
+  const MAX_TOTAL_RESTARTS = 5;
+  let isExplicitlyStopped = false;
 
   const isSupported = () => {
     return typeof window !== 'undefined' && 
@@ -228,10 +231,41 @@ function createWebSpeechEngine(): SpeechEngine {
     };
 
     recognition.onend = () => {
+      // AGGRESSIVE FIX: Stop infinite restart loops with multiple safety checks
+      if (isExplicitlyStopped) {
+        console.log('🛑 Speech recognition explicitly stopped, not restarting');
+        return;
+      }
+      
+      totalRestartCount++;
+      console.log(`🔄 Restart attempt ${totalRestartCount}/${MAX_TOTAL_RESTARTS}`);
+      
+      if (totalRestartCount >= MAX_TOTAL_RESTARTS) {
+        console.error('🛑 Maximum restart attempts reached, stopping forever');
+        if (restartTimer) {
+          clearInterval(restartTimer);
+          restartTimer = null;
+        }
+        isExplicitlyStopped = true;
+        if (errorCallback) {
+          errorCallback('Speech recognition stopped after too many restart attempts. Please use manual entry.');
+        }
+        return;
+      }
+      
       // Auto-restart if still supposed to be listening (avoid 60s timeout)
-      if (restartTimer) {
+      if (restartTimer && !isExplicitlyStopped) {
         console.log('🔄 Auto-restarting speech recognition...');
-        recognition.start();
+        try {
+          recognition.start();
+        } catch (error) {
+          console.error('🛑 Failed to restart speech recognition:', error);
+          isExplicitlyStopped = true;
+          if (restartTimer) {
+            clearInterval(restartTimer);
+            restartTimer = null;
+          }
+        }
       }
     };
 
@@ -246,14 +280,18 @@ function createWebSpeechEngine(): SpeechEngine {
   };
 
   const stop = async () => {
+    console.log('🛑 Explicitly stopping speech recognition');
+    isExplicitlyStopped = true;
+    if (recognition) {
+      recognition.stop();
+    }
     if (restartTimer) {
       clearInterval(restartTimer);
       restartTimer = null;
     }
-    if (recognition) {
-      recognition.stop();
-      recognition = null;
-    }
+    // Reset counters for future use
+    networkErrorCount = 0;
+    totalRestartCount = 0;
   };
 
   const onPartial = (callback: (event: TranscriptEvent) => void) => {
