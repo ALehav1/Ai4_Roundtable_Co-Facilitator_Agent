@@ -61,15 +61,21 @@ const RoundtableCanvasV2: React.FC = () => {
   const [sessionContext, setSessionContext] = useState<SessionContext>({
     state: 'intro',
     startTime: new Date(),
-    participantCount: 0,
+    participantCount: 5,
+    currentTopic: 'when ai becomes how the enterprise operates',
     liveTranscript: [],
     aiInsights: [],
   });
 
   // Live transcript state
   const [isRecording, setIsRecording] = useState(false);
-  const [currentSpeaker, setCurrentSpeaker] = useState<string>('');
+  const [currentSpeaker, setCurrentSpeaker] = useState<string>('Facilitator');
   const [interimTranscript, setInterimTranscript] = useState<string>('');
+  
+  // Manual entry modal state
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [manualEntryText, setManualEntryText] = useState('');
+  const [manualSpeakerName, setManualSpeakerName] = useState('');
   
   // Speech recognition refs
   const recognitionRef = useRef<ISpeechRecognition | null>(null);
@@ -115,6 +121,12 @@ const RoundtableCanvasV2: React.FC = () => {
         };
 
         recognitionRef.current.onerror = (event: any) => {
+          if (event.error === 'network') {
+            console.log('Speech recognition requires HTTPS - feature disabled in local development');
+            // Graceful fallback: disable speech recognition but keep app functional
+            setIsRecording(false);
+            return;
+          }
           console.error('Speech recognition error:', event.error);
         };
 
@@ -183,10 +195,18 @@ const RoundtableCanvasV2: React.FC = () => {
   // AI analysis with live transcript context
   const callAIAnalysis = useCallback(async (analysisType: string = 'insights') => {
     try {
+      // DEBUG: Log current session context state
+      console.log('🔍 AI Analysis Debug - Session Context:', sessionContext);
+      console.log('🔍 Live Transcript Array:', sessionContext.liveTranscript);
+      console.log('🔍 Transcript Count:', sessionContext.liveTranscript.length);
+      
       // Build live transcript for AI context
       const transcriptText = sessionContext.liveTranscript
         .map(entry => `${entry.speaker}: ${entry.text}`)
         .join('\n');
+      
+      console.log('🔍 Built Transcript Text:', transcriptText);
+      console.log('🔍 Transcript Text Length:', transcriptText.length);
 
       const response = await fetch('/api/analyze', {
         method: 'POST',
@@ -225,15 +245,27 @@ const RoundtableCanvasV2: React.FC = () => {
 
   // Manual transcript entry (fallback)
   const addManualEntry = useCallback(() => {
-    const text = prompt('Add manual transcript entry:');
-    if (text?.trim()) {
+    console.log('🎯 Manual Entry button clicked - opening modal!');
+    setManualSpeakerName(currentSpeaker || 'Facilitator');
+    setManualEntryText('');
+    setShowManualModal(true);
+  }, [currentSpeaker]);
+  
+  // Submit manual entry from modal
+  const submitManualEntry = useCallback(() => {
+    console.log('📝 Submitting manual entry:', manualEntryText);
+    if (manualEntryText.trim()) {
       addTranscriptEntry({
-        text: text.trim(),
-        speaker: currentSpeaker || 'Facilitator',
+        text: manualEntryText.trim(),
+        speaker: manualSpeakerName || 'Facilitator',
         isAutoDetected: false,
       });
+      setShowManualModal(false);
+      setManualEntryText('');
+      setManualSpeakerName('');
+      console.log('✅ Manual entry added successfully!');
     }
-  }, [currentSpeaker, addTranscriptEntry]);
+  }, [manualEntryText, manualSpeakerName, addTranscriptEntry]);
 
   // Render session intro state
   const renderIntroState = () => (
@@ -501,6 +533,55 @@ const RoundtableCanvasV2: React.FC = () => {
           </div>
         )}
       </main>
+      
+      {/* Manual Entry Modal */}
+      {showManualModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-xl font-bold mb-4">➕ Add Manual Entry</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Speaker Name</label>
+                <input
+                  type="text"
+                  value={manualSpeakerName}
+                  onChange={(e) => setManualSpeakerName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="Enter speaker name"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Transcript Text</label>
+                <textarea
+                  value={manualEntryText}
+                  onChange={(e) => setManualEntryText(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md h-24 resize-none"
+                  placeholder="Enter what was said..."
+                  autoFocus
+                />
+              </div>
+            </div>
+            
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => setShowManualModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitManualEntry}
+                disabled={!manualEntryText.trim()}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                Add Entry
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
