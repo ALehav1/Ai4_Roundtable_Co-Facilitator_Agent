@@ -368,7 +368,15 @@ Format as JSON:
       throw new Error('No response from OpenAI');
     }
 
-    return JSON.parse(content);
+    // Strip markdown code block formatting if present
+    let jsonContent = content.trim();
+    if (jsonContent.startsWith('```json')) {
+      jsonContent = jsonContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (jsonContent.startsWith('```')) {
+      jsonContent = jsonContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+
+    return JSON.parse(jsonContent);
 
   } catch (error) {
     console.error('Error generating executive summary:', error);
