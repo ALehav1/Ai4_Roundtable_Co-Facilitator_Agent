@@ -154,33 +154,73 @@ Next Question or Generate Comprehensive Summary
 └───────────────────────────────────────────────────┘
 ```
 
-### 🎤 Speech-to-Text Integration Flow
+### 🎤 Modular Speech Transcription Architecture
+
+The application features a robust, layered speech transcription system with automatic fallback capabilities:
+
+#### Architecture Overview
 
 ```text
-Facilitator Input Method Selection
+Speech Input Request
        ↓
-Browser Supports Web Speech API?
-       ↓                    ↓
-      YES                   NO
-       ↓                    ↓
-Show Microphone Button    Show "Not Available" Message
+┌─────────────────────────────────────────┐
+│        useSpeechTranscription Hook      │
+│    (Unified API for all engines)       │
+└─────────────────────────────────────────┘
        ↓
-Click to Start Listening
+Engine Selection Logic (NEXT_PUBLIC_SPEECH_ENGINE)
        ↓
-Web Speech API activated + Log Speech Event
-       ↓
-Real-time transcription → Update text field
-       ↓
-Speech Recognition Events:
-├── onresult: Update text with transcription
-├── onerror: Log error + Show user message
-├── onend: Update UI state + Log completion
-└── onstop: Clean shutdown + Log performance
-       ↓
-Facilitator reviews/edits transcribed text
-       ↓
-Submit response (same flow as manual typing)
+┌────────────────┬────────────────┬──────────────────┐
+│   Layer A:     │   Layer B:     │   Layer C:       │
+│ Native Web     │ Whisper        │ Deepgram        │
+│ Speech API     │ Chunked        │ Streaming        │
+│ (Browser)      │ (Serverless)   │ (Premium)        │
+└────────────────┴────────────────┴──────────────────┘
+       ↓              ↓                ↓
+HTTPS Required    Always Available   WebSocket Required
+Auto-restart      MediaRecorder      Real-time stream
+Error mapping     /api/transcribe    Premium accuracy
 ```
+
+#### Engine Details
+
+**Layer A: Native Web Speech API**
+- **Requirements**: HTTPS environment only
+- **Features**: Real-time transcription, auto-restart every 45s, detailed error mapping
+- **Fallback**: Automatic fallback to Whisper on network errors or HTTP
+
+**Layer B: Whisper Chunked Fallback**  
+- **Requirements**: OpenAI API key, works on HTTP/HTTPS
+- **Features**: MediaRecorder chunking, serverless Edge API, high accuracy
+- **Use Case**: Primary fallback when native speech unavailable
+
+**Layer C: Deepgram Streaming (Optional)**
+- **Requirements**: Deepgram API key, WebSocket connection
+- **Features**: Premium real-time streaming, enterprise accuracy
+- **Use Case**: Opt-in premium upgrade for production environments
+
+#### Local Development Setup
+
+**⚠️ IMPORTANT**: Native Web Speech API requires HTTPS. For local testing:
+
+1. **HTTP Development** (localhost:3000):
+   - Speech recognition disabled (expected behavior)
+   - Manual entry and Whisper fallback available
+   - Console shows graceful fallback messages
+
+2. **HTTPS Development** (recommended for speech testing):
+   ```bash
+   # Option 1: Use ngrok for HTTPS tunnel
+   npm install -g ngrok
+   npm run dev
+   # In separate terminal:
+   ngrok http 3000
+   # Use the https://xxx.ngrok.io URL
+   
+   # Option 2: Production deployment testing
+   vercel deploy
+   # Test on live Vercel HTTPS URL
+   ```
 
 ### 🤖 AI Co-Facilitation Analysis Flow
 

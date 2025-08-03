@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { sessionConfig, uiText } from '../config/roundtable-config';
+import { useSpeechTranscription, TranscriptEvent } from '../hooks/useSpeechTranscription';
 
 // PHASE 2: Live Transcript Model Implementation
 // Session Lifecycle: intro → discussion → summary
@@ -77,70 +79,37 @@ const RoundtableCanvasV2: React.FC = () => {
   const [manualEntryText, setManualEntryText] = useState('');
   const [manualSpeakerName, setManualSpeakerName] = useState('');
   
-  // Speech recognition refs
-  const recognitionRef = useRef<ISpeechRecognition | null>(null);
+  // Modular speech transcription hook
+  const speechTranscription = useSpeechTranscription();
   const transcriptRef = useRef<HTMLDivElement>(null);
 
-  // Initialize speech recognition
+  // Setup speech transcription callbacks
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        recognitionRef.current = new SpeechRecognition();
-        recognitionRef.current.continuous = true;
-        recognitionRef.current.interimResults = true;
-        recognitionRef.current.lang = 'en-US';
+    // Handle partial transcription (interim results)
+    speechTranscription.onPartial((event: TranscriptEvent) => {
+      setInterimTranscript(event.text);
+    });
 
-        // Handle speech recognition results
-        recognitionRef.current.onresult = (event: any) => {
-          let finalTranscript = '';
-          let interimText = '';
-
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript;
-            const confidence = event.results[i][0].confidence;
-
-            if (event.results[i].isFinal) {
-              finalTranscript += transcript;
-              
-              // Add to live transcript
-              if (finalTranscript.trim()) {
-                addTranscriptEntry({
-                  text: finalTranscript.trim(),
-                  speaker: currentSpeaker || 'Participant',
-                  confidence,
-                  isAutoDetected: true,
-                });
-              }
-            } else {
-              interimText += transcript;
-            }
-          }
-
-          setInterimTranscript(interimText);
-        };
-
-        recognitionRef.current.onerror = (event: any) => {
-          if (event.error === 'network') {
-            console.log('Speech recognition requires HTTPS - feature disabled in local development');
-            // Graceful fallback: disable speech recognition but keep app functional
-            setIsRecording(false);
-            return;
-          }
-          console.error('Speech recognition error:', event.error);
-        };
-
-        recognitionRef.current.onend = () => {
-          if (isRecording && sessionState === 'discussion') {
-            // Auto-restart if we're still in discussion mode
-            setTimeout(() => {
-              recognitionRef.current?.start();
-            }, 100);
-          }
-        };
+    // Handle final transcription results
+    speechTranscription.onFinal((event: TranscriptEvent) => {
+      if (event.text.trim()) {
+        addTranscriptEntry({
+          text: event.text.trim(),
+          speaker: currentSpeaker || 'Participant',
+          confidence: event.confidence,
+          isAutoDetected: true,
+        });
+        setInterimTranscript(''); // Clear interim text
       }
-    }
-  }, [currentSpeaker, isRecording, sessionState]);
+    });
+
+    // Handle speech recognition errors
+    speechTranscription.onError((error: string) => {
+      console.error('🎤 Speech Recognition Error:', error);
+      setIsRecording(false);
+      // Could show a toast notification here
+    });
+  }, [currentSpeaker, speechTranscription]);
 
   // Add transcript entry to session context
   const addTranscriptEntry = useCallback((entry: Omit<TranscriptEntry, 'id' | 'timestamp'>) => {
@@ -170,19 +139,24 @@ const RoundtableCanvasV2: React.FC = () => {
       startTime: new Date(),
     }));
     
-    // Start live recording
-    if (recognitionRef.current) {
+    // Start live recording with modular speech engine
+    if (speechTranscription.isSupported) {
       setIsRecording(true);
-      recognitionRef.current.start();
+      speechTranscription.start().catch(error => {
+        console.error('🎤 Failed to start speech transcription:', error);
+        setIsRecording(false);
+      });
+    } else {
+      console.log('🎤 Speech transcription not supported, manual entry only');
     }
-  }, []);
+  }, [speechTranscription]);
 
-  const endSession = useCallback(() => {
+  const endSession = useCallback(async () => {
     setSessionState('summary');
     setIsRecording(false);
     
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
+    if (speechTranscription.isListening) {
+      await speechTranscription.stop();
     }
 
     setSessionContext(prev => ({
@@ -190,7 +164,7 @@ const RoundtableCanvasV2: React.FC = () => {
       state: 'summary',
       duration: Math.round((Date.now() - prev.startTime.getTime()) / 1000),
     }));
-  }, []);
+  }, [speechTranscription]);
 
   // AI analysis with live transcript context
   const callAIAnalysis = useCallback(async (analysisType: string = 'insights') => {
