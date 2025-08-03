@@ -89,6 +89,34 @@ ai-roundtable/
 | `.env.local` | **API Keys & Secrets** - Environment variables | OpenAI API key configuration | ✅ **YES** |
 | `src/app/globals.css` | **Professional Styling** - Tailwind CSS and custom styles | Responsive design, animations, professional theme | 🎨 Design changes |
 
+## 🎯 **AI FACILITATOR PROMPT LOCATIONS** (Easy Editing Guide)
+
+**CRITICAL FOR CUSTOMIZATION**: Here's exactly where to find and edit AI prompts for easy modification:
+
+### ✅ **EASY TO EDIT** - Configuration File
+**File**: `src/config/roundtable-config.ts`
+- **Main AI Config**: Lines 44-54 (`aiConfig` object)
+- **Questions & Context**: Lines 78-158 (`roundtableQuestions` array)
+- **System Behavior**: Lines 160-194 (`uiText` and session settings)
+
+### ⚠️ **REQUIRES CODE CHANGES** - API Route Files
+**File**: `src/app/api/analyze/route.ts`
+- **Insights Prompt**: Lines 130-200 (`buildInsightsPrompt` function)
+- **Synthesis Prompt**: Lines 220-270 (`buildSynthesisPrompt` function) 
+- **Follow-up Prompt**: Lines 290-340 (`buildFollowupPrompt` function)
+- **Cross-reference Prompt**: Lines 360-400 (`buildCrossReferencePrompt` function)
+
+**File**: `src/app/api/generate-summary/route.ts`
+- **Question Summary**: Lines 140-200 (`generateQuestionSummary` function)
+- **Executive Summary**: Lines 260-320 (`generateExecutiveSummary` function)
+- **Overall Conclusion**: Lines 355-380 (`generateOverallConclusion` function)
+
+### 🚨 **CURRENT PROMPT ISSUES** (Need Fixing)
+1. **Collapsible Instructions Bug**: Both facilitator instructions and notes accordions in RoundtableCanvas.tsx
+2. **AI Hallucination**: Despite fixes, AI may still fabricate participants or content
+3. **Speed Optimization**: Summary generation is slow for longer transcripts
+4. **Context Propagation**: Data flow bug may prevent AI from using real session data
+
 ## 🧠 Logic Flow Diagrams
 
 ### 🎆 Complete Facilitator Workflow
@@ -339,58 +367,42 @@ npm run dev
 - **UI Testing**: Verify all components work
 - **Export Testing**: Validate data structure
 
-### Switching to Live Mode
-
-1. Edit `src/config/roundtable-config.ts`
-2. Change `enableTestMode: false`
-3. Add your OpenAI API key to `.env.local`
-4. Restart the application
-
-### Development Workflow
-
-```bash
-# Development server (hot reload)
-npm run dev
-
-# Build for production
-npm run build
-
-# Start production server locally
-npm start
-
-# Lint code
-npm run lint
-```
-
-## 🌐 Deployment to Vercel
-
-### One-Time Setup
-
 ```bash
 # Install Vercel CLI
 npm i -g vercel
 
 # Login to Vercel
 vercel login
+
+# Test local build first (CRITICAL)
+npm run build
 ```
 
-### Deploy
-
+#### Step 2: Deploy
 ```bash
-# Deploy from project directory
+# Deploy from project root
 vercel
 
 # Follow prompts:
-# - Link to existing project or create new
-# - Set production domain
+# - Link to existing project: No (for first deployment)
+# - Project name: ai-facilitator-agent
+# - Directory: ./ (default)
 ```
 
-### Configure Environment Variables
+#### Step 3: Configure Environment Variables
+**In Vercel Dashboard:**
+1. Go to Project Settings → Environment Variables
+2. Add for **Production** environment:
+   - Name: `OPENAI_API_KEY`
+   - Value: `your_actual_openai_api_key`
+3. **Redeploy after adding environment variables**
 
-1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
-2. Find your project → Settings → Environment Variables
-3. Add: `OPENAI_API_KEY` = `your-actual-api-key`
-4. Redeploy: `vercel --prod`
+#### Step 4: Verify Deployment
+- Check build logs in Vercel dashboard
+- Test AI features in production
+- Verify speech recognition works (HTTPS only)
+
+**Production URL**: https://ai-facilitator-agent.vercel.app
 
 ### Production Checklist
 
