@@ -79,12 +79,14 @@ export async function POST(request: NextRequest) {
                          process.env.NEXT_OPENAI_API_KEY ||  
                          process.env.AI_API_KEY;
     
-    // Debug: Log environment variable status
+    // Debug: Log environment variable status for ALL fallbacks
     console.log('DEBUG: OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY);
-    console.log('DEBUG: OPENAI_API_KEY length:', process.env.OPENAI_API_KEY?.length || 0);
-    console.log('DEBUG: Alternative key exists:', !!process.env.NEXT_PUBLIC_OPENAI_API_KEY);
-    console.log('DEBUG: Final key exists:', !!openaiApiKey);
-    console.log('DEBUG: All env vars starting with OPENAI:', Object.keys(process.env).filter(key => key.startsWith('OPENAI')));
+    console.log('DEBUG: NEXT_PUBLIC_OPENAI_API_KEY exists:', !!process.env.NEXT_PUBLIC_OPENAI_API_KEY);
+    console.log('DEBUG: OPENAI_KEY exists:', !!process.env.OPENAI_KEY);
+    console.log('DEBUG: NEXT_OPENAI_API_KEY exists:', !!process.env.NEXT_OPENAI_API_KEY);
+    console.log('DEBUG: AI_API_KEY exists:', !!process.env.AI_API_KEY); // <-- This is what we set via CLI!
+    console.log('DEBUG: Final resolved key exists:', !!openaiApiKey);
+    console.log('DEBUG: Final resolved key length:', openaiApiKey?.length || 0);
     
     // Validate OpenAI API key
     if (!openaiApiKey) {
