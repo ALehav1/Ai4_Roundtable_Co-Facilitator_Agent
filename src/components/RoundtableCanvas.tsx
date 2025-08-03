@@ -343,25 +343,14 @@ const RoundtableCanvas: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          question: currentQuestion.id,
-          responses: sessionData.responses.filter(r => 
-            r.id.startsWith(currentQuestion.id)
-          ),
-          // DEBUG: Add response count logging
-          debugInfo: {
-            totalResponses: sessionData.responses.length,
-            filteredResponses: sessionData.responses.filter(r => r.id.startsWith(currentQuestion.id)).length,
-            currentQuestionId: currentQuestion.id,
-            allResponseIds: sessionData.responses.map(r => ({ id: r.id, questionMatch: r.id.startsWith(currentQuestion.id) }))
-          },
-          context: `${currentQuestion.title}: ${currentQuestion.description}`,
+          // FOCUSED PAYLOAD - Phase 1.1 Fix for AI hallucination
+          questionContext: `${currentQuestion.title}: ${currentQuestion.description}`,
+          currentTranscript: sessionData.responses
+            .filter(r => r.id.startsWith(currentQuestion.id)) // Ensure correct filtering
+            .map(r => `${r.participantName || 'Participant'}: ${r.text}`)
+            .join('\n'),
+          fullHistorySummary: sessionData.aiInsights.map(i => i.content).join('\n\n'), // For high-level context only
           analysisType,
-          clientId: 'roundtable-session',
-          // Enhanced session context for co-facilitator memory
-          allResponses: sessionData.responses, // Full session history
-          allInsights: sessionData.aiInsights, // Previous AI insights
-          sessionProgress: sessionData.currentQuestionIndex / getTotalQuestions(),
-          participantNames: participantNames
         }),
       });
 

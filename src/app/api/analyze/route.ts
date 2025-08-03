@@ -61,46 +61,58 @@ function checkRateLimit(clientId: string): boolean {
  * - analysisType: 'insights' | 'synthesis' | 'followup'
  * - clientId: Simple client identifier for rate limiting
  */
+// Phase 1.1 - Unified strict prompt builder with anti-hallucination rules
+function buildStrictPrompt(type: string, context: string, transcript: string, history: string): string {
+  const baseInstruction = `
+You are an AI co-facilitator. Your task is to analyze the provided "CURRENT TRANSCRIPT" and provide specific, concise outputs.
+
+CRITICAL RULE: Your entire response MUST be grounded ONLY in the provided "CURRENT TRANSCRIPT". Do NOT invent, assume, or reference outside information. Do NOT invent participant names.
+
+Session Context: The current question is about "${context}".
+Previous Discussion Summary: ${history || "No previous discussion yet."}
+
+CURRENT TRANSCRIPT:
+${transcript.trim() || "No comments have been added to the transcript for this question yet."}`;
+
+  switch (type) {
+    case 'synthesis':
+      return `${baseInstruction}\n**Your Task:** Synthesize the key themes from the CURRENT TRANSCRIPT into 3-4 bullet points. If the transcript is empty, state that no synthesis is possible yet.`;
+    case 'followup':
+      return `${baseInstruction}\n**Your Task:** Generate 2 probing follow-up questions based directly on statements in the CURRENT TRANSCRIPT. If the transcript is empty, suggest 2 general opening questions related to the Session Context.`;
+    case 'cross_reference':
+       return `${baseInstruction}\n**Your Task:** Identify one specific connection between the CURRENT TRANSCRIPT and the "Previous Discussion Summary". If no connection exists, state that.`;
+    default: // 'insights'
+      return `${baseInstruction}\n**Your Task:** Identify 2-3 key strategic insights or patterns emerging from the CURRENT TRANSCRIPT. If the transcript is empty, state that insights will be generated once comments are added.`;
+  }
+}
+
 export async function POST(request: NextRequest) {
   // Prevent Next.js from prebuilding this route at build time
   noStore();
   
   try {
-    // Parse request body with enhanced session context
+    // Parse request body - Phase 1.1 focused payload structure
     const { 
-      question, 
-      responses, 
-      context, 
-      analysisType = 'insights',
-      clientId = 'default',
-      allResponses = [], // Full session history
-      allInsights = [],  // Previous AI insights
-      sessionProgress = 0, // How far through the session (0-1)
-      participantNames = [], // Active participant names
-      debugInfo = {} // Debug info from frontend
+      questionContext, 
+      currentTranscript,
+      fullHistorySummary,
+      analysisType = 'insights'
     } = await request.json();
     
-    // 🚨 CRITICAL DEBUG: Log exactly what data AI receives
-    console.log('🔍 CRITICAL DEBUG - /api/analyze received data:');
-    console.log('📝 Question:', question);
-    console.log('📊 Responses count:', responses?.length || 0);
-    console.log('📋 Actual responses:', responses?.map((r: any) => ({
-      id: r.id,
-      participantName: r.participantName,
-      text: r.text?.substring(0, 100) + '...'
-    })) || []);
-    console.log('🎯 Context:', context);
+    // 🚨 PHASE 1.1 DEBUG: Log focused payload data
+    console.log('🔍 PHASE 1.1 - /api/analyze focused payload:');
+    console.log('📝 Question Context:', questionContext);
+    console.log('📊 Current Transcript:', currentTranscript.substring(0, 200) + '...');
+    console.log('📈 History Summary Length:', fullHistorySummary?.length || 0);
     console.log('🔧 Analysis Type:', analysisType);
-    console.log('🏗️ Debug Info from Frontend:', debugInfo);
-    console.log('📈 All Responses Count:', allResponses?.length || 0);
 
     // Define valid analysis types
     const validAnalysisTypes = ['insights', 'followup', 'cross_reference', 'synthesis'] as const;
     
     // Validate required fields
-    if (!question || !responses || !context) {
+    if (!questionContext) {
       return NextResponse.json(
-        { error: 'Missing required fields: question, responses, context' }, 
+        { error: 'Missing required field: questionContext' }, 
         { status: 400 }
       );
     }
@@ -115,7 +127,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check rate limiting
+    // Check rate limiting - Phase 1.1 simplified for focused payload
+    const clientId = 'roundtable-session'; // Simple fixed client ID
     if (!checkRateLimit(clientId)) {
       console.error(`Rate limit exceeded for client: ${clientId}`);
       return NextResponse.json(
@@ -129,39 +142,19 @@ export async function POST(request: NextRequest) {
 
     // Log analysis request for debugging
     console.log(`AI Analysis Request:`, {
-      question,
+      questionContext,
       analysisType,
-      responseCount: responses.length,
+      transcriptLength: currentTranscript?.length || 0,
       timestamp: new Date().toISOString()
     });
 
-    // Build enhanced session context for co-facilitator
-    const sessionContext = {
-      currentQuestion: { id: question, context },
-      currentResponses: responses,
-      fullSessionHistory: allResponses,
-      previousInsights: allInsights,
-      sessionProgress: Math.round(sessionProgress * 100),
-      activeParticipants: participantNames.length,
-      totalResponses: allResponses.length
-    };
-
-    // Determine the appropriate prompt with full session memory
-    let userPrompt: string;
-    
-    switch (analysisType) {
-      case 'synthesis':
-        userPrompt = buildSynthesisPrompt(sessionContext);
-        break;
-      case 'followup':
-        userPrompt = buildFollowUpPrompt(sessionContext);
-        break;
-      case 'cross_reference':
-        userPrompt = buildCrossReferencePrompt(sessionContext);
-        break;
-      default: // 'insights'
-        userPrompt = buildInsightsPrompt(sessionContext);
-    }
+    // Phase 1.1 - Use unified strict prompt builder with anti-hallucination rules
+    const userPrompt = buildStrictPrompt(
+      analysisType,
+      questionContext,
+      currentTranscript,
+      fullHistorySummary
+    );
 
     // Initialize OpenAI client at runtime to avoid build-time env var issues
     // Check multiple environment variable fallbacks for Vercel deployment
@@ -231,7 +224,7 @@ export async function POST(request: NextRequest) {
         analysisType,
         tokensUsed: completion.usage?.total_tokens || 0,
         timestamp: new Date().toISOString(),
-        questionId: question
+        questionContext: questionContext
       }
     });
 
