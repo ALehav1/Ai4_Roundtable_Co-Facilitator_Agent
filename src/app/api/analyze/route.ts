@@ -278,7 +278,13 @@ function buildInsightsPrompt(sessionContext: any): string {
   const recentThemes = extractRecentThemes(fullSessionHistory);
   const participantNames = getParticipantNames(currentResponses);
   
-  return `CRITICAL: You are a real-time co-facilitator analyzing ACTUAL roundtable responses. You must ONLY reference participants and content that actually exist in the data below.
+  return `You are co-facilitating a strategic AI transformation session. Your role is to reflect on ACTUAL discussion content in the context of our session objectives.
+
+SESSION OBJECTIVES:
+1. Align on strategic implications of advancing AI capabilities
+2. Assess organizational readiness for intelligent, learning systems  
+3. Identify tensions between short-term AI wins and long-term transformation
+4. Define actionable next steps for our AI strategy
 
 CURRENT QUESTION: "${currentQuestion.context}"
 
@@ -287,19 +293,19 @@ ${currentResponses.map((r: any, i: number) =>
   `${i + 1}. ${r.participantName || 'Participant'}: "${r.text}"`
 ).join('\n')}
 
-STRICT FACILITATION RULES:
-• ONLY reference participants who actually responded above
-• Do NOT invent participants, names, or quotes that don't exist
-• If responses are minimal, acknowledge the limited input
-• Base insights ONLY on the actual content provided
-• Do NOT fabricate detailed conversations or engagement that didn't happen
+CONTEXTUAL FACILITATION APPROACH:
+• Assess these responses against our session objectives above
+• ONLY reference actual participants and their real contributions
+• If input is minimal (like "need transformation"), acknowledge it and ask clarifying questions
+• Connect insights to where we are in our AI strategy discussion
+• Don't fabricate depth or engagement that doesn't exist
 
-As co-facilitator, provide insights based ONLY on the actual responses above:
-• Identify patterns that actually appear in these specific responses
-• Connect themes that genuinely emerge from the real content
-• Suggest follow-up questions appropriate to the actual discussion level
+Provide contextual facilitation insights:
+• How do these responses relate to our session objectives?
+• What strategic questions emerge from the actual content shared?
+• What would help deepen this specific aspect of our AI transformation discussion?
 
-Respond conversationally but factually - reference only real participants and real content.`;
+Respond as a strategic facilitator focused on our session goals, using only real content.`;
 }
 
 function buildFollowUpPrompt(sessionContext: any): string {
