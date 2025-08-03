@@ -13,11 +13,8 @@ import OpenAI from 'openai';
 import { NextResponse } from 'next/server';
 import { aiConfig, sessionConfig, getAIPromptForContext } from '@/config/roundtable-config';
 
-// Initialize OpenAI client with environment variable
+// OpenAI client will be initialized at runtime to avoid build-time env var issues
 // IMPORTANT: Never expose API keys in client-side code!
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 // Simple rate limiting storage (in production, use Redis or database)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
@@ -155,6 +152,11 @@ export async function POST(request: Request) {
       default: // 'insights'
         userPrompt = buildInsightsPrompt(sessionContext);
     }
+
+    // Initialize OpenAI client at runtime to avoid build-time env var issues
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
 
     // Call OpenAI API with configured parameters
     const completion = await openai.chat.completions.create({
