@@ -504,12 +504,18 @@ const RoundtableCanvas: React.FC = () => {
    * Export session results
    */
   const exportResults = useCallback(async () => {
+    console.log('🚀 PDF Export Started - exportResults called');
+    console.log('📊 Session Data:', {
+      responses: sessionData.responses.length,
+      insights: sessionData.aiInsights.length,
+      summary: !!sessionData.summary
+    });
+    
     try {
       // Use existing session summary if available, otherwise generate it inline
       let summaryData = sessionData.summary;
       if (!summaryData && sessionData.responses.length > 0) {
-        // Generating session summary for PDF export
-        // For now, export with available data - summary can be generated separately
+        console.log('📝 No summary available, proceeding without summary data');
         summaryData = undefined;
       }
 
@@ -620,19 +626,38 @@ const RoundtableCanvas: React.FC = () => {
         </html>
       `;
 
+      console.log('📄 HTML Content Generated:', htmlContent.substring(0, 200) + '...');
+      
       // Create blob and download as HTML (which can be easily converted to PDF by browser)
       const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      console.log('💾 Blob created:', blob.size, 'bytes');
+      
       const url = URL.createObjectURL(blob);
+      console.log('🔗 Object URL created:', url);
+      
       const link = document.createElement('a');
       link.href = url;
       link.download = `AI_Roundtable_Session_Report_${new Date().toISOString().split('T')[0]}.html`;
+      
+      // Force click event and ensure it's processed
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
+      
       URL.revokeObjectURL(url);
       
-      // Session report downloaded successfully
-    } catch (error) {
+      console.log('✅ PDF Export completed successfully');
+      // Show success message to user
+      setError(null); // Clear any previous errors
+    } catch (error: unknown) {
       console.error('❌ Error generating session report:', error);
-      setError('Failed to generate session report. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('❌ Full error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: errorMessage,
+        stack: error instanceof Error ? error.stack : 'No stack trace'
+      });
+      setError(`Failed to generate session report: ${errorMessage}. Please try again.`);
     }
   }, [sessionData]);
 
