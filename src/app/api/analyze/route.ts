@@ -278,24 +278,28 @@ function buildInsightsPrompt(sessionContext: any): string {
   const recentThemes = extractRecentThemes(fullSessionHistory);
   const participantNames = getParticipantNames(currentResponses);
   
-  return `As your co-facilitator, I've been actively listening to our entire discussion (${totalResponses} responses from ${activeParticipants} participants so far, ${sessionProgress}% through our session).
+  return `CRITICAL: You are a real-time co-facilitator analyzing ACTUAL roundtable responses. You must ONLY reference participants and content that actually exist in the data below.
 
 CURRENT QUESTION: "${currentQuestion.context}"
 
-RECENT RESPONSES I'M HEARING:
+ACTUAL RESPONSES RECEIVED (${currentResponses.length} total):
 ${currentResponses.map((r: any, i: number) => 
-  `${i + 1}. ${r.participantName || 'Participant'}: "${r.text.substring(0, 200)}..."`
+  `${i + 1}. ${r.participantName || 'Participant'}: "${r.text}"`
 ).join('\n')}
 
-SESSION THEMES I'VE NOTICED: ${recentThemes.join(', ')}
+STRICT FACILITATION RULES:
+• ONLY reference participants who actually responded above
+• Do NOT invent participants, names, or quotes that don't exist
+• If responses are minimal, acknowledge the limited input
+• Base insights ONLY on the actual content provided
+• Do NOT fabricate detailed conversations or engagement that didn't happen
 
-As your co-facilitator, I want to:
-• Identify 2-3 key patterns emerging from these specific responses
-• Connect what I'm hearing to our broader discussion themes
-• Ask one strategic follow-up question that could deepen our thinking
-• Reference specific participant contributions to show I'm actively listening
+As co-facilitator, provide insights based ONLY on the actual responses above:
+• Identify patterns that actually appear in these specific responses
+• Connect themes that genuinely emerge from the real content
+• Suggest follow-up questions appropriate to the actual discussion level
 
-Please respond in a conversational, engaging tone as if I'm speaking directly to the group.`;
+Respond conversationally but factually - reference only real participants and real content.`;
 }
 
 function buildFollowUpPrompt(sessionContext: any): string {
