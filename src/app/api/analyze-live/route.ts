@@ -17,14 +17,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { unstable_noStore as noStore } from 'next/cache';
 import { z } from 'zod';
 
-// Strict schema for live analysis requests
+// Flexible schema for live analysis requests (allow empty transcripts)
 const LiveAnalyzeRequestSchema = z.object({
   sessionTopic: z.string().min(1),
-  liveTranscript: z.string(),
+  liveTranscript: z.string().default('No conversation content captured yet.'),
   analysisType: z.enum(['insights', 'synthesis', 'followup', 'cross_reference', 'facilitation']),
-  participantCount: z.number().min(1).max(20),
+  participantCount: z.number().min(1).max(20).default(5),
   sessionDuration: z.number().optional(),
-  clientId: z.string().optional()
+  clientId: z.string().optional().default('anonymous')
 });
 
 // Strict JSON response schema
