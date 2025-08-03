@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     console.log('🎯 Generating comprehensive session summary...');
     console.log('DEBUG: Session data received:', JSON.stringify({
       responseCount: sessionData.responses?.length || 0,
-      responses: sessionData.responses?.map(r => ({
+      responses: sessionData.responses?.map((r: any) => ({
         id: r.id,
         participantName: r.participantName,
         textLength: r.text?.length || 0,
