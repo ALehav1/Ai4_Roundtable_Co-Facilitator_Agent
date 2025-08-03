@@ -188,35 +188,42 @@ async function generateQuestionSummary(
   
   const aiInsightTexts = insights.map(i => i.content).join('\n\n');
 
-  const prompt = `As an expert strategic facilitator, analyze this discussion section and create a comprehensive narrative summary.
+  const prompt = `CRITICAL: You are analyzing ACTUAL roundtable discussion data. You must ONLY use information that was explicitly provided. Do NOT fabricate participants, quotes, or details.
 
 QUESTION ANALYZED:
 Title: ${question.title}
 Question: ${question.question}
 Facilitator Context: ${question.facilitatorGuidance || 'N/A'}
 
-PARTICIPANT RESPONSES:
+PARTICIPANT RESPONSES (${responses.length} total):
 ${responseTexts}
 
 AI INSIGHTS GENERATED:
 ${aiInsightTexts}
 
-Please provide a detailed analysis in the following structure:
+STRICT ANALYSIS RULES:
+- Only reference participants who actually responded
+- Only discuss themes that appear in the actual responses
+- If responses are minimal, acknowledge the limited discussion
+- Do NOT invent participants, quotes, or detailed conversations that didn't happen
+- If insufficient data exists, state that clearly
 
-1. KEY THEMES (3-5 main themes that emerged):
-List the core themes discussed.
+Provide analysis in this structure:
 
-2. NARRATIVE SUMMARY (2-3 paragraphs):
-Write a flowing narrative that captures the nature of the conversation, the depth of discussion, participant engagement, and the evolution of ideas. Avoid bullet points - tell the story of what happened in this discussion.
+1. KEY THEMES (based ONLY on actual responses):
+Extract themes that actually appear in the participant responses above.
 
-3. CRITICAL INSIGHTS (3-5 insights):
-The most important strategic insights that emerged from this discussion.
+2. NARRATIVE SUMMARY (1-2 paragraphs, factual only):
+Summarize what was ACTUALLY discussed based on the real responses provided. If discussion was limited, acknowledge that. Do not fabricate depth or engagement that doesn't exist.
 
-4. EMERGING CONCERNS (2-4 concerns):
-Any risks, challenges, or concerns that participants raised or became apparent.
+3. CRITICAL INSIGHTS (based on actual content):
+Insights that can be drawn from the actual responses provided.
 
-5. STRATEGIC IMPLICATIONS (2-4 implications):
-What this discussion means for the organization's AI transformation strategy.
+4. EMERGING CONCERNS (if any were actually mentioned):
+Only concerns that were explicitly raised in the actual responses.
+
+5. STRATEGIC IMPLICATIONS (realistic based on actual input):
+What the actual (not imagined) discussion suggests for strategy.
 
 Format your response as JSON with the exact structure:
 {
