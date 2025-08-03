@@ -88,13 +88,13 @@ const RoundtableCanvasV2: React.FC = () => {
 
   // Live transcript state
   const [isRecording, setIsRecording] = useState(false);
-  const [currentSpeaker, setCurrentSpeaker] = useState<string>('Facilitator');
+  const [currentSpeaker, setCurrentSpeaker] = useState<string>('Speaker');
   const [interimTranscript, setInterimTranscript] = useState<string>('');
 
   // Enhanced manual entry modal state
   const [showManualModal, setShowManualModal] = useState(false);
   const [entryMode, setEntryMode] = useState<'single' | 'bulk' | 'upload'>('single');
-  const [manualSpeakerName, setManualSpeakerName] = useState('Facilitator');
+  const [manualSpeakerName, setManualSpeakerName] = useState('Speaker');
   const [customSpeakerName, setCustomSpeakerName] = useState('');
   const [manualEntryText, setManualEntryText] = useState('');
   const [bulkTranscriptText, setBulkTranscriptText] = useState('');
@@ -510,7 +510,7 @@ const RoundtableCanvasV2: React.FC = () => {
   // Manual transcript entry (fallback)
   const addManualEntry = useCallback(() => {
     console.log('🎯 Manual Entry button clicked - opening modal!');
-    setManualSpeakerName(currentSpeaker || 'Facilitator');
+    setManualSpeakerName(currentSpeaker || 'Speaker');
     setManualEntryText('');
     setShowManualModal(true);
   }, [currentSpeaker]);
@@ -616,7 +616,7 @@ const RoundtableCanvasV2: React.FC = () => {
     // Reset modal state
     setShowManualModal(false);
     setCustomSpeakerName('');
-    setManualSpeakerName('Facilitator');
+    setManualSpeakerName('Speaker');
     setEntryMode('single');
     console.log('✅ Enhanced manual entry completed!');
   }, [entryMode, manualEntryText, manualSpeakerName, customSpeakerName, bulkTranscriptText, addTranscriptEntry, parseBulkTranscript]);
@@ -919,25 +919,45 @@ const RoundtableCanvasV2: React.FC = () => {
   // Render AI Assistance Panel (RIGHT PANE)
   const renderAIAssistancePanel = () => (
     <div className="h-full">
-      {/* AI Panel Header */}
+      {/* AI Panel Header with PDF Export */}
       <div className="bg-white p-4 border-b border-gray-200 mb-4">
-        <h2 className="text-lg font-bold text-gray-800 mb-2">
-          🧠 AI Co-Facilitator
-        </h2>
-        {/* Single Get Insights Button */}
-        <div className="flex justify-center">
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-lg font-bold text-gray-800">
+            🧠 AI Co-Facilitator
+          </h2>
+          {/* Separate PDF Export Button */}
+          <button
+            onClick={handleExportPDF}
+            disabled={sessionContext.liveTranscript.length === 0}
+            className="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium flex items-center gap-2"
+          >
+            📄 Export PDF
+          </button>
+        </div>
+        
+        {/* Two Analysis Tabs */}
+        <div className="flex gap-2">
           <button
             onClick={() => {
               if (sessionContext.liveTranscript.length > 0) {
-                // Trigger both insights and followup analysis together
                 callAIAnalysis('insights');
+              }
+            }}
+            disabled={sessionContext.liveTranscript.length === 0}
+            className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium text-sm"
+          >
+            💡 Get Insights
+          </button>
+          <button
+            onClick={() => {
+              if (sessionContext.liveTranscript.length > 0) {
                 callAIAnalysis('followup');
               }
             }}
             disabled={sessionContext.liveTranscript.length === 0}
-            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium"
+            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium text-sm"
           >
-            💡 Get Insights
+            ❓ Follow-up Questions
           </button>
         </div>
       </div>
