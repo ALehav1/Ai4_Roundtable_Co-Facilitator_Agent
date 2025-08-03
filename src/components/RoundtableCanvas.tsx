@@ -174,18 +174,18 @@ const RoundtableCanvas: React.FC = () => {
       // maxAlternatives property removed due to TypeScript compatibility
       
       recognitionInstance.onstart = () => {
-        console.log('Speech recognition started');
+        // Speech recognition started
         setIsListening(true);
         setError(null);
       };
       
       recognitionInstance.onend = () => {
-        console.log('Speech recognition ended');
+        // Speech recognition ended
         setIsListening(false);
       };
       
       recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
-        console.log('Speech recognition result:', event);
+        // Processing speech recognition result
         let finalTranscript = '';
         let interimTranscript = '';
         
@@ -198,7 +198,7 @@ const RoundtableCanvas: React.FC = () => {
           }
         }
         
-        console.log('Final transcript:', finalTranscript, 'Interim:', interimTranscript);
+        // Final transcript processed
         
         // Update response with final transcript
         if (finalTranscript) {
@@ -207,13 +207,13 @@ const RoundtableCanvas: React.FC = () => {
       };
       
       recognitionInstance.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.log('Speech recognition error event:', event);
+        // Speech recognition error occurred
         const errorMessage = event.error;
         
         // Handle different error types
         switch (errorMessage) {
           case 'no-speech':
-            console.log('No speech detected - this is normal');
+            // No speech detected - normal behavior
             setIsListening(false);
             break;
           case 'network':
@@ -228,7 +228,7 @@ const RoundtableCanvas: React.FC = () => {
             setIsListening(false);
             break;
           case 'aborted':
-            console.log('Speech recognition was aborted');
+            // Speech recognition aborted
             setIsListening(false);
             break;
           default:
@@ -240,7 +240,7 @@ const RoundtableCanvas: React.FC = () => {
       
       setRecognition(recognitionInstance);
       setSpeechSupported(true);
-      console.log('Speech recognition initialized successfully');
+      // Speech recognition initialized successfully
       
     } catch (error) {
       console.error('Failed to initialize speech recognition:', error);
@@ -508,7 +508,7 @@ const RoundtableCanvas: React.FC = () => {
       // Use existing session summary if available, otherwise generate it inline
       let summaryData = sessionData.summary;
       if (!summaryData && sessionData.responses.length > 0) {
-        console.log('📊 Generating session summary for PDF export...');
+        // Generating session summary for PDF export
         // For now, export with available data - summary can be generated separately
         summaryData = undefined;
       }
@@ -629,7 +629,7 @@ const RoundtableCanvas: React.FC = () => {
       link.click();
       URL.revokeObjectURL(url);
       
-      console.log('✅ Session report downloaded successfully');
+      // Session report downloaded successfully
     } catch (error) {
       console.error('❌ Error generating session report:', error);
       setError('Failed to generate session report. Please try again.');
@@ -670,7 +670,7 @@ const RoundtableCanvas: React.FC = () => {
       setSessionSummary(summaryData);
       setShowSummary(true);
 
-      console.log('✅ Session summary generated successfully');
+      // Session summary generated successfully
     } catch (error) {
       console.error('❌ Failed to generate session summary:', error);
       setError(
