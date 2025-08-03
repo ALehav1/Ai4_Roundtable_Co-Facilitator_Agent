@@ -237,10 +237,18 @@ Format your response as JSON with the exact structure:
       throw new Error('Empty response from OpenAI');
     }
 
-    // Enhanced JSON parsing with fallback
+    // Enhanced JSON parsing with fallback - handle markdown-wrapped JSON
     let parsedResponse;
     try {
-      parsedResponse = JSON.parse(content);
+      // Strip markdown code block formatting if present
+      let jsonContent = content.trim();
+      if (jsonContent.startsWith('```json')) {
+        jsonContent = jsonContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (jsonContent.startsWith('```')) {
+        jsonContent = jsonContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      parsedResponse = JSON.parse(jsonContent);
       
       // Validate required fields exist
       if (!parsedResponse || typeof parsedResponse !== 'object') {
