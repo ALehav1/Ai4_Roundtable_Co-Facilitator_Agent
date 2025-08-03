@@ -123,6 +123,7 @@ const RoundtableCanvas: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
+  const [speechError, setSpeechError] = useState<string | null>(null);
 
   // Initialize client-side only values after hydration
   useEffect(() => {
@@ -511,18 +512,13 @@ const RoundtableCanvas: React.FC = () => {
    * Export session results
    */
   const exportResults = useCallback(async () => {
-    console.log('🚀 PDF Export Started - exportResults called');
-    console.log('📊 Session Data:', {
-      responses: sessionData.responses.length,
-      insights: sessionData.aiInsights.length,
-      summary: !!sessionData.summary
-    });
-    
     try {
+      // Dynamic import to avoid SSR issues
+      const jsPDF = (await import('jspdf')).default;
+      
       // Use existing session summary if available, otherwise generate it inline
       let summaryData = sessionData.summary;
       if (!summaryData && sessionData.responses.length > 0) {
-        console.log('📝 No summary available, proceeding without summary data');
         summaryData = undefined;
       }
 
@@ -633,29 +629,139 @@ const RoundtableCanvas: React.FC = () => {
         </html>
       `;
 
-      console.log('📄 HTML Content Generated:', htmlContent.substring(0, 200) + '...');
+      // Create PDF using jsPDF
+      const pdf = new jsPDF();
       
-      // Create blob and download as HTML (which can be easily converted to PDF by browser)
-      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-      console.log('💾 Blob created:', blob.size, 'bytes');
+      // Add title
+      pdf.setFontSize(20);
+      pdf.text(sessionConfig.title, 20, 30);
       
-      const url = URL.createObjectURL(blob);
-      console.log('🔗 Object URL created:', url);
+      pdf.setFontSize(14);
+      pdf.text('AI Roundtable Session Report', 20, 45);
+      pdf.text(`Generated on ${new Date().toLocaleDateString()}`, 20, 55);
       
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `AI_Roundtable_Session_Report_${new Date().toISOString().split('T')[0]}.html`;
+      let yPosition = 70;
       
-      // Force click event and ensure it's processed
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Add session overview
+      pdf.setFontSize(16);
+      pdf.text('Session Overview', 20, yPosition);
+      yPosition += 10;
       
-      URL.revokeObjectURL(url);
+      pdf.setFontSize(12);
+      const sessionDuration = Math.round((Date.now() - sessionData.sessionStartTime.getTime()) / 60000);
+      pdf.text(`Duration: ${sessionDuration} minutes`, 20, yPosition);
+      yPosition += 8;
+      pdf.text(`Total Responses: ${sessionData.responses.length}`, 20, yPosition);
+      yPosition += 8;
+      pdf.text(`AI Insights: ${sessionData.aiInsights.length}`, 20, yPosition);
+      yPosition += 15;
       
-      console.log('✅ PDF Export completed successfully');
-      // Show success message to user
-      setError(null); // Clear any previous errors
+      // Add responses by question
+      for (const question of roundtableQuestions) {
+        const questionResponses = sessionData.responses.filter(r => r.id.startsWith(question.id));
+        const questionInsights = sessionData.aiInsights.filter(i => i.questionId === question.id);
+        
+        if (questionResponses.length > 0 || questionInsights.length > 0) {
+          // Check if we need a new page
+          if (yPosition > 250) {
+            pdf.addPage();
+            yPosition = 20;
+          }
+          
+          pdf.setFontSize(14);
+          pdf.text(question.title, 20, yPosition);
+          yPosition += 10;
+          
+          // Add responses
+          if (questionResponses.length > 0) {
+            pdf.setFontSize(12);
+            pdf.text('Participant Responses:', 20, yPosition);
+            yPosition += 8;
+            
+            for (const response of questionResponses) {
+              pdf.setFontSize(10);
+              const participantName = response.participantName || 'Anonymous';
+              pdf.text(`${participantName}: ${response.text.substring(0, 80)}...`, 25, yPosition);
+              yPosition += 6;
+              
+              if (yPosition > 270) {
+                pdf.addPage();
+                yPosition = 20;
+              }
+            }
+            yPosition += 5;
+          }
+          
+          // Add AI insights
+          if (questionInsights.length > 0) {
+            pdf.setFontSize(12);
+            pdf.text('AI Insights:', 20, yPosition);
+            yPosition += 8;
+            
+            for (const insight of questionInsights) {
+              pdf.setFontSize(10);
+              const insightText = insight.content.substring(0, 100) + '...';
+              pdf.text(`${insight.type}: ${insightText}`, 25, yPosition);
+              yPosition += 6;
+              
+              if (yPosition > 270) {
+                pdf.addPage();
+                yPosition = 20;
+              }
+            }
+            yPosition += 10;
+          }
+        }
+      }
+      
+      // Add executive summary if available
+      if (summaryData?.executiveSummary) {
+        if (yPosition > 200) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        
+        pdf.setFontSize(16);
+        pdf.text('Executive Summary', 20, yPosition);
+        yPosition += 15;
+        
+        pdf.setFontSize(12);
+        if (summaryData.executiveSummary.keyFindings && summaryData.executiveSummary.keyFindings.length > 0) {
+          pdf.text('Key Findings:', 20, yPosition);
+          yPosition += 8;
+          
+          summaryData.executiveSummary.keyFindings.forEach((finding: string) => {
+            pdf.setFontSize(10);
+            pdf.text(`• ${finding.substring(0, 80)}...`, 25, yPosition);
+            yPosition += 6;
+          });
+          yPosition += 5;
+        }
+        
+        if (summaryData.executiveSummary.strategicRecommendations && summaryData.executiveSummary.strategicRecommendations.length > 0) {
+          if (yPosition > 250) {
+            pdf.addPage();
+            yPosition = 20;
+          }
+          
+          pdf.setFontSize(12);
+          pdf.text('Strategic Recommendations:', 20, yPosition);
+          yPosition += 8;
+          
+          summaryData.executiveSummary.strategicRecommendations.forEach((rec: string) => {
+            pdf.setFontSize(10);
+            pdf.text(`• ${rec.substring(0, 80)}...`, 25, yPosition);
+            yPosition += 6;
+          });
+        }
+      }
+      
+      // Save the PDF
+      const fileName = `AI_Roundtable_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+      pdf.save(fileName);
+      
+      // Clear any previous errors
+      setError(null);
     } catch (error: unknown) {
       console.error('❌ Error generating session report:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -942,88 +1048,78 @@ const RoundtableCanvas: React.FC = () => {
                 </p>
               </div>
 
-              {/* Facilitator Response Input */}
-              <div className="space-y-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-                  💡 <strong>Facilitator tip:</strong> As participants share insights, capture the key points here. The AI will analyze patterns and suggest follow-up questions.
+              {/* Enhanced Conversation Capture - Automatic Flow */}
+              <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                    💬 Live Discussion Transcript
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Capture the natural flow of conversation. Add each comment as it happens - no need to wait or organize.
+                  </p>
                 </div>
                 
-                <div className="space-y-3">
-                  <label className="block text-sm font-medium text-roundtable-text">
-                    Speaker name (helps track contributions)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Speaker name (helps track ideas)"
-                    value={participantName}
-                    onChange={(e) => setParticipantName(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-roundtable-primary focus:border-transparent"
-                    data-testid="participant-name-input"
-                  />
-                </div>
-                
-                <div className="space-y-3">
-                  <label className="block text-sm font-medium text-roundtable-text">
-                    Capture key insights and discussion points
-                  </label>
-                  <div className="relative">
-                    <textarea
-                      placeholder="Capture key insights, concerns, or strategic points from the discussion..."
-                      value={currentResponse}
-                      onChange={(e) => setCurrentResponse(e.target.value)}
-                      className="w-full h-32 px-4 py-3 pr-16 border border-gray-300 rounded-lg focus:ring-2 focus:ring-roundtable-primary focus:border-transparent resize-none"
-                      data-testid="response-textarea"
-                    />
-                    
-                    {/* Speech-to-Text Controls */}
-                    {speechSupported && (
-                      <div className="absolute top-3 right-3 flex flex-col gap-2">
-                        <button
-                          onClick={toggleListening}
-                          disabled={!recognition}
-                          className={`p-2 rounded-full transition-all duration-200 ${
-                            isListening 
-                              ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse' 
-                              : 'bg-blue-500 text-white hover:bg-blue-600'
-                          } disabled:bg-gray-300 disabled:cursor-not-allowed`}
-                          title={isListening ? 'Stop speech recognition' : 'Start speech recognition'}
-                          data-testid="speech-recognition-button"
-                        >
-                          {isListening ? '🔴' : '🎤'}
-                        </button>
-                        
-                        {isListening && (
-                          <div className="text-xs text-center text-blue-600 font-medium">
-                            Listening...
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    
-                    {/* Speech Not Supported Message */}
-                    {!speechSupported && isClient && (
-                      <div className="absolute bottom-3 right-3 text-xs text-gray-500">
-                        Speech input not available
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Speech Status and Hints */}
-                {speechSupported && (
-                  <div className="text-sm text-roundtable-muted bg-blue-50 p-3 rounded-lg">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-blue-600">🎤</span>
-                      <strong>Speech Input Available:</strong>
+                {/* Quick Add Comment Section */}
+                <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={participantName}
+                        onChange={(e) => setParticipantName(e.target.value)}
+                        placeholder="Who's speaking? (e.g., Sarah, Mike, CEO)"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      />
                     </div>
-                    <ul className="text-xs space-y-1 ml-6">
-                      <li>• Click the microphone to start/stop voice input</li>
-                      <li>• Speak clearly and pause briefly between thoughts</li>
-                      <li>• You can edit the transcribed text before capturing</li>
-                      <li>• Speech input works best in quiet environments</li>
-                    </ul>
                   </div>
-                )}
+                  
+                  <textarea
+                    value={currentResponse}
+                    onChange={(e) => setCurrentResponse(e.target.value)}
+                    placeholder="What did they just say? Capture their comment, concern, or insight as they speak..."
+                    className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] resize-none text-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                        e.preventDefault();
+                        submitResponse();
+                      }
+                    }}
+                  />
+
+                  {/* Quick Capture Controls */}
+                  <div className="flex items-center gap-3 mt-3">
+                    {speechSupported && (
+                      <button
+                        onClick={isListening ? stopListening : startListening}
+                        disabled={speechError !== null}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                          isListening 
+                            ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                            : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        title={isListening ? 'Stop listening' : 'Start voice input'}
+                      >
+                        🎤 {isListening ? 'Stop' : 'Voice'}
+                      </button>
+                    )}
+                    
+                    <button
+                      onClick={submitResponse}
+                      disabled={!currentResponse.trim()}
+                      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      ➕ Add to Transcript
+                      <span className="text-xs opacity-75">(⌘+Enter)</span>
+                    </button>
+                  </div>
+                  
+                  {speechError && (
+                    <div className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded">
+                      Voice input error: {speechError}
+                    </div>
+                  )}
+                </div>
+              </div>
                 
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-roundtable-muted">
@@ -1228,16 +1324,6 @@ const RoundtableCanvas: React.FC = () => {
           </div>
         </div>
       </div>
-        </div>
-      )}
-      
-      {/* Session Summary Modal */}
-      {showSummary && sessionSummary && (
-        <SessionSummary 
-          summary={sessionSummary} 
-          onClose={closeSummary} 
-        />
-      )}
     </div>
   );
 };
