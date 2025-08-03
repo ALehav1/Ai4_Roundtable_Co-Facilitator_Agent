@@ -226,10 +226,12 @@ export async function POST(request: NextRequest) {
       participantCount
     );
 
-    // Initialize OpenAI client
+    // Initialize OpenAI client (check all possible env var names)
     const apiKey = process.env.OPENAI_API_KEY || 
                    process.env.NEXT_PUBLIC_OPENAI_API_KEY || 
-                   process.env.OPENAI_KEY;
+                   process.env.OPENAI_KEY ||
+                   process.env.OpenAI_Key ||
+                   process.env.AI_API_KEY;
     
     if (!apiKey) {
       console.error('❌ No OpenAI API key found for /api/analyze-live');

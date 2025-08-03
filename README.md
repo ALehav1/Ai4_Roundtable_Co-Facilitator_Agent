@@ -1,57 +1,207 @@
 # AI Roundtable Facilitator Agent
 
-**🎉 PRODUCTION STATUS: Core speech recognition and AI co-facilitation features are now stable and working in production!**
+**🎉 PRODUCTION READY: All core features implemented with robust fallbacks and enhanced UX!**
 
-A sophisticated AI-powered co-facilitation platform for strategic leadership discussions and AI transformation planning. Designed for single facilitators leading senior executive teams through structured strategic conversations with real-time AI insights, speech-to-text transcription, and comprehensive narrative summaries.
+A sophisticated AI-powered co-facilitation platform for strategic leadership discussions and AI transformation planning. Features enhanced voice transcription, multi-modal manual entry, split-pane UI, dual AI analysis, and comprehensive session management.
 
-## ✅ Current Status & Validated Features (2025-08-03)
+## ✅ Latest Features Completed (2025-08-03)
 
-**🚀 Production Deployment:** https://ai-facilitator-agent-12qhbqd4i-alehav1s-projects.vercel.app
+### 🎯 Enhanced Core Functionality
+- **🎤 Robust Voice Recognition**: Production-optimized Web Speech API with improved error handling
+- **📝 Multi-Modal Manual Entry**: Single entry, bulk copy-paste, and file upload options  
+- **🧠 Dual AI Analysis**: Side-by-side insights and follow-up questions with enhanced formatting
+- **📋 Agenda-Driven Workflow**: Previous/next navigation with session progress tracking
+- **💾 localStorage Auto-Save**: Automatic session persistence and recovery
+- **📄 PDF Export**: Professional session summaries in dedicated utilities section
+- **🔀 Split-Pane UI**: Optimized discussion panel vs AI assistance panel layout
 
-### ✅ Working & Validated
-- **🎤 Live Speech Recognition**: Stable speech-to-text transcription with graceful fallback
-- **🛑 Nuclear Restart Fix**: Infinite loop issue resolved (max 5 restart attempts)
-- **🧠 AI Co-Facilitation**: GPT-4o analysis of live transcript working perfectly
-- **📝 Manual Entry**: Backup transcript input with full AI integration
-- **🎯 Session Management**: Live transcript capture and session state management
-- **🔧 Professional UI**: Clean, responsive interface optimized for facilitators
-- **⚙️ Environment Configuration**: Secure API key management and deployment
-- **📚 Comprehensive Documentation**: TROUBLESHOOTING.md with deployment and speech guides
-
-### ⏳ Next Development Phase
-- **📊 Summary Generation**: Comprehensive narrative summaries for executive distribution
-- **📄 Export Features**: PDF printing and CSV download capabilities
-- **🎛️ Advanced Configuration**: Extended question/prompt customization
-- **🧪 Test Mode**: Rehearsal mode with mock responses
-- **📈 Analytics Dashboard**: Usage metrics and session insights
-- **🔍 Enhanced Logging**: Performance monitoring and detailed error tracking
+### 🛠️ Production Enhancements
+- **✅ Zero TypeScript Errors**: Production-ready build with comprehensive type safety
+- **🔄 Session Recovery**: Seamless auto-restore from localStorage with full state preservation
+- **⚡ Real-time Features**: Live transcript capture, interim results, and instant AI insights
+- **🛡️ Advanced Error Handling**: Smart retry logic, graceful degradation, comprehensive logging
+- **📱 Responsive Design**: Fully optimized for desktop and mobile devices
+- **🔐 Secure Configuration**: Environment variables, API key management, rate limiting
 
 ## 🎯 Project Overview
 
-This enterprise-grade application serves as an intelligent co-facilitator for strategic roundtable discussions. The AI analyzes participant responses in real-time, provides strategic insights, suggests follow-up questions, and generates comprehensive narrative summaries suitable for executive distribution.
+An intelligent AI co-facilitator for strategic roundtable discussions, specifically designed for AI transformation planning sessions. The platform combines live speech recognition, real-time AI analysis, and structured agenda management to support facilitators leading senior executive teams through strategic conversations.
 
-**Target Users**: Strategic facilitators, executive coaches, and organizational development professionals leading AI transformation discussions with senior leadership teams.
+**Target Users**: Strategic facilitators, executive coaches, and organizational development professionals.
 
-### 🌟 Key Features
+## 🚀 Quick Start
 
-#### **Core Facilitation**
-- **🤖 GPT-4o Co-Facilitation**: Advanced AI reasoning for strategic insights and cross-question pattern recognition
-- **🎤 Speech-to-Text Integration**: Hands-free transcription using Web Speech API for natural conversation flow
-- **📋 Pre-configured Strategic Questions**: Ready-to-use AI transformation discussion framework
-- **🧠 Session Memory**: Persistent context across questions for deeper insights and cross-referencing
+### Prerequisites
+- Node.js 18+ and npm
+- OpenAI API key
+- Modern web browser (Chrome recommended for speech recognition)
 
-#### **Advanced Analytics & Export**
-- **📊 Comprehensive Summary Generation**: Narrative summaries (not just bullet points) for each discussion section
-- **📈 Executive Summary**: Strategic recommendations, key findings, next steps, and risk factors
-- **📄 Professional Export**: PDF printing and CSV download for stakeholder distribution
-- **⚡ Real-time Insights**: Live strategic analysis, synthesis, and facilitation suggestions
+### Installation
 
-#### **Professional Features**
-- **⚙️ Easy Configuration**: Modify questions, AI prompts, and session settings via centralized config
+```bash
+# Clone the repository
+git clone https://github.com/ALehav1/Ai4_Roundtable_Co-Facilitator_Agent.git
+cd ai-roundtable
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env.local
+# Edit .env.local and add your OPENAI_API_KEY
+
+# Run development server
+npm run dev
+```
+
+### Live Production Demo
+**Current Production URL**: https://ai-facilitator-agent-6n2d6yraq-alehav1s-projects.vercel.app
+
+*Note: Production deployment includes all latest features - enhanced voice recognition, multi-modal manual entry, dual AI analysis, and PDF export.*
+
+### Production Deployment
+
+```bash
+# Build for production
+npm run build
+
+# Deploy to Vercel (recommended)
+npx vercel --prod
+```
+
+## 📋 User Guide
+
+### Starting a Session
+
+1. **Setup**: Enter facilitator name, topic, and participant count (defaults provided)
+2. **Begin Discussion**: Click "Start Roundtable Session" to enter discussion mode
+3. **Navigate Agenda**: Use Previous/Next buttons to move through structured questions
+4. **Capture Input**: Use speech recognition or manual entry for participant responses
+5. **Get AI Insights**: Click analysis buttons for real-time strategic insights
+6. **Export Results**: Generate PDF summary with complete session documentation
+
+### Key Features in Action
+
+#### 🎤 Enhanced Voice Recognition (Production-Optimized)
+- **HTTPS Required**: Speech recognition only works on HTTPS domains (production environments)
+- **Improved Reliability**: Increased error tolerance (10 network errors, 20 total restarts)
+- **Smart Error Handling**: Tracks consecutive vs total errors for better recovery from intermittent issues
+- **Graceful Degradation**: Automatically falls back to manual entry when speech recognition fails
+
+#### 📝 Multi-Modal Manual Entry (Robust Fallback System)
+- **Single Entry Mode**: Traditional speaker dropdown + text input for individual entries
+- **Bulk Copy-Paste Mode**: Paste entire transcripts with automatic "Speaker: Text" format parsing
+- **File Upload Mode**: Upload .txt, .md, or .csv transcript files with local processing
+- **Smart Parsing**: Automatically creates multiple transcript entries from bulk input
+- **Multi-Speaker Support**: Facilitator, Speaker 1-5, plus custom speaker names
+
+#### 🧠 Enhanced AI Analysis
+- **Dual Analytics UI**: Side-by-side "Get Insights" and "Follow-up Questions" buttons
+- **Enhanced Formatting**: Bullet points, numbered lists, quotes, and section headers for readability
+- **Session Memory**: AI maintains context across all questions and responses with cross-question linking
+- **Dual Endpoints**: Primary `/api/analyze-live` with automatic legacy fallback
+- **No Hallucination**: Strict prompts prevent AI from fabricating participants or content
+
+#### 💾 Session Persistence & Export
+- **Auto-Save**: Session state automatically saved to localStorage every change
+- **Recovery**: Reload page to restore previous session with full state preservation
+- **PDF Export**: Professional session summaries in dedicated utilities section
+- **Shareable Output**: Clean, formatted PDF files for distribution
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+```env
+# Required
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Optional
+NEXT_PUBLIC_APP_ENV=production
+```
+
+### Roundtable Configuration
+
+Edit `src/config/roundtable-config.ts` to customize:
+
+- **Questions**: Modify discussion topics and prompts
+- **AI Settings**: Adjust analysis types and prompt templates
+- **UI Text**: Customize interface copy and instructions
+- **Session Defaults**: Set default facilitator, topic, participant count
 - **🧪 Test Mode**: Rehearsal mode with mock AI responses for preparation
 - **🔍 Enhanced Logging**: Comprehensive error tracking and performance monitoring
 - **🔒 Enterprise Security**: Rate limiting, environment variables, no client-side API keys
 - **📱 Responsive Design**: Professional interface optimized for facilitator workflow
+
+## 🛠️ Technical Architecture
+
+### Tech Stack
+- **Frontend**: Next.js 15, React 18, TypeScript, Tailwind CSS
+- **Backend**: Next.js API routes, OpenAI GPT-4o
+- **Speech**: Web Speech API + Whisper fallback
+- **Storage**: localStorage (session persistence)
+- **Export**: jsPDF + html2canvas
+- **Deployment**: Vercel (recommended)
+
+### Project Structure
+```
+src/
+├── app/
+│   ├── api/
+│   │   ├── analyze/route.ts         # Legacy AI analysis
+│   │   ├── analyze-live/route.ts    # New strict JSON AI analysis  
+│   │   └── transcribe/route.ts      # Whisper speech fallback
+│   └── page.tsx                 # Main application page
+├── components/
+│   └── RoundtableCanvasV2.tsx   # Main application component
+├── config/
+│   └── roundtable-config.ts     # Questions, prompts, settings
+├── hooks/
+│   └── useSpeechTranscription.ts # Modular speech recognition
+└── utils/
+    ├── storage.ts              # Session persistence
+    └── pdfExport.ts            # PDF generation
+```
+
+## 🛡️ Troubleshooting
+
+### Speech Recognition Issues
+
+**Problem**: Speech recognition not working
+**Solutions**:
+1. **HTTPS Required**: Speech recognition only works on HTTPS (not localhost)
+2. **Browser Support**: Use Chrome/Edge for best compatibility
+3. **Microphone Permissions**: Check browser permissions
+4. **Fallback**: Use "Manual Entry" button when speech fails
+
+**Problem**: Infinite restart loop (fixed in MVP)
+**Solution**: Nuclear restart fix limits attempts to 5, then gracefully fails to manual entry
+
+### AI Analysis Issues
+
+**Problem**: "AI analysis temporarily unavailable"
+**Solutions**:
+1. Check OpenAI API key in environment variables
+2. Verify API key has sufficient credits
+3. Check network connectivity
+4. Try refreshing the page
+
+### Session Persistence Issues
+
+**Problem**: Session not restoring after page reload
+**Solutions**:
+1. Check browser localStorage is enabled
+2. Clear localStorage if corrupted: `localStorage.clear()`
+3. Restart session from intro screen
+
+### PDF Export Issues
+
+**Problem**: PDF export fails
+**Solutions**:
+1. Ensure session has transcript content
+2. Check browser supports PDF generation
+3. Try exporting smaller sessions
+4. Refresh page and try again
 
 ## 📁 Project Structure
 

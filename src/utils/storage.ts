@@ -7,18 +7,37 @@ export interface SessionSnapshot {
   timestamp: number;
   sessionState: string;
   currentTopic?: string;
+  participantCount: number;
+  startTime: number; // Date.getTime()
   liveTranscript: Array<{
+    id: string;
     speaker: string;
     text: string;
-    ts: number;
+    timestamp: number; // Date.getTime()
     isAutoDetected?: boolean;
+    confidence?: number;
   }>;
   aiInsights: Array<{
     id: string;
     type: string;
     content: string;
-    timestamp: Date;
+    timestamp: number; // Date.getTime()
+    confidence?: number;
+    suggestions?: string[];
+    metadata?: any;
+    isLegacy?: boolean;
+    isError?: boolean;
   }>;
+  // Agenda navigation state
+  currentQuestionIndex: number;
+  questionStartTime?: number; // Date.getTime()
+  agendaProgress: {
+    [questionId: string]: {
+      completed: boolean;
+      timeSpent: number;
+      insights: number;
+    };
+  };
 }
 
 const STORAGE_KEY = 'ai-roundtable-session-v2';
@@ -63,12 +82,6 @@ export function loadSession(): SessionSnapshot | null {
     
     const parsed = JSON.parse(raw) as SessionSnapshot;
     console.log('📂 Session loaded:', new Date(parsed.timestamp).toLocaleString());
-    
-    // Convert timestamp strings back to Date objects for aiInsights
-    parsed.aiInsights = parsed.aiInsights.map(insight => ({
-      ...insight,
-      timestamp: new Date(insight.timestamp)
-    }));
     
     return parsed;
   } catch (error) {

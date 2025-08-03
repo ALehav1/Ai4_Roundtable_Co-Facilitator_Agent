@@ -136,10 +136,12 @@ function createWebSpeechEngine(): SpeechEngine {
   let finalCallback: ((event: TranscriptEvent) => void) | null = null;
   let errorCallback: ((error: string) => void) | null = null;
   let networkErrorCount = 0;
-  const MAX_NETWORK_ERRORS = 3;
+  const MAX_NETWORK_ERRORS = 10; // Increased from 3 to 10 for production reliability
   let totalRestartCount = 0;
-  const MAX_TOTAL_RESTARTS = 5;
+  const MAX_TOTAL_RESTARTS = 20; // Increased from 5 to 20 for production reliability
   let isExplicitlyStopped = false;
+  let consecutiveNetworkErrors = 0;
+  const MAX_CONSECUTIVE_NETWORK_ERRORS = 5;
 
   const isSupported = () => {
     return typeof window !== 'undefined' && 
@@ -198,31 +200,28 @@ function createWebSpeechEngine(): SpeechEngine {
 
       const errorMessage = errorMessages[event.error] || `Speech recognition error: ${event.error}`;
       
-      // Track network errors and stop infinite restart loop
+      // Improved error handling: track consecutive vs total network errors
       if (event.error === 'network') {
         networkErrorCount++;
-        console.warn(`🎤 Network error ${networkErrorCount}/${MAX_NETWORK_ERRORS}`);
-        console.log('🔍 DEBUG - About to check if networkErrorCount >= MAX_NETWORK_ERRORS');
+        consecutiveNetworkErrors++;
+        console.warn(`🎤 Network error ${networkErrorCount}/${MAX_NETWORK_ERRORS} (consecutive: ${consecutiveNetworkErrors})`);
         
-        if (networkErrorCount >= MAX_NETWORK_ERRORS) {
-          console.error('🎤 Too many network errors, stopping speech recognition');
-          console.log('🔍 DEBUG - Clearing restart timer, current timer:', restartTimer);
-          // Stop the restart timer to prevent infinite loop
+        // Only stop if too many consecutive network errors
+        if (consecutiveNetworkErrors >= MAX_CONSECUTIVE_NETWORK_ERRORS) {
+          console.error('🎤 Too many consecutive network errors, stopping speech recognition');
           if (restartTimer) {
             clearInterval(restartTimer);
             restartTimer = null;
-            console.log('🔍 DEBUG - Restart timer cleared successfully');
-          } else {
-            console.log('🔍 DEBUG - No restart timer to clear');
           }
           if (errorCallback) {
-            errorCallback('Speech recognition unavailable. Network errors detected. Please use manual entry or Whisper fallback.');
+            errorCallback('Speech recognition temporarily unavailable due to network issues. Please try again or use manual entry.');
           }
-          console.log('🔍 DEBUG - Returning early after max network errors');
           return;
         }
       } else {
-        console.log(`🔍 DEBUG - Non-network error: ${event.error}, not incrementing counter`);
+        // Reset consecutive counter on non-network errors
+        consecutiveNetworkErrors = 0;
+        console.log(`🔍 Non-network error: ${event.error}, resetting consecutive counter`);
       }
       
       if (errorCallback) {
