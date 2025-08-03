@@ -76,8 +76,23 @@ export async function POST(request: NextRequest) {
       allResponses = [], // Full session history
       allInsights = [],  // Previous AI insights
       sessionProgress = 0, // How far through the session (0-1)
-      participantNames = [] // Active participant names
+      participantNames = [], // Active participant names
+      debugInfo = {} // Debug info from frontend
     } = await request.json();
+    
+    // 🚨 CRITICAL DEBUG: Log exactly what data AI receives
+    console.log('🔍 CRITICAL DEBUG - /api/analyze received data:');
+    console.log('📝 Question:', question);
+    console.log('📊 Responses count:', responses?.length || 0);
+    console.log('📋 Actual responses:', responses?.map((r: any) => ({
+      id: r.id,
+      participantName: r.participantName,
+      text: r.text?.substring(0, 100) + '...'
+    })) || []);
+    console.log('🎯 Context:', context);
+    console.log('🔧 Analysis Type:', analysisType);
+    console.log('🏗️ Debug Info from Frontend:', debugInfo);
+    console.log('📈 All Responses Count:', allResponses?.length || 0);
 
     // Define valid analysis types
     const validAnalysisTypes = ['insights', 'followup', 'cross_reference', 'synthesis'] as const;
