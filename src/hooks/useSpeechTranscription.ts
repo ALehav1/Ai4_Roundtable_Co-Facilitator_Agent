@@ -177,6 +177,13 @@ function createWebSpeechEngine(): SpeechEngine {
 
     recognition.onerror = (event: any) => {
       console.error('🎤 Native Speech Recognition Error:', event.error);
+      console.log('🔍 DEBUG - Error Event Details:', {
+        error: event.error,
+        type: typeof event.error,
+        networkErrorCount: networkErrorCount,
+        hasRestartTimer: !!restartTimer,
+        restartTimerId: restartTimer
+      });
       
       const errorMessages: Record<string, string> = {
         'not-allowed': 'Microphone permission denied. Please allow microphone access.',
@@ -192,19 +199,27 @@ function createWebSpeechEngine(): SpeechEngine {
       if (event.error === 'network') {
         networkErrorCount++;
         console.warn(`🎤 Network error ${networkErrorCount}/${MAX_NETWORK_ERRORS}`);
+        console.log('🔍 DEBUG - About to check if networkErrorCount >= MAX_NETWORK_ERRORS');
         
         if (networkErrorCount >= MAX_NETWORK_ERRORS) {
           console.error('🎤 Too many network errors, stopping speech recognition');
+          console.log('🔍 DEBUG - Clearing restart timer, current timer:', restartTimer);
           // Stop the restart timer to prevent infinite loop
           if (restartTimer) {
             clearInterval(restartTimer);
             restartTimer = null;
+            console.log('🔍 DEBUG - Restart timer cleared successfully');
+          } else {
+            console.log('🔍 DEBUG - No restart timer to clear');
           }
           if (errorCallback) {
             errorCallback('Speech recognition unavailable. Network errors detected. Please use manual entry or Whisper fallback.');
           }
+          console.log('🔍 DEBUG - Returning early after max network errors');
           return;
         }
+      } else {
+        console.log(`🔍 DEBUG - Non-network error: ${event.error}, not incrementing counter`);
       }
       
       if (errorCallback) {
