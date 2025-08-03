@@ -149,8 +149,30 @@ export async function POST(request: NextRequest) {
     }
 
     // Initialize OpenAI client at runtime to avoid build-time env var issues
+    // Check multiple environment variable fallbacks for Vercel deployment
+    const apiKey = process.env.OPENAI_API_KEY || 
+                   process.env.NEXT_PUBLIC_OPENAI_API_KEY || 
+                   process.env.OPENAI_KEY || 
+                   process.env.NEXT_OPENAI_API_KEY || 
+                   process.env.AI_API_KEY;
+    
+    console.log('🔑 DEBUG: API Key check for /api/analyze:', {
+      hasOPENAI_API_KEY: !!process.env.OPENAI_API_KEY,
+      hasNEXT_PUBLIC_OPENAI_API_KEY: !!process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+      hasAI_API_KEY: !!process.env.AI_API_KEY,
+      finalApiKeyFound: !!apiKey
+    });
+    
+    if (!apiKey) {
+      console.error('❌ No OpenAI API key found in any environment variable');
+      return NextResponse.json(
+        { error: 'OpenAI API key not configured' },
+        { status: 500 }
+      );
+    }
+    
     const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: apiKey,
     });
 
     // Call OpenAI API with configured parameters
