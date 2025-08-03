@@ -96,7 +96,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 🔍 DEBUG: Trace participant responses and session data
     console.log('🎯 Generating comprehensive session summary...');
+    console.log('DEBUG: Session data received:', JSON.stringify({
+      responseCount: sessionData.responses?.length || 0,
+      responses: sessionData.responses?.map(r => ({
+        id: r.id,
+        participantName: r.participantName,
+        textLength: r.text?.length || 0,
+        textPreview: r.text?.substring(0, 100) + '...'
+      })) || [],
+      aiInsightCount: sessionData.aiInsights?.length || 0,
+      currentQuestionIndex: sessionData.currentQuestionIndex
+    }, null, 2));
+    console.log('DEBUG: Questions received:', questions?.length || 0);
     
     // Generate summary for each question
     const questionSummaries: QuestionSummary[] = await Promise.all(
