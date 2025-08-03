@@ -224,6 +224,9 @@ const RoundtableCanvasV2: React.FC = () => {
 
       const data = await response.json();
       console.log('✅ Live AI Analysis:', data);
+      console.log('🔍 AI Response Keys:', Object.keys(data));
+      console.log('🔍 AI Analysis Content:', data.analysis);
+      console.log('🔍 AI Result Content:', data.result);
 
       // Add AI insight to session context
       setSessionContext(prev => ({
@@ -231,7 +234,7 @@ const RoundtableCanvasV2: React.FC = () => {
         aiInsights: [...prev.aiInsights, {
           id: `insight_${Date.now()}`,
           type: analysisType,
-          content: data.analysis || data.result,
+          content: data.insights || data.analysis || data.result,
           timestamp: new Date(),
         }],
       }));
