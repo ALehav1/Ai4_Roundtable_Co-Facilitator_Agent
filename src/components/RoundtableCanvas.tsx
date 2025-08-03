@@ -609,7 +609,7 @@ const RoundtableCanvas: React.FC = () => {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold mb-2">
-                {uiText.welcomeMessage}
+                {uiText.welcomeMessage} <span style={{color: 'yellow', fontSize: '14px'}}>[DEPLOY v2.1]</span>
               </h1>
               <p className="text-blue-100 text-lg">
                 {sessionConfig.description}
