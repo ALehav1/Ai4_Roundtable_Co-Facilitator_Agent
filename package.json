@@ -2,6 +2,7 @@
   "name": "ai-roundtable",
   "version": "0.1.0",
   "private": true,
+  "_cacheBreaker": "2025-08-03-force-deployment",
   "scripts": {
     "test": "jest",
     "dev": "next dev",

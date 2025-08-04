@@ -1,0 +1,19 @@
+{
+  "builds": [
+    { 
+      "src": "package.json", 
+      "use": "@vercel/next" 
+    }
+  ],
+  "installCommand": "npm install",
+  "buildCommand": "next build",
+  "outputDirectory": ".next",
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "env": {
+    "VERCEL_FORCE_NO_BUILD_CACHE": "true"
+  }
+}
