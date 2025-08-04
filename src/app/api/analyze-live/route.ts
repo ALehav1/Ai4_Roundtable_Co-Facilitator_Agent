@@ -101,25 +101,30 @@ CRITICAL RULES:
 
 ${topicContext}
 
-Analyze the actual discussion content below and provide specific insights based on what participants actually said. If the transcript is brief or empty, acknowledge this and suggest next steps.
+INSTRUCTIONS: Analyze the actual discussion content and provide insights in simple markdown format.
 
-TRANSCRIPT:
-"${transcript}"
+TRANSCRIPT TO ANALYZE:
+${transcript}
 
-Provide insights in clean markdown format using this structure:
-**Key themes from actual discussion**
-- Your analysis here
+OUTPUT FORMAT (use exactly this structure):
 
-**Patterns in participant responses**
-- Your analysis here
+**Key themes from actual discussion:**
+• [Your analysis point]
+• [Another analysis point]
 
-**Specific quotes or points raised**
-- Exact quotes only
+**Patterns in participant responses:**
+• [Pattern you identify]
+• [Another pattern]
 
-**Next steps based on actual conversation gaps**
-- Your recommendations here
+**Specific quotes or points raised:**
+• "[Exact quote from transcript]"
+• "[Another exact quote]"
 
-Use ONLY markdown formatting (**, -, etc.). Do NOT include HTML, CSS class names, or any other formatting. Be direct and factual. No speculation beyond what's actually discussed.`;
+**Next steps based on actual conversation gaps:**
+• [Specific recommendation]
+• [Another recommendation]
+
+CRITICAL: Use only basic markdown. Use ** for headers and • for bullets. Output clean markdown text only.`;
 
     case 'synthesis':
       return `${baseRules}
@@ -144,18 +149,18 @@ Only reference actual conversation content.`;
 
 ${topicContext}
 
-Based on the actual discussion content below, suggest specific follow-up questions that build on what was actually discussed.
+Based on this transcript, generate 3-4 strategic follow-up questions that would deepen the AI transformation discussion.
 
 TRANSCRIPT:
-"${transcript}"
+${transcript}
 
-Provide 3-5 follow-up questions that:
-- Build directly on points actually raised
-- Address gaps in the actual conversation
-- Help deepen discussion of topics already mentioned
-- Are specific to this session's actual content
+OUTPUT FORMAT:
+1. [First strategic question]
+2. [Second strategic question]
+3. [Third strategic question]
+4. [Fourth strategic question]
 
-No generic questions - tailor to actual discussion.`;
+Make questions specific to what was actually discussed. Use simple numbered format only.`;
 
     case 'facilitation':
       return `${baseRules}
