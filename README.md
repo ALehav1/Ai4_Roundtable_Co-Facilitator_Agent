@@ -3,118 +3,110 @@
 
 **🚀 PRODUCTION READY**: Professional-grade co-facilitator for strategic discussions about "When AI Becomes How the Enterprise Works"
 
-An intelligent AI co-facilitator designed specifically for executive teams navigating the shift from AI experimentation to true transformation. Features sophisticated voice transcription, real-time strategic analysis, and comprehensive session management—all deployed on a secure, enterprise-ready platform.
+A sophisticated AI-powered strategic facilitation platform designed specifically for senior executives navigating the shift from AI experimentation to true organizational transformation. Features executive-grade interface design, intelligent voice transcription, real-time strategic analysis, and comprehensive session management—all optimized for C-suite AI transformation conversations.
 
 ---
 
-## ✨ **Why This Matters**
+## ✨ **The Strategic Advantage**
 
-When facilitating strategic discussions about AI transformation with senior executives, you need a tool that embodies the sophistication you're advocating for. This co-facilitator doesn't just capture conversation—**it demonstrates reflexive AI systems in action**, becoming a live example of the intelligence layer you're discussing.
+When facilitating discussions about AI transformation with senior executives, your facilitation tool should embody the sophistication you're advocating for. This co-facilitator doesn't just capture conversation—**it demonstrates reflexive AI systems in action**, becoming a live example of the shared intelligence layer you're discussing.
 
-### **The Meta-Moment Magic** 🎭
-At the core of your session, you'll demonstrate the co-facilitator tool itself as an example of reflexive systems—AI that learns from participation and compounds organizational intelligence in real-time.
-
----
-
-## 🎯 **Current Session Focus: "When AI Becomes How the Enterprise Works"**
-
-This application is optimized for strategic conversations about three fundamental shifts:
-
-**1. Tools → Agents**  
-Moving from AI you use to AI you work with
-
-**2. Outputs → Feedback Loops**  
-Building systems that learn and improve over time  
-
-**3. Individual Productivity → Shared Intelligence Layer**  
+### **🎭 The Meta-Moment: AI Demonstrating AI**
+During your strategic session, you'll demonstrate the co-facilitator tool itself as an example of reflexive systems—AI that learns from participation, compounds organizational intelligence, and gets smarter with every interaction. This creates a powerful "show don't tell" moment that reinforces your entire transformation message.
 
 ---
 
-## ✅ **Production-Ready Features**
+## 🎯 **Current Focus: "When AI Becomes How the Enterprise Works"**
 
-### **🎤 Multi-Speaker Voice Transcription**
-- **Unlimited participants** with Web Speech API
+This platform is optimized for strategic conversations about three fundamental enterprise shifts:
+
+**1. 🔧 Tools → Agents**  
+*Moving from AI you use to AI you work with*
+
+**2. ♻️ Outputs → Feedback Loops**  
+*Building systems that learn and improve over time*  
+
+**3. 🧠 Individual Productivity → Shared Intelligence Layer**  
+*Creating organizational memory that compounds value*
+
+---
+
+## ⭐ **Executive-Grade Features**
+
+### **🎤 Sophisticated Voice Transcription**
+- **Multi-speaker recognition** with unlimited participants
 - **Real-time transcription** with live editing capabilities
-- **Intelligent fallbacks** when speech recognition isn't available
-- **HTTPS optimized** for production environments
+- **Professional transcript display** with speaker attribution
+- **Intelligent fallbacks** when voice recognition isn't available
+- **HTTPS-optimized** for secure production environments
 
-### **🧠 AI Strategic Analysis**
+### **🧠 Strategic AI Analysis**
 - **GPT-4o powered insights** focused on AI transformation patterns
-- **Real-time analysis** of discussion themes and strategic implications
+- **Executive-ready analysis** with themes, patterns, and strategic implications
 - **Session memory** that builds context across all conversation phases
-- **Follow-up questions** that deepen strategic thinking
-- **✅ TypeScript Ready**: Zero build errors, production-stable codebase
-- **🚫 No Participant Limits**: Artificial 4-speaker restriction completely removed
-- **⚡ Real-time Transcription**: Live speech-to-text with restart protection
-- **🛡️ Error Handling**: Graceful fallbacks for speech recognition failures
-- **📱 Browser Compatible**: Chrome recommended, HTTPS required for voice features
-- **🔐 Secure Deployment**: Vercel hosting with environment variable management
+- **Professional formatting** with confidence levels and timestamps
+- **Strategic follow-up questions** that deepen transformation discussions
 
-## 🎯 Project Overview
+### **👔 Executive-Grade Interface**
+- **Professional design system** with gradients and sophisticated styling
+- **Strategic progress tracking** with visual phase indicators  
+- **Business-focused language** throughout the interface
+- **Enhanced loading states** with contextual messaging
+- **Responsive design** optimized for various screen sizes
 
-A production-ready AI co-facilitator for strategic discussions, designed for executive teams navigating AI transformation. The platform features unlimited multi-speaker voice transcription, real-time AI analysis, and comprehensive session management.
+### **📊 Comprehensive Session Management**
+- **Auto-save functionality** with seamless session recovery
+- **Professional PDF export** for stakeholder distribution
+- **Executive summary generation** with strategic recommendations
+- **Cost management** with transparent usage tracking
+- **Session analytics** with participation metrics
 
-**Key Capabilities:**
-- **Multi-Speaker Voice Recognition**: Unlimited participants with automatic transcription
-- **AI Co-Facilitation**: Real-time insights and follow-up questions from OpenAI GPT
-- **Manual Entry Fallback**: Custom modal for when voice recognition isn't available
-- **Session Management**: Auto-save, recovery, and PDF export functionality
-- **Production Ready**: Deployed on Vercel with secure environment configuration
+---
 
-**Target Users**: Strategic facilitators, executive coaches, organizational development professionals, and senior leadership teams.
+## 🚀 **Quick Start**
 
-## 🚀 Quick Start
+### **Prerequisites**
+- Node.js 18+ 
+- OpenAI API key ([Get one here](https://platform.openai.com))
+- Modern web browser (Chrome recommended for speech features)
 
-### Prerequisites
-- Node.js 18+ and npm
-- OpenAI API key
-- Modern web browser (Chrome recommended for speech recognition)
-
-### Installation
-
+### **Installation**
 ```bash
-# Clone the repository
+# Clone and setup
 git clone https://github.com/ALehav1/Ai4_Roundtable_Co-Facilitator_Agent.git
 cd ai-roundtable
-
-# Install dependencies
 npm install
 
-# Set up environment variables
-cp .env.example .env.local
-# Edit .env.local and add your OPENAI_API_KEY
+# Configure your API key
+echo "OPENAI_API_KEY=sk-your-actual-key-here" > .env.local
 
-# Run development server
+# Start development server
 npm run dev
 ```
 
-### Live Production Demo
-**Current Production URL**: https://ai-facilitator-agent-6n2d6yraq-alehav1s-projects.vercel.app
+### **🌐 Live Production Demo**
+**Current URL**: https://co-facilitatoragent.vercel.app/
 
-*Note: Production deployment includes all latest features - enhanced voice recognition, multi-modal manual entry, dual AI analysis, and PDF export.*
+*Ready for executive-level strategic AI transformation discussions*
 
-### Production Deployment
+---
 
-```bash
-# Build for production
-npm run build
+## 🎭 **The Strategic Session Workflow**
 
-# Deploy to Vercel (recommended)
-npx vercel --prod
-```
+### **📋 Setup Phase**
+*Professional welcome screen with session configuration and feature overview*
 
-## 📋 User Guide
+### **Phase 1: Future Vision (10 min)**
+*"Fast forward to 2028. What does your organization look like if AI efforts go really well?"*
 
-### Starting a Session
+### **Phase 2: Three-Shift Framework (10 min)**  
+*Present your thesis about Tools→Agents, Outputs→Feedback Loops, Individual→Shared Intelligence*
 
-1. **Setup**: Enter facilitator name, topic, and participant count (defaults provided)
-2. **Begin Discussion**: Click "Start Roundtable Session" to enter discussion mode
-3. **Navigate Agenda**: Use Previous/Next buttons to move through structured questions
-4. **Capture Input**: Use speech recognition or manual entry for participant responses
-5. **Get AI Insights**: Click analysis buttons for real-time strategic insights
-6. **Export Results**: Generate PDF summary with complete session documentation
+### **Phase 3: Foundations Discussion (15 min)**
+*"What needs to be true today to enable that 2028 vision?"*
 
-### Key Features in Action
+### **Phase 4: Meta-Moment Demo (10 min)**
+*🎯 **THE HIGHLIGHT**: Demonstrate the co-facilitator tool itself as an example of reflexive systems in action*
 
 #### 🎤 Enhanced Voice Recognition (Production-Optimized)
 - **HTTPS Required**: Speech recognition only works on HTTPS domains (production environments)
