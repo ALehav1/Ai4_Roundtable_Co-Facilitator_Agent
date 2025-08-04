@@ -97,34 +97,18 @@ CRITICAL RULES:
 
   switch (analysisType) {
     case 'insights':
-      return `${baseRules}
+      return `Analyze this transcript and provide strategic insights using simple numbered format.
 
-${topicContext}
-
-INSTRUCTIONS: Analyze the actual discussion content and provide insights in simple markdown format.
-
-TRANSCRIPT TO ANALYZE:
+TRANSCRIPT:
 ${transcript}
 
-OUTPUT FORMAT (use exactly this structure):
+OUTPUT FORMAT:
+1. Key theme: [Your analysis]
+2. Pattern observed: [Your observation]
+3. Important quote: "[Exact quote]"
+4. Recommended next step: [Your recommendation]
 
-**Key themes from actual discussion:**
-• [Your analysis point]
-• [Another analysis point]
-
-**Patterns in participant responses:**
-• [Pattern you identify]
-• [Another pattern]
-
-**Specific quotes or points raised:**
-• "[Exact quote from transcript]"
-• "[Another exact quote]"
-
-**Next steps based on actual conversation gaps:**
-• [Specific recommendation]
-• [Another recommendation]
-
-CRITICAL: Use only basic markdown. Use ** for headers and • for bullets. Output clean markdown text only.`;
+Use simple numbered format only.`;
 
     case 'synthesis':
       return `${baseRules}
