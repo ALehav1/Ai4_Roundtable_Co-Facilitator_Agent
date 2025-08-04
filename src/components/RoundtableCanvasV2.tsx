@@ -27,13 +27,18 @@ interface TranscriptEntry {
 
 // Session context for AI analysis
 interface SessionContext {
+  facilitator: string;
+  topic: string;
   state: SessionState;
   startTime: Date;
-  participantCount: number;
   currentTopic?: string;
   duration?: number;
   liveTranscript: TranscriptEntry[];
+  keyThemes: string[];
   aiInsights: any[];
+  followupQuestions: string[];
+  crossReferences: string[];
+  sessionSummary: string;
   // Agenda navigation
   currentQuestionIndex: number;
   questionStartTime?: Date;
@@ -76,11 +81,15 @@ const RoundtableCanvasV2: React.FC = () => {
   const [sessionContext, setSessionContext] = useState<SessionContext>({
     state: 'intro',
     startTime: new Date(),
-    participantCount: 5, // Default value as requested
+    facilitator: "facilitator", // Default value as requested
+    topic: "when ai becomes how the enterprise operates", // Default topic as requested
     currentTopic: "when ai becomes how the enterprise operates", // Default topic as requested
     liveTranscript: [],
     aiInsights: [],
-    // Agenda navigation state
+    keyThemes: [],
+    followupQuestions: [],
+    crossReferences: [],
+    sessionSummary: "",
     currentQuestionIndex: 0,
     questionStartTime: undefined,
     agendaProgress: {}
@@ -242,7 +251,6 @@ const RoundtableCanvasV2: React.FC = () => {
             sessionTopic: sessionContext.currentTopic || 'Strategic Planning Session',
             liveTranscript: transcriptText || "No conversation content has been captured yet in this live session.",
             analysisType,
-            participantCount: sessionContext.participantCount || 5,
             sessionDuration: Math.floor((Date.now() - sessionContext.startTime.getTime()) / 60000),
             clientId: 'live-session'
           }),
@@ -378,7 +386,6 @@ const RoundtableCanvasV2: React.FC = () => {
       timestamp: Date.now(),
       sessionState: context.state,
       currentTopic: context.currentTopic,
-      participantCount: context.participantCount,
       startTime: context.startTime.getTime(),
       liveTranscript: context.liveTranscript.map(entry => ({
         id: entry.id,
@@ -407,10 +414,12 @@ const RoundtableCanvasV2: React.FC = () => {
 
   const snapshotToSessionContext = useCallback((snapshot: SessionSnapshot): SessionContext => {
     return {
+      facilitator: (snapshot as any).facilitator || 'facilitator',
+      topic: (snapshot as any).topic || 'when ai becomes how the enterprise operates',
       state: snapshot.sessionState as SessionState,
       startTime: new Date(snapshot.startTime),
-      participantCount: snapshot.participantCount,
       currentTopic: snapshot.currentTopic,
+      duration: (snapshot as any).duration,
       liveTranscript: snapshot.liveTranscript.map(entry => ({
         id: entry.id,
         speaker: entry.speaker,
@@ -419,6 +428,7 @@ const RoundtableCanvasV2: React.FC = () => {
         isAutoDetected: entry.isAutoDetected ?? false,
         confidence: entry.confidence ?? 0.8
       })),
+      keyThemes: (snapshot as any).keyThemes || [],
       aiInsights: snapshot.aiInsights.map(insight => ({
         id: insight.id,
         type: insight.type,
@@ -430,6 +440,9 @@ const RoundtableCanvasV2: React.FC = () => {
         isLegacy: insight.isLegacy,
         isError: insight.isError
       })),
+      followupQuestions: (snapshot as any).followupQuestions || [],
+      crossReferences: (snapshot as any).crossReferences || [],
+      sessionSummary: (snapshot as any).sessionSummary || '',
       currentQuestionIndex: snapshot.currentQuestionIndex,
       questionStartTime: snapshot.questionStartTime ? new Date(snapshot.questionStartTime) : undefined,
       agendaProgress: snapshot.agendaProgress
@@ -652,22 +665,6 @@ const RoundtableCanvasV2: React.FC = () => {
       <h2 className="text-3xl font-bold mb-6 text-center">🎯 AI Roundtable Session Setup</h2>
       
       <div className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium mb-2">Number of Participants</label>
-          <input
-            type="number"
-            min="1"
-            max="20"
-            value={sessionContext.participantCount}
-            onChange={(e) => setSessionContext(prev => ({
-              ...prev,
-              participantCount: parseInt(e.target.value) || 0
-            }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            placeholder="Enter participant count"
-          />
-        </div>
-
         <div>
           <label className="block text-sm font-medium mb-2">Session Topic (Optional)</label>
           <input
@@ -892,22 +889,23 @@ const RoundtableCanvasV2: React.FC = () => {
           <h2 className="text-lg font-bold text-gray-800">
             🧠 AI Co-Facilitator
           </h2>
-          {/* Separate PDF Export Button */}
+          {/* Summarize Entire Session Button */}
           <button
             onClick={handleExportPDF}
             disabled={sessionContext.liveTranscript.length === 0}
             className="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium flex items-center gap-2"
           >
-            📄 Export PDF
+            📊 Summarize Entire Session
           </button>
         </div>
         
-        {/* Two Analysis Tabs */}
+        {/* Analysis Action Buttons */}
         <div className="flex gap-2">
           <button
             onClick={() => {
               if (sessionContext.liveTranscript.length > 0) {
                 callAIAnalysis('insights');
+                setActiveAnalyticsTab('insights');
               }
             }}
             disabled={sessionContext.liveTranscript.length === 0}
@@ -919,6 +917,7 @@ const RoundtableCanvasV2: React.FC = () => {
             onClick={() => {
               if (sessionContext.liveTranscript.length > 0) {
                 callAIAnalysis('followup');
+                setActiveAnalyticsTab('followup');
               }
             }}
             disabled={sessionContext.liveTranscript.length === 0}
@@ -927,162 +926,37 @@ const RoundtableCanvasV2: React.FC = () => {
             ❓ Follow-up Questions
           </button>
         </div>
+        
+        {/* Tab Navigation */}
+        {sessionContext.aiInsights.length > 0 && (
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setActiveAnalyticsTab('insights')}
+              className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeAnalyticsTab === 'insights'
+                  ? 'bg-white text-purple-700 shadow-sm'
+                  : 'text-gray-600 hover:text-purple-600'
+              }`}
+            >
+              💡 Insights ({sessionContext.aiInsights.filter(i => i.type !== 'followup').length})
+            </button>
+            <button
+              onClick={() => setActiveAnalyticsTab('followup')}
+              className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeAnalyticsTab === 'followup'
+                  ? 'bg-white text-blue-700 shadow-sm'
+                  : 'text-gray-600 hover:text-blue-600'
+              }`}
+            >
+              ❓ Questions ({sessionContext.aiInsights.filter(i => i.type === 'followup').length})
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Separate Insights and Follow-up Questions Sections */}
-      <div className="flex-1 overflow-y-auto px-4 space-y-4">
-        
-        {/* AI Insights Section */}
-        <div className="bg-purple-50 rounded-lg p-3">
-          <h3 className="text-sm font-bold text-purple-800 mb-3 flex items-center gap-2">
-            💡 AI Insights
-            <span className="text-xs bg-purple-200 text-purple-700 px-2 py-1 rounded">
-              {sessionContext.aiInsights.filter(i => i.type !== 'followup').length}
-            </span>
-          </h3>
-          
-          {sessionContext.aiInsights.filter(insight => insight.type !== 'followup').length > 0 ? (
-            <div className="space-y-2">
-              {sessionContext.aiInsights
-                .filter(insight => insight.type !== 'followup')
-                .map((insight) => (
-                <div key={insight.id} className={`bg-white p-3 rounded shadow-sm ${
-                  insight.isError 
-                    ? 'border-l-4 border-red-500' 
-                    : insight.isLegacy 
-                      ? 'border-l-4 border-yellow-500' 
-                      : 'border-l-4 border-purple-500'
-                }`}>
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-semibold uppercase ${
-                        insight.isError 
-                          ? 'text-red-600' 
-                          : insight.isLegacy 
-                            ? 'text-yellow-600' 
-                            : 'text-purple-600'
-                      }`}>
-                        💡 {insight.type}
-                      </span>
-                      {insight.confidence !== undefined && (
-                        <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                          {Math.round(insight.confidence * 100)}% confidence
-                        </span>
-                      )}
-                      {insight.isLegacy && (
-                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded">
-                          Legacy
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-xs text-gray-500">
-                      {insight.timestamp.toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <div className="text-sm text-gray-800 leading-relaxed mb-2">
-                    {formatInsightContent(insight.content)}
-                  </div>
-                  
-                  {/* Display suggestions if available */}
-                  {insight.suggestions && insight.suggestions.length > 0 && (
-                    <div className="mt-3 pt-2 border-t border-gray-100">
-                      <p className="text-xs font-semibold text-gray-600 mb-2">Suggestions:</p>
-                      <ul className="text-xs text-gray-700 space-y-1">
-                        {insight.suggestions.slice(0, 3).map((suggestion: string, idx: number) => (
-                          <li key={idx} className="flex items-start gap-1">
-                            <span className="mt-0.5 text-purple-500">•</span>
-                            <span>{suggestion}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  
-                  {/* Display metadata for new endpoint */}
-                  {insight.metadata && (
-                    <div className="mt-2 text-xs text-gray-500">
-                      Tokens: {insight.metadata.tokensUsed} | Length: {insight.metadata.transcriptLength}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center text-purple-600 py-4">
-              <p className="text-sm">No insights yet</p>
-              <p className="text-xs text-purple-500 mt-1">Click "Get Insights" to analyze the conversation</p>
-            </div>
-          )}
-        </div>
-
-        {/* Follow-up Questions Section */}
-        <div className="bg-blue-50 rounded-lg p-3">
-          <h3 className="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2">
-            ❓ Follow-up Questions
-            <span className="text-xs bg-blue-200 text-blue-700 px-2 py-1 rounded">
-              {sessionContext.aiInsights.filter(i => i.type === 'followup').length}
-            </span>
-          </h3>
-          
-          {sessionContext.aiInsights.filter(insight => insight.type === 'followup').length > 0 ? (
-            <div className="space-y-2">
-              {sessionContext.aiInsights
-                .filter(insight => insight.type === 'followup')
-                .map((insight) => (
-                <div key={insight.id} className="bg-white p-3 rounded shadow-sm border-l-4 border-blue-500">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold uppercase text-blue-600">
-                        ❓ {insight.type}
-                      </span>
-                      {insight.confidence !== undefined && (
-                        <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                          {Math.round(insight.confidence * 100)}% confidence
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-xs text-gray-500">
-                      {insight.timestamp.toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <div className="text-sm text-gray-800 leading-relaxed mb-2">
-                    {formatInsightContent(insight.content)}
-                  </div>
-                  
-                  {/* Display suggestions if available */}
-                  {insight.suggestions && insight.suggestions.length > 0 && (
-                    <div className="mt-3 pt-2 border-t border-gray-100">
-                      <p className="text-xs font-semibold text-gray-600 mb-2">Suggested Questions:</p>
-                      <ul className="text-xs text-gray-700 space-y-1">
-                        {insight.suggestions.slice(0, 3).map((suggestion: string, idx: number) => (
-                          <li key={idx} className="flex items-start gap-1">
-                            <span className="mt-0.5 text-blue-500">•</span>
-                            <span>{suggestion}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  
-                  {/* Display metadata for new endpoint */}
-                  {insight.metadata && (
-                    <div className="mt-2 text-xs text-gray-500">
-                      Tokens: {insight.metadata.tokensUsed} | Length: {insight.metadata.transcriptLength}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center text-blue-600 py-4">
-              <p className="text-sm">No follow-up questions yet</p>
-              <p className="text-xs text-blue-500 mt-1">Click "Follow-up Questions" to generate questions</p>
-            </div>
-          )}
-        </div>
-
-        {/* Empty State for Both */}
-        {sessionContext.aiInsights.length === 0 && (
+      {/* Toggle Content Display */}
+      <div className="flex-1 overflow-y-auto px-4">
+        {sessionContext.aiInsights.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-center text-gray-500 p-8">
             <div>
               <div className="text-4xl mb-4">🤖</div>
@@ -1091,6 +965,125 @@ const RoundtableCanvasV2: React.FC = () => {
                 Start recording or add manual entries, then use the analysis buttons above
               </p>
             </div>
+          </div>
+        ) : (
+          <div className={`rounded-lg p-3 ${
+            activeAnalyticsTab === 'insights' ? 'bg-purple-50' : 'bg-blue-50'
+          }`}>
+            <h3 className={`text-sm font-bold mb-3 flex items-center gap-2 ${
+              activeAnalyticsTab === 'insights' ? 'text-purple-800' : 'text-blue-800'
+            }`}>
+              {activeAnalyticsTab === 'insights' ? '💡 AI Insights' : '❓ Follow-up Questions'}
+              <span className={`text-xs px-2 py-1 rounded ${
+                activeAnalyticsTab === 'insights' 
+                  ? 'bg-purple-200 text-purple-700' 
+                  : 'bg-blue-200 text-blue-700'
+              }`}>
+                {activeAnalyticsTab === 'insights'
+                  ? sessionContext.aiInsights.filter(i => i.type !== 'followup').length
+                  : sessionContext.aiInsights.filter(i => i.type === 'followup').length
+                }
+              </span>
+            </h3>
+            
+            {/* Filter and display content based on active tab */}
+            {sessionContext.aiInsights
+              .filter(insight => 
+                activeAnalyticsTab === 'insights' 
+                  ? insight.type !== 'followup'
+                  : insight.type === 'followup'
+              ).length > 0 ? (
+              <div className="space-y-2">
+                {sessionContext.aiInsights
+                  .filter(insight => 
+                    activeAnalyticsTab === 'insights' 
+                      ? insight.type !== 'followup'
+                      : insight.type === 'followup'
+                  )
+                  .map((insight) => (
+                  <div key={insight.id} className={`bg-white p-3 rounded shadow-sm ${
+                    insight.isError 
+                      ? 'border-l-4 border-red-500' 
+                      : insight.isLegacy 
+                        ? 'border-l-4 border-yellow-500' 
+                        : activeAnalyticsTab === 'insights'
+                          ? 'border-l-4 border-purple-500'
+                          : 'border-l-4 border-blue-500'
+                  }`}>
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-semibold uppercase ${
+                          insight.isError 
+                            ? 'text-red-600' 
+                            : insight.isLegacy 
+                              ? 'text-yellow-600' 
+                              : activeAnalyticsTab === 'insights'
+                                ? 'text-purple-600'
+                                : 'text-blue-600'
+                        }`}>
+                          {activeAnalyticsTab === 'insights' ? '💡' : '❓'} {insight.type}
+                        </span>
+                        {insight.confidence !== undefined && (
+                          <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                            {Math.round(insight.confidence * 100)}% confidence
+                          </span>
+                        )}
+                        {insight.isLegacy && (
+                          <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded">
+                            Legacy
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        {insight.timestamp.toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-800 leading-relaxed mb-2">
+                      {formatInsightContent(insight.content)}
+                    </div>
+                    
+                    {/* Display suggestions if available */}
+                    {insight.suggestions && insight.suggestions.length > 0 && (
+                      <div className="mt-3 pt-2 border-t border-gray-100">
+                        <p className="text-xs font-semibold text-gray-600 mb-2">
+                          {activeAnalyticsTab === 'insights' ? 'Suggestions:' : 'Suggested Questions:'}
+                        </p>
+                        <ul className="text-xs text-gray-700 space-y-1">
+                          {insight.suggestions.slice(0, 3).map((suggestion: string, idx: number) => (
+                            <li key={idx} className="flex items-start gap-1">
+                              <span className={`mt-0.5 ${
+                                activeAnalyticsTab === 'insights' ? 'text-purple-500' : 'text-blue-500'
+                              }`}>•</span>
+                              <span>{suggestion}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {/* Display metadata for new endpoint */}
+                    {insight.metadata && (
+                      <div className="mt-2 text-xs text-gray-500">
+                        Tokens: {insight.metadata.tokensUsed} | Length: {insight.metadata.transcriptLength}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className={`text-center py-4 ${
+                activeAnalyticsTab === 'insights' ? 'text-purple-600' : 'text-blue-600'
+              }`}>
+                <p className="text-sm">
+                  {activeAnalyticsTab === 'insights' ? 'No insights yet' : 'No follow-up questions yet'}
+                </p>
+                <p className={`text-xs mt-1 ${
+                  activeAnalyticsTab === 'insights' ? 'text-purple-500' : 'text-blue-500'
+                }`}>
+                  Click "{activeAnalyticsTab === 'insights' ? 'Get Insights' : 'Follow-up Questions'}" to analyze the conversation
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1183,10 +1176,15 @@ const RoundtableCanvasV2: React.FC = () => {
                   setSessionContext({
                     state: 'intro',
                     startTime: new Date(),
-                    participantCount: 5,
+                    facilitator: "facilitator",
+                    topic: "when ai becomes how the enterprise operates",
                     currentTopic: 'when ai becomes how the enterprise operates',
                     liveTranscript: [],
                     aiInsights: [],
+                    keyThemes: [],
+                    followupQuestions: [],
+                    crossReferences: [],
+                    sessionSummary: "",
                     currentQuestionIndex: 0,
                     agendaProgress: {},
                   });

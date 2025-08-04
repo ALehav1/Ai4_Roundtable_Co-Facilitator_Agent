@@ -7,7 +7,6 @@ export interface SessionSnapshot {
   timestamp: number;
   sessionState: string;
   currentTopic?: string;
-  participantCount: number;
   startTime: number; // Date.getTime()
   liveTranscript: Array<{
     id: string;

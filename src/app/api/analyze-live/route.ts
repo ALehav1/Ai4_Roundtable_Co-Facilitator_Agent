@@ -28,7 +28,6 @@ const LiveAnalyzeRequestSchema = z.object({
   sessionTopic: z.string().min(1),
   liveTranscript: z.string().default('No conversation content captured yet.'),
   analysisType: z.enum(['insights', 'synthesis', 'followup', 'cross_reference', 'facilitation']),
-  participantCount: z.number().min(1).max(20).default(5),
   sessionDuration: z.number().optional(),
   clientId: z.string().optional().default('anonymous')
 });
@@ -83,8 +82,7 @@ function checkRateLimit(clientId: string): boolean {
 function buildLiveAnalysisPrompt(
   analysisType: string,
   sessionTopic: string,
-  transcript: string,
-  participantCount: number
+  transcript: string
 ): string {
   const baseRules = `
 CRITICAL RULES:
@@ -95,7 +93,7 @@ CRITICAL RULES:
 - Provide specific, actionable insights based on actual content
 `;
 
-  const topicContext = `Session Topic: "${sessionTopic}" with ${participantCount} participants`;
+  const topicContext = `Session Topic: "${sessionTopic}"`;
 
   switch (analysisType) {
     case 'insights':
@@ -202,7 +200,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { sessionTopic, liveTranscript, analysisType, participantCount, clientId = 'anonymous' } = parseResult.data;
+    const { sessionTopic, liveTranscript, analysisType, clientId = 'anonymous' } = parseResult.data;
 
     // Rate limiting
     if (!checkRateLimit(clientId)) {
@@ -220,7 +218,6 @@ export async function POST(request: NextRequest) {
       sessionTopic,
       analysisType,
       transcriptLength: liveTranscript?.length || 0,
-      participantCount,
       timestamp: new Date().toISOString()
     });
 
@@ -228,8 +225,7 @@ export async function POST(request: NextRequest) {
     const userPrompt = buildLiveAnalysisPrompt(
       analysisType,
       sessionTopic,
-      liveTranscript,
-      participantCount
+      liveTranscript
     );
 
     // Initialize OpenAI client (check all possible env var names)
