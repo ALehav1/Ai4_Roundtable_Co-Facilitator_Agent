@@ -690,54 +690,182 @@ const RoundtableCanvasV2: React.FC = () => {
     }
   }, [sessionContext, isExporting]);
 
-  // Render session intro state
+  // Render executive-ready session setup
   const renderIntroState = () => (
-    <div className="bg-white rounded-lg shadow-lg p-8">
-      <h2 className="text-3xl font-bold mb-6 text-center">🎯 AI Roundtable Session Setup</h2>
-      
-      <div className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium mb-2">Session Topic (Optional)</label>
-          <input
-            type="text"
-            value={sessionContext.currentTopic || ''}
-            onChange={(e) => setSessionContext(prev => ({
-              ...prev,
-              currentTopic: e.target.value
-            }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            placeholder="e.g., Strategic AI Transformation Planning"
-          />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      {/* Executive Header */}
+      <div className="bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 text-white py-12">
+        <div className="max-w-4xl mx-auto px-8">
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-white bg-opacity-20 rounded-full mb-6">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
+            </div>
+            <h1 className="text-4xl font-bold mb-4">AI Strategic Co-Facilitator</h1>
+            <p className="text-xl text-blue-100 mb-2">Enterprise AI Transformation Roundtable</p>
+            <div className="flex items-center justify-center space-x-6 text-sm text-blue-200">
+              <span className="flex items-center">
+                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                </svg>
+                Live AI Analysis
+              </span>
+              <span className="flex items-center">
+                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                </svg>
+                Real-Time Transcription
+              </span>
+              <span className="flex items-center">
+                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                </svg>
+                Executive Reporting
+              </span>
+            </div>
+          </div>
         </div>
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-2">Your Role</label>
-          <input
-            type="text"
-            value={currentSpeaker}
-            onChange={(e) => setCurrentSpeaker(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            placeholder="e.g., Facilitator, Lead Strategist"
-          />
+      {/* Main Setup Content */}
+      <div className="max-w-5xl mx-auto px-8 py-12">
+        <div className="grid lg:grid-cols-3 gap-8">
+          
+          {/* Setup Form */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
+                <svg className="w-6 h-6 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                Session Configuration
+              </h2>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Strategic Session Topic</label>
+                  <input
+                    type="text"
+                    value={sessionContext.currentTopic || ''}
+                    onChange={(e) => setSessionContext(prev => ({
+                      ...prev,
+                      currentTopic: e.target.value
+                    }))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    placeholder="When AI Becomes How the Enterprise Works"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">This will appear in your session header and reports</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Your Strategic Role</label>
+                  <input
+                    type="text"
+                    value={currentSpeaker}
+                    onChange={(e) => setCurrentSpeaker(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    placeholder="Chief Strategy Officer, Innovation Leader, Transformation Director"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">This identifies your contributions in transcripts and analysis</p>
+                </div>
+
+                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-6">
+                  <div className="flex items-start">
+                    <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-emerald-900 mb-2">Ready for Enterprise Deployment</h3>
+                      <p className="text-sm text-emerald-800 mb-3">Your AI co-facilitator is configured and ready to enhance your strategic discussions with real-time insights and comprehensive documentation.</p>
+                      <div className="text-xs text-emerald-700">
+                        <span className="font-medium">Next:</span> Click "Launch Strategic Session" to begin AI-powered facilitation
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={startSession}
+                  disabled={!currentSpeaker.trim()}
+                  className="btn-primary btn-large w-full flex items-center justify-center space-x-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                  </svg>
+                  <span>Launch Strategic Session</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Feature Showcase */}
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+              <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
+                <svg className="w-5 h-5 mr-2 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                AI Co-Facilitation Features
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Live Strategic Insights</p>
+                    <p className="text-xs text-gray-600">Real-time AI analysis of discussion themes and strategic implications</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-purple-600 rounded-full mt-2 flex-shrink-0"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Dynamic Follow-up Questions</p>
+                    <p className="text-xs text-gray-600">Context-aware questions to deepen strategic exploration</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-emerald-600 rounded-full mt-2 flex-shrink-0"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Intelligent Transcription</p>
+                    <p className="text-xs text-gray-600">Speech-to-text with speaker detection and conversation flow</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-orange-600 rounded-full mt-2 flex-shrink-0"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Executive Summary Export</p>
+                    <p className="text-xs text-gray-600">Professional PDF reports with key insights and action items</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-2xl p-6">
+              <h3 className="font-semibold text-blue-900 mb-3 flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Strategic Session Framework
+              </h3>
+              <div className="text-sm text-blue-800 space-y-2">
+                <p><span className="font-medium">Phase 1:</span> Current AI Landscape Assessment</p>
+                <p><span className="font-medium">Phase 2:</span> Enterprise Readiness & Capabilities</p>
+                <p><span className="font-medium">Phase 3:</span> Strategic Integration Opportunities</p>
+                <p><span className="font-medium">Phase 4:</span> Implementation Roadmap & Success Metrics</p>
+              </div>
+              <div className="mt-4 p-3 bg-white bg-opacity-50 rounded-lg">
+                <p className="text-xs text-blue-700">
+                  <span className="font-medium">Duration:</span> 60-90 minutes • 
+                  <span className="font-medium">Participants:</span> 3-8 executives • 
+                  <span className="font-medium">Output:</span> Strategic action plan
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <h3 className="font-semibold text-blue-800 mb-2">📝 Live Transcript Features</h3>
-          <ul className="text-blue-700 space-y-1 text-sm">
-            <li>• Real-time speech-to-text conversation capture</li>
-            <li>• Automatic speaker detection and transcript building</li>
-            <li>• Live AI insights during discussion (not just at end)</li>
-            <li>• Seamless transition to summary and export</li>
-          </ul>
-        </div>
-
-        <button
-          onClick={startSession}
-          disabled={!currentSpeaker.trim()}
-          className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400"
-        >
-          🚀 Start Live Session
-        </button>
       </div>
     </div>
   );
@@ -750,49 +878,104 @@ const RoundtableCanvasV2: React.FC = () => {
 
     return (
     <div className="space-y-6">
-      {/* Agenda Controls */}
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <h2 className="text-2xl font-bold">📋 Session Agenda</h2>
-            <p className="text-gray-600">
-              Question {sessionContext.currentQuestionIndex + 1} of {totalQuestions} • 
+      {/* Executive-Grade Session Progress */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-900 flex items-center">
+              <svg className="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd"/>
+              </svg>
+              Strategic Session Progress
+            </h3>
+            <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
               {Math.round(progressPercentage)}% Complete
-            </p>
+            </span>
           </div>
           
-          <div className="flex space-x-2">
+          {/* Enhanced Progress Bar */}
+          <div className="relative">
+            <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
+              <div 
+                className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-500 ease-out shadow-sm"
+                style={{ width: `${progressPercentage}%` }}
+              ></div>
+            </div>
+            
+            {/* Phase Indicators */}
+            <div className="flex justify-between text-xs text-gray-600">
+              {roundtableQuestions.map((question, index) => (
+                <div 
+                  key={index}
+                  className={`text-center flex-1 ${
+                    index <= sessionContext.currentQuestionIndex ? 'text-blue-600 font-medium' : 'text-gray-400'
+                  }`}
+                >
+                  <div className={`w-2 h-2 rounded-full mx-auto mb-1 ${
+                    index <= sessionContext.currentQuestionIndex ? 'bg-blue-600' : 'bg-gray-300'
+                  }`}></div>
+                  <div className="truncate px-1">
+                    Phase {index + 1}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Navigation Controls */}
+          <div className="flex justify-between items-center mt-6">
             <button
               onClick={goToPreviousQuestion}
               disabled={sessionContext.currentQuestionIndex === 0}
-              className={`px-3 py-2 rounded text-sm font-medium ${
-                sessionContext.currentQuestionIndex === 0
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-gray-600 text-white hover:bg-gray-700'
+              className={`btn-nav btn-compact ${
+                sessionContext.currentQuestionIndex === 0 ? 'btn-disabled' : ''
               }`}
             >
-              ← Previous
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/>
+              </svg>
+              <span>Previous Phase</span>
             </button>
+            
+            <div className="text-center">
+              <div className="text-sm font-medium text-gray-900">
+                Question {sessionContext.currentQuestionIndex + 1} of {totalQuestions}
+              </div>
+              <div className="text-xs text-gray-500">
+                Strategic Discussion Phase
+              </div>
+            </div>
+            
             <button
               onClick={goToNextQuestion}
               disabled={sessionContext.currentQuestionIndex >= totalQuestions - 1}
-              className={`px-3 py-2 rounded text-sm font-medium ${
-                sessionContext.currentQuestionIndex >= totalQuestions - 1
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              className={`btn-primary btn-compact ${
+                sessionContext.currentQuestionIndex >= totalQuestions - 1 ? 'btn-disabled' : ''
               }`}
             >
-              Next →
+              <span>Next Phase</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/>
+              </svg>
             </button>
           </div>
         </div>
-        
-        {/* Progress Bar */}
-        <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-          <div 
-            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${progressPercentage}%` }}
-          ></div>
+      </div>
+      
+      {/* Current Question Display */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
+        <div className="bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4 border-b border-blue-200">
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">Current Discussion Focus</h3>
+              <p className="text-xs text-gray-600">Phase {sessionContext.currentQuestionIndex + 1} Strategic Question</p>
+            </div>
+          </div>
         </div>
         
         {/* Current Question */}
@@ -813,72 +996,126 @@ const RoundtableCanvasV2: React.FC = () => {
         )}
       </div>
       
-      {/* Session controls */}
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold">🎙️ Live Discussion</h2>
-            <p className="text-gray-600">
-              {sessionContext.currentTopic || 'Strategic Planning Session'} • 
-              {sessionContext.liveTranscript.length} entries captured
-            </p>
-          </div>
-          
-          <div className="flex space-x-2">
-            {/* Voice Recording Toggle Button */}
-            <button
-              onClick={() => {
-                if (speechTranscription.isListening) {
-                  speechTranscription.stop();
-                  setIsRecording(false);
-                } else {
-                  speechTranscription.start();
-                  setIsRecording(true);
-                }
-              }}
-              className={`px-3 py-1.5 text-white text-sm rounded font-medium ${
-                speechTranscription.isListening 
-                  ? 'bg-red-600 hover:bg-red-700 animate-pulse' 
-                  : 'bg-green-600 hover:bg-green-700'
-              }`}
-            >
-              {speechTranscription.isListening ? '⏹️ Stop Voice' : '🎤 Start Voice'}
-            </button>
+      {/* Executive-Grade Unified Live Discussion Capture */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* Professional Header with Live Status */}
+        <div className="bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 text-white px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-4">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-5 6.93V21a1 1 0 11-2 0v-2.07A7 7 0 015 11h2m5.1 11a7 7 0 003.9 0"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6M9 8h6"/>
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold">Strategic Discussion Capture</h2>
+                <div className="flex items-center space-x-4 text-sm text-blue-100">
+                  <span>{sessionContext.currentTopic || 'Enterprise AI Transformation'}</span>
+                  <span>•</span>
+                  <span className="flex items-center">
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v8a2 2 0 002 2h3l3 3 3-3h3a2 2 0 002-2z" clipRule="evenodd"/>
+                    </svg>
+                    {sessionContext.liveTranscript.length} insights captured
+                  </span>
+                </div>
+              </div>
+            </div>
             
-            <button
-              onClick={addManualEntry}
-              className="px-3 py-1.5 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 font-medium"
-            >
-              ➕ Manual Entry
-            </button>
-            
-            <button
-              onClick={endSession}
-              className="px-3 py-1.5 bg-red-600 text-white text-sm rounded hover:bg-red-700 font-medium"
-            >
-              ⏹️ End Session
-            </button>
+            {/* Live Status Indicator */}
+            <div className="flex items-center space-x-2">
+              <div className={`w-3 h-3 rounded-full ${speechTranscription.isListening ? 'bg-red-400 animate-pulse' : 'bg-green-400'}`}></div>
+              <span className="text-sm font-medium">
+                {speechTranscription.isListening ? 'Live Recording' : 'Ready to Capture'}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Recording status */}
-        {isRecording && (
-          <div className="mt-4 flex items-center space-x-2 text-red-600">
-            <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse"></div>
-            <span className="font-medium">Recording Live Conversation</span>
+        {/* Executive Control Panel */}
+        <div className="bg-gradient-to-r from-gray-50 to-blue-50 px-6 py-5 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            {/* Speaker Configuration */}
+            <div className="flex items-center space-x-4">
+              <div className="min-w-0 flex-1">
+                <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Active Speaker</label>
+                <input
+                  type="text"
+                  value={currentSpeaker}
+                  onChange={(e) => setCurrentSpeaker(e.target.value)}
+                  className="w-48 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-medium"
+                  placeholder="Executive Name or Role"
+                />
+              </div>
+            </div>
+            
+            {/* Professional Action Controls */}
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => {
+                  if (speechTranscription.isListening) {
+                    speechTranscription.stop();
+                    setIsRecording(false);
+                  } else {
+                    speechTranscription.start();
+                    setIsRecording(true);
+                  }
+                }}
+                className={`btn-compact flex items-center space-x-2 ${
+                  speechTranscription.isListening 
+                    ? 'btn-danger animate-pulse' 
+                    : 'btn-success'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {speechTranscription.isListening ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-5 6.93V21a1 1 0 11-2 0v-2.07A7 7 0 015 11h2m5.1 11a7 7 0 003.9 0"/>
+                  )}
+                </svg>
+                <span>{speechTranscription.isListening ? 'Stop Recording' : 'Start Recording'}</span>
+              </button>
+              
+              <button
+                onClick={addManualEntry}
+                className="btn-secondary btn-compact flex items-center space-x-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+                <span>Manual Entry</span>
+              </button>
+              
+              <button
+                onClick={endSession}
+                className="btn-danger btn-compact flex items-center space-x-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 10l6 6M15 10l-6 6"/>
+                </svg>
+                <span>End Session</span>
+              </button>
+            </div>
           </div>
-        )}
-
-        {/* Current speaker */}
-        <div className="mt-4">
-          <label className="block text-sm font-medium mb-2">Current Speaker</label>
-          <input
-            type="text"
-            value={currentSpeaker}
-            onChange={(e) => setCurrentSpeaker(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md"
-            placeholder="Speaker name"
-          />
+          
+          {/* Enhanced Recording Status */}
+          {speechTranscription.isListening && (
+            <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3">
+              <div className="flex items-center space-x-3">
+                <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-semibold text-red-900">Live Recording Active</span>
+                    <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">AI Transcription Enabled</span>
+                  </div>
+                  <p className="text-xs text-red-700 mt-1">Strategic insights are being captured and processed in real-time for immediate analysis</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
