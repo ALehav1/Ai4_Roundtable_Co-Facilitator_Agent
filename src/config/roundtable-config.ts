@@ -1,9 +1,12 @@
 /**
- * AI Roundtable Configuration System
+ * AI Co-Facilitator Configuration System
+ * 
+ * Specialized Configuration for: "When AI Becomes How the Enterprise Works"
+ * Strategic AI Transformation Session with 5-Phase Framework
  * 
  * This file contains all the configurable elements for your roundtable session:
  * - Questions and prompts for each phase
- * - AI system prompts and behavior settings
+ * - AI system prompts and behavior settings  
  * - Session parameters and timing
  * - UI text and labels
  * 
@@ -35,7 +38,7 @@ export interface SessionConfig {
   enableTestMode: boolean;
   rateLimitPerHour: number;
   autoExportResults: boolean;
-  // NEW: Introduction phase configuration
+  // Introduction phase configuration
   introSection: {
     title: string;
     description: string;
@@ -45,127 +48,146 @@ export interface SessionConfig {
 }
 
 // =============================================================================
-// MAIN CONFIGURATION - MODIFY THESE VALUES TO CUSTOMIZE YOUR SESSION
+// MAIN CONFIGURATION - "When AI Becomes How the Enterprise Works" Session
 // =============================================================================
 
 export const sessionConfig: SessionConfig = {
-  title: 'Strategic AI Transformation: From Copilots to Reflexive Systems',
-  description: 'Facilitator Tool for Strategic AI Interventions with Senior Leaders',
+  title: "When AI Becomes How the Enterprise Works",
+  description: "Strategic transformation session exploring the three-shift framework: Tools→Agents, Outputs→Feedback Loops, Individual→Shared Intelligence. Features a meta-moment demonstration of reflexive AI systems.",
   maxParticipants: 20,
-  enableTestMode: true, // Set to false for live sessions
-  rateLimitPerHour: 100, // Max AI calls per hour
+  enableTestMode: false, // Set to true for rehearsal sessions
+  rateLimitPerHour: 100,
   autoExportResults: true,
-  // NEW: Introduction phase content
   introSection: {
-    title: "Welcome & Session Objectives",
-    description: "Take a moment to understand the session goals and facilitator guidance before beginning the strategic discussion.",
+    title: "Session Overview: When AI Becomes How the Enterprise Works",
+    description: "This session explores how AI transformation fundamentally changes enterprise operations through three strategic shifts, culminating in a live demonstration of reflexive AI systems.",
     objectives: [
-      "Align on the strategic implications of advancing AI capabilities.",
-      "Assess our organization's readiness for intelligent, learning systems.",
-      "Identify key tensions between short-term AI wins and long-term transformation.",
-      "Define actionable next steps for our AI strategy."
+      "Envision AI-native enterprise operations by 2028",
+      "Understand the three-shift transformation framework",
+      "Identify foundational capabilities needed today",
+      "Experience reflexive AI systems through live demonstration",
+      "Develop actionable transformation strategies"
     ],
     facilitatorNotes: [
-      "Your role is to guide, not to have the answers.",
-      "Use the AI insights to provoke deeper strategic thought.",
-      "Keep the conversation focused on business outcomes, not just technology."
+      "This is a 5-phase strategic journey, not just Q&A",
+      "Phase 4 features the meta-moment: demonstrate the co-facilitator itself",
+      "Use SalesRecon as concrete example throughout",
+      "Keep timing tight - each phase builds on the previous",
+      "The AI will understand your three-shift framework and provide aligned insights"
     ]
   }
 };
 
 
 
-// Strategic AI Transformation Questions - Moving Beyond Basic Automation
+// 5-Phase Strategic Framework: "When AI Becomes How the Enterprise Works"
 export const roundtableQuestions: RoundtableQuestion[] = [
   {
-    id: "organizational_readiness",
-    title: "Q1: Is your organization ready for intelligent, learning AI systems?",
-    description: "Moving beyond simple task automation to AI that learns from your business and gets smarter over time. What capabilities and culture changes does this require?",
-    timeLimit: 8,
-    aiPromptContext: "This question assesses organizational readiness for AI systems that continuously learn and improve. Focus on current gaps in data infrastructure, learning culture, and organizational capabilities needed for intelligent systems.",
+    id: "future_vision_2028",
+    title: "Phase 1: Future Vision - Enterprise Operations in 2028",
+    description: "Imagine your enterprise fully transformed by AI. Instead of people using AI tools, AI agents handle entire workflows. What does day-to-day operations look like when AI becomes how your enterprise actually works?",
+    timeLimit: 12,
+    aiPromptContext: "This is about envisioning AI-native enterprise operations by 2028. Focus on the three-shift framework: Tools→Agents, Outputs→Feedback Loops, Individual→Shared Intelligence. Help participants think beyond current AI tools to fully integrated AI operations. Reference SalesRecon as a concrete example when relevant.",
     followUpPrompts: [
-      "What parts of your organization are currently building knowledge that compounds over time?",
-      "Who in your organization owns continuous improvement and learning loops?",
-      "How would you rate your organization's ability to learn from data and feedback?"
+      "What decisions would be made automatically by AI agents rather than people?",
+      "How would customer interactions change when AI handles the full relationship lifecycle?",
+      "What knowledge would your AI systems accumulate that humans currently can't?",
+      "How would your competitive advantage shift when AI becomes your primary operating system?"
     ]
   },
   {
-    id: "implementation_strategy",
-    title: "Q2: How do you balance quick AI wins with long-term transformation?",
-    description: "You need to show results quickly while building toward more sophisticated AI capabilities. What's the right sequencing to avoid getting trapped in short-term solutions?",
-    timeLimit: 8,
-    aiPromptContext: "This question addresses the strategic tension between immediate results and sustainable AI transformation. Focus on practical implementation phases and avoiding technical debt that limits future capabilities.",
+    id: "three_shift_framework",
+    title: "Phase 2: The Three-Shift Framework - Your Transformation Thesis",
+    description: "Three fundamental shifts define AI transformation: Tools→Agents (AI takes over entire workflows), Outputs→Feedback Loops (systems learn and improve continuously), Individual→Shared Intelligence (organizational knowledge becomes systemic). Which shift is most critical for your enterprise?",
+    timeLimit: 15,
+    aiPromptContext: "This phase introduces the core thesis: Tools→Agents, Outputs→Feedback Loops, Individual→Shared Intelligence. Help participants understand each shift deeply and identify which is most relevant to their context. Use SalesRecon as a concrete example: tools become agents that handle full sales processes, outputs become feedback loops that improve continuously, individual relationships become shared enterprise intelligence.",
     followUpPrompts: [
-      "Is your current AI roadmap too focused on quick wins to build lasting capabilities?",
-      "What foundational investments could you make now that enable future AI sophistication?",
-      "How do you sequence AI projects to build momentum while preserving strategic options?"
+      "Which of your current AI 'tools' could become autonomous agents handling full workflows?",
+      "Where do you see the biggest gap between individual knowledge and organizational intelligence?",
+      "What feedback loops could you create that make your systems smarter over time?",
+      "How would SalesRecon demonstrate this shift from tools to agents in your context?"
     ]
   },
   {
-    id: "internal_alignment",
-    title: "Q3: How do you build internal support for AI transformation?",
-    description: "This isn't just a technology project—it requires changing how your organization thinks about data, decisions, and continuous learning. How do you get stakeholder buy-in?",
-    timeLimit: 8,
-    aiPromptContext: "This question focuses on internal change management and stakeholder alignment for AI transformation. Address executive sponsorship, funding models, and identifying change champions.",
+    id: "foundations_discussion",
+    title: "Phase 3: Foundations Discussion - What's Needed Today",
+    description: "To enable AI-native operations, you need foundational capabilities today: data architecture that supports learning, organizational culture that embraces AI agents, and systems designed for continuous feedback loops. What are your critical foundation gaps?",
+    timeLimit: 12,
+    aiPromptContext: "Focus on practical foundational requirements for the three-shift transformation. Address data infrastructure, organizational readiness, cultural changes, and system architecture needed to support AI agents, feedback loops, and shared intelligence. Connect to their specific industry and context.",
     followUpPrompts: [
-      "Who are your internal champions for this kind of AI transformation?",
-      "What's the business case that resonates most with your leadership team?",
-      "How do you fund both the technology and the organizational changes required?"
+      "What data foundation would your AI agents need to operate autonomously?",
+      "How would you restructure decision-making to support AI-driven feedback loops?",
+      "What cultural shifts are required when AI becomes how work gets done, not just a tool?",
+      "Which foundational investments could you make now that enable future AI sophistication?"
     ]
   },
   {
-    id: "timing_and_competitive_advantage",
-    title: "Q4: Should you move fast on advanced AI or perfect the basics first?",
-    description: "There's a risk in moving too slowly (competitors get ahead) and too quickly (you build on unstable foundations). How do you time your AI investments strategically?",
-    timeLimit: 8,
-    aiPromptContext: "This question addresses strategic timing for AI investments and competitive positioning. Focus on the tradeoffs between speed and foundation-building, and the risk of being locked into suboptimal approaches.",
+    id: "meta_moment_demo",
+    title: "Phase 4: Meta-Moment - The Co-Facilitator Itself",
+    description: "🎭 LIVE DEMONSTRATION: This AI co-facilitator exemplifies reflexive systems - it learns from our conversation, builds institutional memory, and demonstrates how AI becomes the enterprise operating system. Let's examine how this session itself proves the transformation thesis.",
+    timeLimit: 10,
+    aiPromptContext: "This is the meta-moment! Demonstrate reflexive AI systems by analyzing how this conversation itself shows the three-shift framework in action. Show how the AI has learned from the session, built memory, and demonstrates shared intelligence. This is 'show don't tell' for the entire thesis. Reference specific moments from the session and show how AI transforms facilitation itself.",
     followUpPrompts: [
-      "Are your current AI investments creating the foundation for more advanced capabilities, or locking you into limitations?",
-      "If you win now but can't learn over time, what's the cost?",
-      "What's the competitive risk of waiting vs. moving too fast?"
+      "How has this AI system learned and adapted during our conversation?",
+      "What patterns has it identified that no individual participant could see?",
+      "How does this demonstrate AI as enterprise operating system, not just a tool?",
+      "What would it mean if all your enterprise systems operated this way?"
+    ]
+  },
+  {
+    id: "closing_reflection",
+    title: "Phase 5: Closing Reflection - Actionable Takeaways",
+    description: "Synthesizing everything: What are your concrete next steps to begin this transformation? What will you do differently in the next 90 days? How will you measure progress toward AI-native operations?",
+    timeLimit: 8,
+    aiPromptContext: "Final synthesis phase. Help participants identify specific, actionable next steps based on the entire conversation. Reference insights from all previous phases and the meta-moment. Focus on 90-day actions that begin the three-shift transformation. Make it concrete and measurable.",
+    followUpPrompts: [
+      "What's the first workflow you'll transition from tools to autonomous agents?",
+      "How will you measure progress toward each of the three shifts?",
+      "What foundational investment will you prioritize in the next quarter?",
+      "How will you know when AI has become how your enterprise works, not just what it uses?"
     ]
   }
 ];
 
-// AI Behavior Configuration - Customize how the AI facilitates
+// AI Behavior Configuration - Specialized for AI Transformation Session
 export const aiConfig: AIPromptConfig = {
-  systemPrompt: `You are an AI co-facilitator partner working alongside a human facilitator in an enterprise strategic roundtable. You are not just analyzing - you are actively co-facilitating as an equal partner.`,
+  systemPrompt: `You are an AI co-facilitator specializing in "When AI Becomes How the Enterprise Works" - a strategic session about the three-shift transformation: Tools→Agents, Outputs→Feedback Loops, Individual→Shared Intelligence. You exemplify reflexive AI systems and demonstrate the meta-moment concept. Reference SalesRecon as a concrete example when relevant.`,
 
-  analysisPrompt: `Analyze the following discussion responses and provide:
-1. Key patterns or themes emerging
-2. Interesting contradictions or tensions
-3. One strategic insight that connects multiple responses
-4. A probing follow-up question
+  analysisPrompt: `Analyze responses through the lens of AI transformation strategy:
+1. How do responses connect to the three-shift framework (Tools→Agents, Outputs→Feedback Loops, Individual→Shared Intelligence)?
+2. What gaps exist between current AI tool usage and true AI-native operations?
+3. Strategic insight connecting responses to 2028 vision of AI-powered enterprise
+4. Probing question that advances the transformation thesis
 
-Question Context: {context}
+Phase Context: {context}
 Responses: {responses}`,
 
-  insightPrompt: `Based on the discussion so far, identify:
-1. The most significant strategic insight
-2. One surprising or unexpected point
-3. A practical implication for organizations
-4. What question should we explore next?`,
+  insightPrompt: `Analyze through the specialized AI transformation lens:
+1. Most significant insight about moving from AI tools to AI-native operations
+2. Key resistance points or readiness gaps for the three-shift transformation  
+3. Practical next step toward Tools→Agents, Outputs→Feedback Loops, or Individual→Shared Intelligence
+4. How does this connect to the meta-moment - this AI system demonstrating reflexive intelligence?`,
 
-  synthesisPrompt: `Synthesize the entire discussion to provide:
-1. Top 3 strategic takeaways
-2. Key tensions or trade-offs identified
-3. Most promising opportunity areas
-4. Recommended next actions`,
+  synthesisPrompt: `Synthesize the entire AI transformation discussion:
+1. Progress toward each shift: Tools→Agents, Outputs→Feedback Loops, Individual→Shared Intelligence
+2. Critical foundation gaps preventing AI-native operations
+3. Most promising 90-day actions to begin transformation
+4. How this session itself demonstrates the meta-moment thesis`,
 
-  temperature: 0.7, // Creativity vs consistency (0.0 - 1.0)
-  maxTokens: 400   // Maximum response length
+  temperature: 0.8, // Higher creativity for strategic transformation insights
+  maxTokens: 500   // More detailed analysis for complex strategic topics
 };
 
-// UI Text and Labels - Customize the interface text
+// UI Text and Labels - Specialized for AI Transformation Session
 export const uiText = {
-  welcomeMessage: "Strategic AI Transformation Facilitator",
-  instructionsTitle: "Facilitator Guide: How to Lead This Session",
+  welcomeMessage: "When AI Becomes How the Enterprise Works",
+  instructionsTitle: "5-Phase Strategic Framework Guide",
   instructions: [
-    "🎯 **Your Role**: You're facilitating a strategic discussion with senior leaders about AI transformation",
-    "📋 **The Flow**: Present each question to the group, collect responses, then use AI insights to deepen the conversation",
-    "🤖 **Your AI Partner**: The AI analyzes responses in real-time and suggests follow-up questions and strategic insights",
-    "💡 **Pro Tip**: Use the AI insights to guide discussion - read them aloud or use them to ask probing questions",
-    "⏱️ **Timing**: Each question has an 8-minute time limit, but you can extend discussion as needed"
+    "🎯 **The Thesis**: Guide leaders through three fundamental shifts: Tools→Agents, Outputs→Feedback Loops, Individual→Shared Intelligence",
+    "📋 **5-Phase Flow**: Future Vision → Three-Shift Framework → Foundations → Meta-Moment Demo → Actionable Takeaways",
+    "🤖 **AI Co-Facilitator**: This system demonstrates reflexive AI - it learns from your conversation and exemplifies the transformation thesis itself",
+    "🎭 **Meta-Moment**: Phase 4 reveals how this AI session proves the three-shift framework in real-time",
+    "⏱️ **Timing**: Phases vary from 8-15 minutes; extend as needed for strategic breakthroughs"
   ],
   facilitatorInstructions: {
     title: "How to Use This Tool",
