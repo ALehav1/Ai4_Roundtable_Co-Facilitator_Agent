@@ -844,17 +844,17 @@ const RoundtableCanvasV2: React.FC = () => {
               Conversation transcript will appear here as you speak...
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {sessionContext.liveTranscript.map((entry) => (
-                <div key={entry.id} className="bg-white p-3 rounded border-l-4 border-blue-500">
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-semibold text-blue-600">{entry.speaker}</span>
-                    <span className="text-xs text-gray-500">
+                <div key={entry.id} className="bg-white p-3 rounded border-l-4 border-blue-500 shadow-sm">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="font-semibold text-blue-600 text-sm">{entry.speaker}</span>
+                    <span className="text-xs text-gray-500 whitespace-nowrap ml-2">
                       {entry.timestamp.toLocaleTimeString()}
                       {entry.isAutoDetected && <span className="ml-1">🎤</span>}
                     </span>
                   </div>
-                  <p className="text-gray-800">{entry.text}</p>
+                  <p className="text-gray-800 text-sm leading-relaxed">{entry.text}</p>
                 </div>
               ))}
               
