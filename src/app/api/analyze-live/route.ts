@@ -81,98 +81,60 @@ function checkRateLimit(clientId: string): boolean {
  */
 function buildLiveAnalysisPrompt(
   analysisType: string,
-  sessionTopic: string,
-  transcript: string
+  transcript: string,
+  currentQuestion: any
 ): string {
-  const baseRules = `
-CRITICAL RULES:
-- ONLY reference content actually present in the transcript
-- NEVER fabricate participant names, quotes, or details
-- If transcript is minimal, acknowledge this explicitly
-- Focus on what WAS discussed, not what COULD be discussed
-- Provide specific, actionable insights based on actual content
-`;
-
-  const topicContext = `Session Topic: "${sessionTopic}"`;
-
-  switch (analysisType) {
-    case 'insights':
-      return `Analyze this transcript and provide strategic insights using simple numbered format.
+  // 🚨 ULTRA CLEAN PROMPTS - NO MENTION OF FORMATTING
+  
+  if (analysisType === 'insights') {
+    return `You are analyzing a business discussion transcript. Provide exactly 4 numbered points:
 
 TRANSCRIPT:
 ${transcript}
 
-OUTPUT FORMAT:
-1. Key theme: [Your analysis]
-2. Pattern observed: [Your observation]
-3. Important quote: "[Exact quote]"
-4. Recommended next step: [Your recommendation]
+RESPONSE FORMAT:
+1. Key theme: [your analysis]
+2. Pattern observed: [your observation]  
+3. Important quote: [exact quote from transcript]
+4. Recommended next step: [your recommendation]
 
-Use simple numbered format only.`;
-
-    case 'synthesis':
-      return `${baseRules}
-
-${topicContext}
-
-Synthesize the actual discussion content below. Connect themes and identify concrete outcomes based on what was actually said.
-
-TRANSCRIPT:
-"${transcript}"
-
-Provide synthesis in this format:
-- Main conclusions from actual discussion
-- Areas of agreement/disagreement (if evident)
-- Concrete next steps based on conversation
-- Key decisions or insights that emerged
-
-Only reference actual conversation content.`;
-
-    case 'followup':
-      return `${baseRules}
-
-${topicContext}
-
-Based on this transcript, generate 3-4 strategic follow-up questions that would deepen the AI transformation discussion.
-
-TRANSCRIPT:
-${transcript}
-
-OUTPUT FORMAT:
-1. [First strategic question]
-2. [Second strategic question]
-3. [Third strategic question]
-4. [Fourth strategic question]
-
-Make questions specific to what was actually discussed. Use simple numbered format only.`;
-
-    case 'facilitation':
-      return `${baseRules}
-
-${topicContext}
-
-As a co-facilitator, analyze the actual discussion flow and provide specific facilitation suggestions based on what actually happened.
-
-TRANSCRIPT:
-"${transcript}"
-
-Provide facilitation guidance:
-- Assessment of current discussion quality
-- Suggestions based on actual participation patterns
-- Next facilitation moves based on conversation state
-- Ways to build on what was actually discussed
-
-Focus on concrete, actionable facilitation based on actual content.`;
-
-    default:
-      return `${baseRules}
-
-${topicContext}
-
-Analyze the discussion content: "${transcript}"
-
-Provide factual analysis based only on actual content discussed.`;
+Respond with only plain text. Use the exact numbering shown above.`;
   }
+  
+  if (analysisType === 'followup') {
+    return `Generate 4 strategic follow-up questions based on this transcript:
+
+TRANSCRIPT:
+${transcript}
+
+RESPONSE FORMAT:
+1. [question]
+2. [question]
+3. [question]
+4. [question]
+
+Respond with only plain text questions.`;
+  }
+  
+  if (analysisType === 'cross_reference') {
+    return `Identify connections in this business discussion:
+
+TRANSCRIPT:
+${transcript}
+
+Provide 4 numbered connection points about themes, patterns, and strategic implications.`;
+  }
+  
+  if (analysisType === 'synthesis') {
+    return `Synthesize this discussion into key strategic takeaways:
+
+TRANSCRIPT:
+${transcript}
+
+Provide 4 numbered strategic themes and recommendations.`;
+  }
+  
+  return 'Invalid analysis type';
 }
 
 // POST /api/analyze-live
@@ -182,6 +144,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
+    
+    // 🔍 CRITICAL DEBUG LOGGING
+    console.log('🚨 DEBUG - Raw request body:', JSON.stringify(body, null, 2));
     
     // Validate request with strict schema
     const parseResult = LiveAnalyzeRequestSchema.safeParse(body);
@@ -198,6 +163,9 @@ export async function POST(request: NextRequest) {
 
     const { sessionTopic, liveTranscript, analysisType, clientId = 'anonymous' } = parseResult.data;
 
+    // 🔍 CRITICAL DEBUG LOGGING
+    console.log('🚨 DEBUG - Analysis type:', analysisType);
+    
     // Rate limiting
     if (!checkRateLimit(clientId)) {
       return NextResponse.json(
@@ -217,11 +185,26 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString()
     });
 
+    // Build live transcript from entries
+    const transcript = liveTranscript;
+    
+    // 🔍 CRITICAL DEBUG - Check if transcript contains HTML
+    console.log('🚨 DEBUG - Final transcript being sent to AI:');
+    console.log('---START TRANSCRIPT---');
+    console.log(transcript);
+    console.log('---END TRANSCRIPT---');
+    
+    // Check for HTML contamination
+    if (transcript.includes('<div') || transcript.includes('class=')) {
+      console.error('🚨 CONTAMINATION DETECTED: Transcript contains HTML!');
+      console.error('Contaminated content:', transcript);
+    }
+
     // Build strict prompt
     const userPrompt = buildLiveAnalysisPrompt(
       analysisType,
       sessionTopic,
-      liveTranscript
+      transcript
     );
 
     // Initialize OpenAI client (check all possible env var names)
@@ -263,6 +246,18 @@ export async function POST(request: NextRequest) {
     });
 
     const aiResponse = completion.choices[0]?.message?.content;
+    
+    // 🔍 DEBUG - Log AI response
+    console.log('🚨 DEBUG - Raw AI response:');
+    console.log('---START AI RESPONSE---');
+    console.log(aiResponse);
+    console.log('---END AI RESPONSE---');
+    
+    // Check if AI response contains CSS classes
+    if (aiResponse && (aiResponse.includes('class=') || aiResponse.includes('font-semibold') || aiResponse.includes('bg-purple'))) {
+      console.error('🚨 AI CONTAMINATION: AI returned CSS classes!');
+      console.error('Contaminated AI response:', aiResponse);
+    }
     
     if (!aiResponse) {
       throw new Error('No response from AI model');

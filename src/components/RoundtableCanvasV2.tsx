@@ -230,15 +230,37 @@ const RoundtableCanvasV2: React.FC = () => {
   // AI analysis with live transcript context
   const callAIAnalysis = useCallback(async (analysisType: string = 'insights') => {
     try {
+      // 🚨 CRITICAL DEBUG - Log raw transcript entries first
+      console.log('🚨 DEBUG - Raw liveTranscript entries:', JSON.stringify(sessionContext.liveTranscript, null, 2));
+      
+      // 🧹 SANITIZE transcript entries - strip any HTML
+      const cleanTranscriptEntries = sessionContext.liveTranscript.map(entry => ({
+        speaker: entry.speaker,
+        text: entry.text.replace(/<[^>]*>/g, '') // Strip all HTML tags
+      }));
+      
+      console.log('🧹 DEBUG - Cleaned transcript entries:', JSON.stringify(cleanTranscriptEntries, null, 2));
+      
       // Build live transcript for AI context
-      const transcriptText = sessionContext.liveTranscript
+      const transcriptText = cleanTranscriptEntries
         .map(entry => `${entry.speaker}: ${entry.text}`)
         .join('\n');
+      
+      // 🔍 CRITICAL DEBUG - Check if transcript contains HTML contamination
+      console.log('🚨 DEBUG - Final transcript being sent to AI:');
+      console.log('---START TRANSCRIPT---');
+      console.log(transcriptText);
+      console.log('---END TRANSCRIPT---');
+      
+      if (transcriptText.includes('<div') || transcriptText.includes('class=')) {
+        console.error('🚨 FRONTEND CONTAMINATION DETECTED: Transcript contains HTML!');
+        console.error('Contaminated transcript:', transcriptText);
+      }
       
       console.log('🔍 Starting AI Analysis:', {
         type: analysisType,
         transcriptLength: transcriptText.length,
-        entryCount: sessionContext.liveTranscript.length,
+        entryCount: cleanTranscriptEntries.length,
         topic: sessionContext.currentTopic
       });
 
@@ -261,6 +283,33 @@ const RoundtableCanvasV2: React.FC = () => {
           console.log('✅ Live AI Analysis (new endpoint):', liveData);
           
           if (liveData.success) {
+            const aiContent = liveData.insights || liveData.content || liveData.analysis;
+            
+            // 🚨 CRITICAL: Check for contamination before setting
+            if (aiContent && (aiContent.includes('class=') || aiContent.includes('font-semibold') || aiContent.includes('bg-purple'))) {
+              console.error('🚨 CONTAMINATED AI RESPONSE DETECTED!');
+              console.error('Contaminated response:', aiContent);
+              setSessionContext(prev => {
+                const existingInsights = prev.aiInsights.filter(insight => insight.type !== analysisType);
+                return {
+                  ...prev,
+                  aiInsights: [...existingInsights, {
+                    id: `insight_${Date.now()}`,
+                    type: analysisType,
+                    content: 'Error: AI response contaminated. Please refresh and try again.',
+                    timestamp: new Date(),
+                    confidence: 0,
+                    suggestions: [],
+                    metadata: { error: 'contamination_detected' }
+                  }],
+                };
+              });
+              return;
+            }
+            
+            // 🔍 DEBUG: Log clean AI response
+            console.log('🔍 Clean AI Response received:', aiContent);
+            
             // Replace existing insight of same type or add new one
             setSessionContext(prev => {
               const existingInsights = prev.aiInsights.filter(insight => insight.type !== analysisType);
@@ -269,7 +318,7 @@ const RoundtableCanvasV2: React.FC = () => {
                 aiInsights: [...existingInsights, {
                   id: `insight_${Date.now()}`,
                   type: analysisType,
-                  content: liveData.insights || liveData.content || liveData.analysis,
+                  content: aiContent,
                   timestamp: new Date(),
                   confidence: liveData.confidence,
                   suggestions: liveData.suggestions || [],
@@ -464,20 +513,23 @@ const RoundtableCanvasV2: React.FC = () => {
   }, [callAIAnalysis]);
   
   // Enhanced formatting for AI insights content (Priority 4: Helper Functions)
+  // 🚨 SIMPLIFIED FORMATTING ONLY - NO COMPLEX CSS REFERENCES
   const formatAIInsights = useCallback((insights: string) => {
     if (!insights) return '';
     
+    // 🔍 DEBUG: Log what we're formatting
+    console.log('🔍 Formatting AI insights:', insights);
+    
+    // 🚨 SIMPLE FORMATTING ONLY
     return insights
-      // Format numbered items (1. 2. 3. etc.)
-      .replace(/^(\d+)\. (.+?):/gm, '<div class="mb-4"><h5 class="font-semibold text-gray-900 mb-2 flex items-center"><span class="w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm mr-2">$1</span>$2</h5>')
-      // Close the div after the content
-      .replace(/(<h5.*?<\/h5>)([\s\S]*?)(?=<div|$)/g, '$1<p class="text-gray-700 ml-8 leading-relaxed">$2</p></div>')
-      // Format quotes
-      .replace(/"([^"]+)"/g, '<span class="bg-blue-50 px-2 py-1 rounded text-blue-800 font-medium italic">"$1"</span>')
-      // Add paragraph breaks for better spacing
-      .replace(/\n\n/g, '<br><br>')
-      // Clean up any remaining line breaks
-      .replace(/\n/g, ' ');
+      .split('\n')
+      .map(line => {
+        if (line.match(/^\d+\./)) {
+          return `<div class="mb-3 p-3 bg-gray-50 rounded-lg">${line}</div>`;
+        }
+        return line;
+      })
+      .join('\n');
   }, []);
 
   // Enhanced content validation (Priority 4: Helper Functions)
