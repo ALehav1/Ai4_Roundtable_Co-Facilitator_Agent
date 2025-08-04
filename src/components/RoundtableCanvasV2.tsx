@@ -82,8 +82,8 @@ const RoundtableCanvasV2: React.FC = () => {
     state: 'intro',
     startTime: new Date(),
     facilitator: "facilitator", // Default value as requested
-    topic: "when ai becomes how the enterprise operates", // Default topic as requested
-    currentTopic: "when ai becomes how the enterprise operates", // Default topic as requested
+    topic: sessionConfig.title, // Use session title from config
+    currentTopic: sessionConfig.title, // Use session title from config
     liveTranscript: [],
     aiInsights: [],
     keyThemes: [],
@@ -415,7 +415,7 @@ const RoundtableCanvasV2: React.FC = () => {
   const snapshotToSessionContext = useCallback((snapshot: SessionSnapshot): SessionContext => {
     return {
       facilitator: (snapshot as any).facilitator || 'facilitator',
-      topic: (snapshot as any).topic || 'when ai becomes how the enterprise operates',
+      topic: (snapshot as any).topic || sessionConfig.title,
       state: snapshot.sessionState as SessionState,
       startTime: new Date(snapshot.startTime),
       currentTopic: snapshot.currentTopic,
@@ -1197,8 +1197,8 @@ const RoundtableCanvasV2: React.FC = () => {
                     state: 'intro',
                     startTime: new Date(),
                     facilitator: "facilitator",
-                    topic: "when ai becomes how the enterprise operates",
-                    currentTopic: 'when ai becomes how the enterprise operates',
+                    topic: sessionConfig.title,
+                    currentTopic: sessionConfig.title,
                     liveTranscript: [],
                     aiInsights: [],
                     keyThemes: [],
