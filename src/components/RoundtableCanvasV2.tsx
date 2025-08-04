@@ -1208,7 +1208,7 @@ const RoundtableCanvasV2: React.FC = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
                     title="Select speaker"
                   >
-                    <option value="Facilitator">👨‍💼 Facilitator</option>
+                    <option value="Speaker">🗣️ Speaker</option>
                     <option value="Speaker 1">🗣️ Speaker 1</option>
                     <option value="Speaker 2">🗣️ Speaker 2</option>
                     <option value="Speaker 3">🗣️ Speaker 3</option>
@@ -1250,7 +1250,7 @@ const RoundtableCanvasV2: React.FC = () => {
                   <div className="bg-white p-2 rounded text-xs font-mono text-gray-600">
                     Speaker Name: What they said...<br/>
                     Another Speaker: Their response...<br/>
-                    Facilitator: Question or comment...
+                    Speaker: Question or comment...
                   </div>
                 </div>
                 
@@ -1260,7 +1260,7 @@ const RoundtableCanvasV2: React.FC = () => {
                     value={bulkTranscriptText}
                     onChange={(e) => setBulkTranscriptText(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md h-64 resize-none font-mono text-sm"
-                    placeholder="Paste your full transcript here...\n\nExample:\nFacilitator: Welcome everyone to today's session.\nSpeaker 1: Thank you for having us.\nSpeaker 2: Looking forward to the discussion."
+                    placeholder="Paste your full transcript here...\n\nExample:\nSpeaker: Welcome everyone to today's session.\nSpeaker 1: Thank you for having us.\nSpeaker 2: Looking forward to the discussion."
                     autoFocus
                   />
                 </div>
