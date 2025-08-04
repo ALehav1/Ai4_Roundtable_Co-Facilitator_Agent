@@ -106,13 +106,20 @@ Analyze the actual discussion content below and provide specific insights based 
 TRANSCRIPT:
 "${transcript}"
 
-Provide insights in this format:
-- Key themes from actual discussion
-- Patterns in participant responses (if any)
-- Specific quotes or points raised (exact text only)
-- Next steps based on actual conversation gaps
+Provide insights in clean markdown format using this structure:
+**Key themes from actual discussion**
+- Your analysis here
 
-Be direct and factual. No speculation beyond what's actually discussed.`;
+**Patterns in participant responses**
+- Your analysis here
+
+**Specific quotes or points raised**
+- Exact quotes only
+
+**Next steps based on actual conversation gaps**
+- Your recommendations here
+
+Use ONLY markdown formatting (**, -, etc.). Do NOT include HTML, CSS class names, or any other formatting. Be direct and factual. No speculation beyond what's actually discussed.`;
 
     case 'synthesis':
       return `${baseRules}
