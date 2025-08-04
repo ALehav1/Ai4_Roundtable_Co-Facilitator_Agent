@@ -46,6 +46,18 @@
   }
 }
 
+/* Enhanced Professional Styling for AI Co-Facilitator */
+
+/* Color Variables */
+:root {
+  --insights-primary: #8b5cf6;
+  --insights-secondary: #a78bfa;
+  --questions-primary: #3b82f6;
+  --questions-secondary: #60a5fa;
+  --success-color: #10b981;
+  --transcript-primary: #6b7280;
+}
+
 /* Component-specific styles */
 @layer components {
   /* Split-pane layout utilities for MVP */
@@ -165,9 +177,104 @@
 
 /* Utility classes */
 @layer utilities {
+  /* AI Insights Content Styling */
+  .ai-insights-section {
+    @apply space-y-6;
+  }
+
+  .ai-insights-content h4,
+  .ai-insights-content strong {
+    @apply text-gray-900 font-semibold text-base mb-4 pb-2 border-b border-gray-200 flex items-center;
+  }
+
+  .ai-insights-content h4::before,
+  .ai-insights-content p:has(strong)::before {
+    content: '';
+    @apply w-1 h-4 bg-purple-500 rounded-full mr-3;
+  }
+
+  .ai-insights-content h4:not(:first-child),
+  .ai-insights-content p:has(strong):not(:first-child) {
+    @apply mt-8;
+  }
+
+  .ai-insights-content ul {
+    @apply space-y-3 mb-6 ml-0;
+  }
+
+  .ai-insights-content li {
+    @apply text-gray-700 leading-relaxed pl-6 relative;
+  }
+
+  .ai-insights-content li::before {
+    content: '•';
+    @apply absolute left-2 text-purple-500 font-bold text-lg;
+  }
+
+  /* Follow-up Questions Styling */
+  .followup-questions-section {
+    @apply space-y-4;
+  }
+
+  .followup-question {
+    @apply bg-blue-50/50 border border-blue-100 rounded-lg p-4 hover:bg-blue-50 transition-colors;
+  }
+
+  .followup-question-number {
+    @apply inline-flex items-center justify-center w-6 h-6 bg-blue-600 text-white text-sm font-semibold rounded-full mr-3 flex-shrink-0;
+  }
+
+  /* Enhanced Quote Styling */
+  .ai-insights-content blockquote,
+  .ai-quote {
+    @apply bg-blue-50 border-l-4 border-blue-400 pl-4 py-3 my-4 rounded-r-lg italic;
+  }
+
+  /* Executive Grade Container Styling */
+  .executive-card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200;
+  }
+
+  .executive-button-primary {
+    @apply px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-lg 
+           hover:from-blue-700 hover:to-blue-800 focus:ring-4 focus:ring-blue-200 
+           transition-all duration-200 shadow-sm hover:shadow-md;
+  }
+
+  .executive-button-secondary {
+    @apply px-6 py-3 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg
+           hover:bg-gray-50 hover:border-gray-400 focus:ring-4 focus:ring-gray-200
+           transition-all duration-200 shadow-sm hover:shadow-md;
+  }
+
+  /* Professional Layout Improvements */
+  .main-layout {
+    @apply min-h-screen bg-gradient-to-br from-gray-50 to-gray-100;
+  }
+
+  .content-grid {
+    @apply grid grid-cols-1 lg:grid-cols-2 gap-8 p-8 max-w-7xl mx-auto;
+  }
+
   /* Text gradient utilities */
   .text-gradient {
     @apply bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent;
+  }
+
+  /* Enhanced Animations */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .fade-in-up {
+    animation: fadeInUp 0.6s ease-out;
   }
   
   /* Animation utilities */
@@ -181,6 +288,59 @@
   
   .animate-fade-in {
     animation: fadeIn 0.5s ease-in-out;
+  }
+
+  /* EXECUTIVE-GRADE BUTTON STYLING */
+  
+  /* Primary Action Buttons */
+  .btn-primary {
+    @apply bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-xl font-semibold 
+           shadow-lg hover:shadow-xl transition-all duration-200 hover:from-blue-700 hover:to-blue-800 
+           flex items-center justify-center space-x-2;
+  }
+
+  /* Secondary Action Buttons */
+  .btn-secondary {
+    @apply bg-gradient-to-r from-gray-600 to-gray-700 text-white px-6 py-3 rounded-xl font-semibold 
+           shadow-lg hover:shadow-xl transition-all duration-200 hover:from-gray-700 hover:to-gray-800 
+           flex items-center justify-center space-x-2;
+  }
+
+  /* Success/Start Buttons */
+  .btn-success {
+    @apply bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-xl font-semibold 
+           shadow-lg hover:shadow-xl transition-all duration-200 hover:from-green-700 hover:to-green-800 
+           flex items-center justify-center space-x-2;
+  }
+
+  /* Stop/End Buttons */
+  .btn-danger {
+    @apply bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-3 rounded-xl font-semibold 
+           shadow-lg hover:shadow-xl transition-all duration-200 hover:from-red-700 hover:to-red-800 
+           flex items-center justify-center space-x-2;
+  }
+
+  /* Navigation Buttons */
+  .btn-nav {
+    @apply bg-white border-2 border-gray-300 text-gray-700 px-6 py-3 rounded-xl font-semibold 
+           hover:border-blue-400 hover:text-blue-700 hover:shadow-md transition-all duration-200 
+           flex items-center justify-center space-x-2;
+  }
+
+  /* Disabled State */
+  .btn-disabled {
+    @apply bg-gray-300 text-gray-500 cursor-not-allowed px-6 py-3 rounded-xl font-semibold
+           flex items-center justify-center space-x-2;
+  }
+
+  /* Compact Button Variants */
+  .btn-compact {
+    @apply px-4 py-2 text-sm;
+  }
+
+  /* Large Button Variants */
+  .btn-large {
+    @apply px-12 py-4 text-lg;
   }
   
   /* Focus ring utilities */

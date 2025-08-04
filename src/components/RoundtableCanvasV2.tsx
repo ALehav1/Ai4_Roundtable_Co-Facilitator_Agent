@@ -460,7 +460,38 @@ const RoundtableCanvasV2: React.FC = () => {
     ]);
   }, [callAIAnalysis]);
   
-  // Enhanced formatting for AI insights content
+  // Enhanced formatting for AI insights content (Priority 4: Helper Functions)
+  const formatAIInsights = useCallback((insights: string) => {
+    if (!insights) return '';
+    
+    return insights
+      // Format bold headers
+      .replace(/\*\*(.*?)\*\*/g, '<h4 class="font-semibold text-gray-900 mt-6 mb-3 pb-2 border-b border-gray-200 flex items-center"><span class="w-1 h-4 bg-purple-500 rounded-full mr-3"></span>$1</h4>')
+      // Format bullet points
+      .replace(/• (.*?)(?:\n|$)/g, '<li class="text-gray-700 mb-2 leading-relaxed pl-6 relative">$1</li>')
+      // Wrap consecutive list items in ul tags
+      .replace(/(<li.*?<\/li>\s*)+/g, '<ul class="space-y-3 mb-6 ml-0">$&</ul>')
+      // Format quotes
+      .replace(/"([^"]+)"/g, '<span class="bg-blue-50 px-2 py-1 rounded text-blue-800 font-medium italic">"$1"</span>')
+      // Add proper paragraph spacing
+      .replace(/\n\n/g, '</p><p class="mb-4">')
+      .replace(/^/, '<p class="mb-4">')
+      .replace(/$/, '</p>')
+      // Clean up empty paragraphs
+      .replace(/<p class="mb-4"><\/p>/g, '');
+  }, []);
+
+  // Enhanced content validation (Priority 4: Helper Functions)
+  const hasTranscriptContent = useCallback((transcriptEntries: any[]) => {
+    return transcriptEntries && 
+      transcriptEntries.length > 0 && 
+      transcriptEntries.some(entry => 
+        entry.content && 
+        entry.content.trim().length > 0
+      );
+  }, []);
+
+  // Legacy formatting for AI insights content (keeping for compatibility)
   const formatInsightContent = useCallback((content: string) => {
     // Split content into lines and format as structured elements
     const lines = content.split('\n').filter(line => line.trim());
@@ -851,41 +882,127 @@ const RoundtableCanvasV2: React.FC = () => {
         </div>
       </div>
 
-      {/* Live transcript display */}
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h3 className="text-xl font-bold mb-4">📝 Live Transcript</h3>
-        
-        <div
-          ref={transcriptRef}
-          className="h-96 overflow-y-auto border border-gray-200 rounded p-4 bg-gray-50"
-        >
+      {/* Enhanced Professional Live Transcript Display */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* Professional Header */}
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-8 h-8 bg-gray-600 rounded-lg flex items-center justify-center mr-3">
+                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v8a2 2 0 002 2h3l3 3 3-3h3a2 2 0 002-2zM5 7a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1zm1 3a1 1 0 100 2h3a1 1 0 100-2H6z" clipRule="evenodd"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Live Discussion Transcript</h3>
+                <div className="flex items-center space-x-2 mt-1">
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">
+                    {sessionContext.liveTranscript.length} {sessionContext.liveTranscript.length === 1 ? 'entry' : 'entries'} captured
+                  </span>
+                  <span className="text-xs text-gray-500">Real-time capture active</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Transcript Content */}
+        <div className="p-6">
           {sessionContext.liveTranscript.length === 0 ? (
-            <div className="text-gray-500 text-center py-8">
-              Conversation transcript will appear here as you speak...
+            <div className="text-center py-12">
+              <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                </svg>
+              </div>
+              <h4 className="font-medium text-gray-900 mb-2">Ready to Capture Discussion</h4>
+              <p className="text-sm text-gray-500 mb-6">
+                Use voice recording or manual entry to capture participant insights as the strategic conversation unfolds
+              </p>
+              <div className="flex justify-center space-x-3">
+                <button 
+                  onClick={() => speechTranscription.isListening ? speechTranscription.stop() : speechTranscription.start()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2 shadow-sm hover:shadow-md transition-all"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd"/>
+                  </svg>
+                  <span>{speechTranscription.isListening ? 'Stop Recording' : 'Start Recording'}</span>
+                </button>
+                <button 
+                  onClick={addManualEntry}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 shadow-sm hover:shadow-md transition-all"
+                >
+                  Manual Entry
+                </button>
+              </div>
             </div>
           ) : (
-            <div className="space-y-2">
-              {sessionContext.liveTranscript.map((entry) => (
-                <div key={entry.id} className="bg-white p-3 rounded border-l-4 border-blue-500 shadow-sm">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="font-semibold text-blue-600 text-sm">{entry.speaker}</span>
-                    <span className="text-xs text-gray-500 whitespace-nowrap ml-2">
-                      {entry.timestamp.toLocaleTimeString()}
-                      {entry.isAutoDetected && <span className="ml-1">🎤</span>}
-                    </span>
+            <div 
+              ref={transcriptRef}
+              className="space-y-4 max-h-96 overflow-y-auto"
+            >
+              {sessionContext.liveTranscript.map((entry, index) => (
+                <div key={entry.id} className="bg-gray-50/80 rounded-xl p-4 border border-gray-200 hover:bg-gray-50 transition-colors fade-in-up">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-blue-600 font-semibold text-sm">
+                          {entry.speaker.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-blue-600 font-medium text-sm">
+                          {entry.speaker}
+                        </span>
+                        <span className="text-xs text-gray-500 ml-2">
+                          {entry.timestamp.toLocaleTimeString()}
+                          {entry.isAutoDetected && <span className="ml-1">🎤</span>}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button 
+                        className="text-gray-400 hover:text-blue-600 p-1 rounded hover:bg-blue-50 transition-colors"
+                        title="Edit entry"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                      </button>
+                      <button 
+                        className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors"
+                        title="Delete entry"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-gray-800 text-sm leading-relaxed">{entry.text}</p>
+                  <p className="text-gray-800 leading-relaxed pl-11">
+                    {entry.text}
+                  </p>
                 </div>
               ))}
               
-              {/* Show interim results */}
+              {/* Show interim results with professional styling */}
               {interimTranscript && (
-                <div className="bg-yellow-50 p-3 rounded border-l-4 border-yellow-400">
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-semibold text-yellow-600">{currentSpeaker}</span>
-                    <span className="text-xs text-yellow-500">Speaking...</span>
+                <div className="bg-yellow-50/80 rounded-xl p-4 border border-yellow-200 animate-pulse">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                        <span className="text-yellow-600 font-semibold text-sm">
+                          {currentSpeaker.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-yellow-600 font-medium text-sm">{currentSpeaker}</span>
+                        <span className="text-xs text-yellow-500 ml-2">Speaking...</span>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-gray-600 italic">{interimTranscript}</p>
+                  <p className="text-gray-700 italic pl-11">{interimTranscript}</p>
                 </div>
               )}
             </div>
@@ -919,8 +1036,8 @@ const RoundtableCanvasV2: React.FC = () => {
           </button>
         </div>
         
-        {/* Analysis Action Buttons */}
-        <div className="flex gap-2">
+        {/* Enhanced Professional AI Analysis Controls */}
+        <div className="flex space-x-4 mb-6">
           <button
             onClick={() => {
               if (sessionContext.liveTranscript.length > 0) {
@@ -929,9 +1046,12 @@ const RoundtableCanvasV2: React.FC = () => {
               }
             }}
             disabled={sessionContext.liveTranscript.length === 0}
-            className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium text-sm"
+            className="flex-1 bg-gradient-to-r from-purple-600 to-purple-700 text-white px-6 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:from-purple-700 hover:to-purple-800 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            💡 Get Insights
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+            </svg>
+            <span>Get Insights</span>
           </button>
           <button
             onClick={() => {
@@ -941,9 +1061,12 @@ const RoundtableCanvasV2: React.FC = () => {
               }
             }}
             disabled={sessionContext.liveTranscript.length === 0}
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium text-sm"
+            className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:from-blue-700 hover:to-blue-800 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            ❓ Follow-up Questions
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>Follow-up Questions</span>
           </button>
         </div>
         
@@ -974,137 +1097,204 @@ const RoundtableCanvasV2: React.FC = () => {
         )}
       </div>
 
-      {/* Toggle Content Display */}
+      {/* Professional AI Insights & Follow-up Questions Display */}
       <div className="flex-1 overflow-y-auto px-4">
         {sessionContext.aiInsights.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center text-center text-gray-500 p-8">
-            <div>
-              <div className="text-4xl mb-4">🤖</div>
-              <p className="text-sm">AI analysis will appear here</p>
-              <p className="text-xs text-gray-400 mt-2">
-                Start recording or add manual entries, then use the analysis buttons above
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className={`rounded-lg p-3 ${
-            activeAnalyticsTab === 'insights' ? 'bg-purple-50' : 'bg-blue-50'
-          }`}>
-            <h3 className={`text-sm font-bold mb-3 flex items-center gap-2 ${
-              activeAnalyticsTab === 'insights' ? 'text-purple-800' : 'text-blue-800'
-            }`}>
-              {activeAnalyticsTab === 'insights' ? '💡 AI Insights' : '❓ Follow-up Questions'}
-              <span className={`text-xs px-2 py-1 rounded ${
-                activeAnalyticsTab === 'insights' 
-                  ? 'bg-purple-200 text-purple-700' 
-                  : 'bg-blue-200 text-blue-700'
-              }`}>
-                {activeAnalyticsTab === 'insights'
-                  ? sessionContext.aiInsights.filter(i => i.type !== 'followup').length
-                  : sessionContext.aiInsights.filter(i => i.type === 'followup').length
-                }
-              </span>
-            </h3>
-            
-            {/* Filter and display content based on active tab */}
-            {sessionContext.aiInsights
-              .filter(insight => 
-                activeAnalyticsTab === 'insights' 
-                  ? insight.type !== 'followup'
-                  : insight.type === 'followup'
-              ).length > 0 ? (
-              <div className="space-y-2">
-                {sessionContext.aiInsights
-                  .filter(insight => 
-                    activeAnalyticsTab === 'insights' 
-                      ? insight.type !== 'followup'
-                      : insight.type === 'followup'
-                  )
-                  .map((insight) => (
-                  <div key={insight.id} className={`bg-white p-3 rounded shadow-sm ${
-                    insight.isError 
-                      ? 'border-l-4 border-red-500' 
-                      : insight.isLegacy 
-                        ? 'border-l-4 border-yellow-500' 
-                        : activeAnalyticsTab === 'insights'
-                          ? 'border-l-4 border-purple-500'
-                          : 'border-l-4 border-blue-500'
-                  }`}>
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs font-semibold uppercase ${
-                          insight.isError 
-                            ? 'text-red-600' 
-                            : insight.isLegacy 
-                              ? 'text-yellow-600' 
-                              : activeAnalyticsTab === 'insights'
-                                ? 'text-purple-600'
-                                : 'text-blue-600'
-                        }`}>
-                          {activeAnalyticsTab === 'insights' ? '💡' : '❓'} {insight.type}
-                        </span>
-                        {insight.confidence !== undefined && (
-                          <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                            {Math.round(insight.confidence * 100)}% confidence
-                          </span>
-                        )}
-                        {insight.isLegacy && (
-                          <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded">
-                            Legacy
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-xs text-gray-500">
-                        {insight.timestamp.toLocaleTimeString()}
-                      </span>
-                    </div>
-                    <div className="text-sm text-gray-800 leading-relaxed mb-2">
-                      {formatInsightContent(insight.content)}
-                    </div>
-                    
-                    {/* Display suggestions if available */}
-                    {insight.suggestions && insight.suggestions.length > 0 && (
-                      <div className="mt-3 pt-2 border-t border-gray-100">
-                        <p className="text-xs font-semibold text-gray-600 mb-2">
-                          {activeAnalyticsTab === 'insights' ? 'Suggestions:' : 'Suggested Questions:'}
-                        </p>
-                        <ul className="text-xs text-gray-700 space-y-1">
-                          {insight.suggestions.slice(0, 3).map((suggestion: string, idx: number) => (
-                            <li key={idx} className="flex items-start gap-1">
-                              <span className={`mt-0.5 ${
-                                activeAnalyticsTab === 'insights' ? 'text-purple-500' : 'text-blue-500'
-                              }`}>•</span>
-                              <span>{suggestion}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    
-                    {/* Display metadata for new endpoint */}
-                    {insight.metadata && (
-                      <div className="mt-2 text-xs text-gray-500">
-                        Tokens: {insight.metadata.tokensUsed} | Length: {insight.metadata.transcriptLength}
-                      </div>
-                    )}
+          // Professional Empty State
+          activeAnalyticsTab === 'insights' ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gradient-to-r from-purple-50 to-purple-100 px-6 py-4 border-b border-purple-200">
+                <div className="flex items-center">
+                  <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center mr-3">
+                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                    </svg>
                   </div>
-                ))}
+                  <div>
+                    <h3 className="font-semibold text-gray-900">AI Strategic Analysis</h3>
+                    <p className="text-xs text-gray-600">Ready to analyze discussion patterns</p>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className={`text-center py-4 ${
-                activeAnalyticsTab === 'insights' ? 'text-purple-600' : 'text-blue-600'
-              }`}>
-                <p className="text-sm">
-                  {activeAnalyticsTab === 'insights' ? 'No insights yet' : 'No follow-up questions yet'}
-                </p>
-                <p className={`text-xs mt-1 ${
-                  activeAnalyticsTab === 'insights' ? 'text-purple-500' : 'text-blue-500'
-                }`}>
-                  Click "{activeAnalyticsTab === 'insights' ? 'Get Insights' : 'Follow-up Questions'}" to analyze the conversation
-                </p>
+              <div className="p-12">
+                <div className="text-center">
+                  <div className="w-16 h-16 mx-auto bg-purple-100 rounded-full flex items-center justify-center mb-4">
+                    <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                  </div>
+                  <h4 className="font-semibold text-gray-900 mb-2">Strategic Analysis Ready</h4>
+                  <p className="text-sm text-gray-600 mb-6">
+                    Capture discussion points to receive strategic insights and transformation patterns
+                  </p>
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4 border-b border-blue-200">
+                <div className="flex items-center">
+                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Strategic Follow-up Questions</h3>
+                    <p className="text-xs text-gray-600">Ready to generate strategic follow-ups</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-12">
+                <div className="text-center">
+                  <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                    <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                  </div>
+                  <h4 className="font-semibold text-gray-900 mb-2">Strategic Questions Ready</h4>
+                  <p className="text-sm text-gray-600 mb-6">
+                    Generate follow-up questions to guide deeper strategic discussion
+                  </p>
+                </div>
+              </div>
+            </div>
+          )
+        ) : (
+          // Professional Content Display with Enhanced Containers
+          activeAnalyticsTab === 'insights' ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gradient-to-r from-purple-50 to-purple-100 px-6 py-4 border-b border-purple-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center mr-3">
+                      <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">AI Strategic Insights</h3>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">
+                          {sessionContext.aiInsights.filter(i => i.type !== 'followup').length} insights
+                        </span>
+                        <span className="text-xs text-gray-500">{new Date().toLocaleTimeString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-4">
+                {sessionContext.aiInsights
+                  .filter(insight => insight.type !== 'followup')
+                  .map((insight) => (
+                    <div key={insight.id} className="bg-gradient-to-r from-purple-50 to-white rounded-lg border border-purple-200 p-4 shadow-sm">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
+                            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                            </svg>
+                          </div>
+                          <span className="text-sm font-semibold text-gray-900">Strategic Insight</span>
+                          {insight.confidence && (
+                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">
+                              {Math.round(insight.confidence * 100)}% confidence
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-gray-500">{insight.timestamp.toLocaleTimeString()}</span>
+                      </div>
+                      <div className="text-sm text-gray-800 leading-relaxed" dangerouslySetInnerHTML={{ __html: formatAIInsights(insight.content) }} />
+                      {insight.suggestions && insight.suggestions.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-purple-200">
+                          <p className="text-xs font-semibold text-purple-700 mb-2">Recommendations:</p>
+                          <ul className="text-xs text-gray-700 space-y-1">
+                            {insight.suggestions.slice(0, 3).map((suggestion: string, idx: number) => (
+                              <li key={idx} className="flex items-start gap-2">
+                                <span className="text-purple-500 mt-0.5">•</span>
+                                <span>{suggestion}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                {sessionContext.aiInsights.filter(i => i.type !== 'followup').length === 0 && (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 mx-auto bg-purple-100 rounded-full flex items-center justify-center mb-4">
+                      <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                    </div>
+                    <p className="text-sm text-gray-600">Generate insights to see strategic analysis here</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            // Follow-up Questions Container
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4 border-b border-blue-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Strategic Follow-up Questions</h3>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">
+                          {sessionContext.aiInsights.filter(i => i.type === 'followup').length} questions
+                        </span>
+                        <span className="text-xs text-gray-500">{new Date().toLocaleTimeString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-4 p-6">
+                {sessionContext.aiInsights
+                  .filter(insight => insight.type === 'followup')
+                  .map((insight) => (
+                    <div key={insight.id} className="bg-gradient-to-r from-blue-50 to-white rounded-lg border border-blue-200 p-4 shadow-sm">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                          </div>
+                          <span className="text-sm font-semibold text-gray-900">Strategic Question</span>
+                          {insight.confidence && (
+                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">
+                              {Math.round(insight.confidence * 100)}% confidence
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-gray-500">{insight.timestamp.toLocaleTimeString()}</span>
+                      </div>
+                      <div className="text-sm text-gray-800 leading-relaxed" dangerouslySetInnerHTML={{ __html: formatAIInsights(insight.content) }} />
+                    </div>
+                  ))}
+                  
+                {sessionContext.aiInsights.filter(i => i.type === 'followup').length === 0 && (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                      <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                    </div>
+                    <p className="text-sm text-gray-600">Generate questions to see strategic follow-ups here</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )
         )}
       </div>
 
@@ -1161,20 +1351,54 @@ const RoundtableCanvasV2: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-blue-600 text-white p-4">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">
-              🎙️ AI Roundtable Co-Facilitator
-            </h1>
-            <p className="text-blue-100 text-sm">
-              MVP Split-Pane • State: {sessionState} • Topic: {sessionContext.currentTopic || 'No topic'}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-blue-100 text-sm">
-              {sessionContext.liveTranscript.length} entries captured
-            </p>
+      {/* Professional Executive Header */}
+      <header className="bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 text-white shadow-lg">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            {/* Left: Session Branding */}
+            <div className="flex items-center space-x-4">
+              <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v8a2 2 0 002 2h3l3 3 3-3h3a2 2 0 002-2zM5 7a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1zm1 3a1 1 0 100 2h3a1 1 0 100-2H6z" clipRule="evenodd"/>
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-xl font-semibold text-white">
+                  AI Strategic Co-Facilitator
+                </h1>
+                <p className="text-blue-200 text-sm font-medium">
+                  {sessionContext.currentTopic || sessionConfig.title}
+                </p>
+              </div>
+            </div>
+
+            {/* Right: Session Status */}
+            <div className="flex items-center space-x-6">
+              {/* Phase Progress */}
+              {getCurrentQuestion(sessionContext.currentQuestionIndex) && (
+                <div className="text-right">
+                  <div className="text-sm font-medium text-white">
+                    Phase {sessionContext.currentQuestionIndex + 1} of {getTotalQuestions()}
+                  </div>
+                  <div className="text-xs text-blue-200">
+                    {Math.round(((sessionContext.currentQuestionIndex + 1) / getTotalQuestions()) * 100)}% Complete
+                  </div>
+                </div>
+              )}
+              
+              {/* Live Status */}
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${sessionState === 'discussion' ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
+                <div className="text-right">
+                  <div className="text-sm font-medium text-white">
+                    {sessionContext.liveTranscript.length} insights captured
+                  </div>
+                  <div className="text-xs text-blue-200">
+                    {sessionState === 'discussion' ? 'Session Active' : sessionState === 'intro' ? 'Ready to Begin' : 'Session Paused'}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </header>
