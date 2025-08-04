@@ -1,33 +1,40 @@
-# AI Roundtable Facilitator Agent
+# AI Co-Facilitator Agent
 
-**🎉 PRODUCTION READY: All core features implemented with robust fallbacks and enhanced UX!**
+**🎉 STABLE PRODUCTION VERSION: Multi-speaker voice transcription, unlimited participants, and AI-powered insights!**
 
-A sophisticated AI-powered co-facilitation platform for strategic leadership discussions and AI transformation planning. Features enhanced voice transcription, multi-modal manual entry, split-pane UI, dual AI analysis, and comprehensive session management.
+An intelligent AI co-facilitator for strategic roundtable discussions, designed specifically for executive teams navigating AI transformation. Features robust voice transcription with unlimited speakers, real-time AI analysis, and comprehensive session management - all deployed on a secure, scalable platform.
 
-## ✅ Latest Features Completed (2025-08-03)
+## ✅ Current Features (Stable Production Version)
 
-### 🎯 Enhanced Core Functionality
-- **🎤 Robust Voice Recognition**: Production-optimized Web Speech API with improved error handling
-- **📝 Multi-Modal Manual Entry**: Single entry, bulk copy-paste, and file upload options  
-- **🧠 Dual AI Analysis**: Side-by-side insights and follow-up questions with enhanced formatting
-- **📋 Agenda-Driven Workflow**: Previous/next navigation with session progress tracking
-- **💾 localStorage Auto-Save**: Automatic session persistence and recovery
-- **📄 PDF Export**: Professional session summaries in dedicated utilities section
-- **🔀 Split-Pane UI**: Optimized discussion panel vs AI assistance panel layout
+### 🎯 Core Functionality
+- **🎤 Multi-Speaker Voice Transcription**: Unlimited participants with Web Speech API and fallback systems
+- **📝 Manual Entry Fallback**: Custom modal for transcript input when voice recognition fails
+- **🧠 AI Co-Facilitator**: Real-time insights and follow-up questions powered by OpenAI GPT
+- **📋 Tabbed Analytics UI**: Separate panels for "Get Insights" and "Follow-up Questions"
+- **💾 Session Management**: Auto-save to localStorage with session recovery
+- **📄 PDF Export**: "Summarize Entire Session" with professional formatting
+- **🔀 Single-Page Application**: Unified interface with transcript and AI analysis panels
 
-### 🛠️ Production Enhancements
-- **✅ Zero TypeScript Errors**: Production-ready build with comprehensive type safety
-- **🔄 Session Recovery**: Seamless auto-restore from localStorage with full state preservation
-- **⚡ Real-time Features**: Live transcript capture, interim results, and instant AI insights
-- **🛡️ Advanced Error Handling**: Smart retry logic, graceful degradation, comprehensive logging
-- **📱 Responsive Design**: Fully optimized for desktop and mobile devices
-- **🔐 Secure Configuration**: Environment variables, API key management, rate limiting
+### 🛠️ Production Features
+- **✅ TypeScript Ready**: Zero build errors, production-stable codebase
+- **🚫 No Participant Limits**: Artificial 4-speaker restriction completely removed
+- **⚡ Real-time Transcription**: Live speech-to-text with restart protection
+- **🛡️ Error Handling**: Graceful fallbacks for speech recognition failures
+- **📱 Browser Compatible**: Chrome recommended, HTTPS required for voice features
+- **🔐 Secure Deployment**: Vercel hosting with environment variable management
 
 ## 🎯 Project Overview
 
-An intelligent AI co-facilitator for strategic roundtable discussions, specifically designed for AI transformation planning sessions. The platform combines live speech recognition, real-time AI analysis, and structured agenda management to support facilitators leading senior executive teams through strategic conversations.
+A production-ready AI co-facilitator for strategic discussions, designed for executive teams navigating AI transformation. The platform features unlimited multi-speaker voice transcription, real-time AI analysis, and comprehensive session management.
 
-**Target Users**: Strategic facilitators, executive coaches, and organizational development professionals.
+**Key Capabilities:**
+- **Multi-Speaker Voice Recognition**: Unlimited participants with automatic transcription
+- **AI Co-Facilitation**: Real-time insights and follow-up questions from OpenAI GPT
+- **Manual Entry Fallback**: Custom modal for when voice recognition isn't available
+- **Session Management**: Auto-save, recovery, and PDF export functionality
+- **Production Ready**: Deployed on Vercel with secure environment configuration
+
+**Target Users**: Strategic facilitators, executive coaches, organizational development professionals, and senior leadership teams.
 
 ## 🚀 Quick Start
 
@@ -208,60 +215,54 @@ src/
 ```
 ai-roundtable/
 ├── src/
-│   ├── __tests__/                    # Testing infrastructure
-│   │   ├── api/
-│   │   │   └── analyze.test.ts       # API route tests (rate limiting, etc.)
-│   │   ├── components/
-│   │   │   └── SearchDebug.test.tsx  # Component tests
-│   │   └── test-utils/
-│   │       └── mocks/                # Centralized test mocks
-│   │           ├── data.ts           # Test data structures
-│   │           ├── ui.tsx            # UI component mocks
-│   │           └── index.ts          # Mock exports
 │   ├── app/
 │   │   ├── api/
-│   │   │   ├── analyze/
-│   │   │   │   └── route.ts          # AI co-facilitation API endpoint
+│   │   │   ├── analyze-live/
+│   │   │   │   └── route.ts          # 🎯 Main AI co-facilitation API endpoint
+│   │   │   ├── env-test/
+│   │   │   │   └── route.ts          # Environment variable testing utility
 │   │   │   └── generate-summary/
-│   │   │       └── route.ts          # Summary generation API endpoint
-│   │   ├── globals.css               # Global styles and animations
+│   │   │       └── route.ts          # Session summary generation
+│   │   ├── globals.css               # Global styles with Tailwind CSS
 │   │   ├── layout.tsx                # Root layout with metadata
-│   │   └── page.tsx                  # Main page component
+│   │   └── page.tsx                  # Main application entry point
 │   ├── components/
-│   │   ├── RoundtableCanvas.tsx      # Main interactive component with speech-to-text
-│   │   └── SessionSummary.tsx        # Summary display and export component
+│   │   ├── RoundtableCanvasV2.tsx    # 🎯 Main UI component (current version)
+│   │   └── SessionSummary.tsx        # PDF export and session summary display
 │   ├── config/
 │   │   └── roundtable-config.ts      # ⭐ MAIN CONFIGURATION FILE
+│   ├── hooks/
+│   │   └── useSpeechTranscription.ts # 🎤 Multi-engine speech recognition hook
 │   └── utils/
-│       └── logger.ts                 # Enhanced logging system
-├── babel.config.js                   # Babel configuration for Jest
-├── jest.config.js                    # Jest testing configuration
-├── jest.setup.js                     # Jest setup and test environment
+│       ├── logger.ts                 # Enhanced logging and error tracking
+│       ├── pdfExport.ts              # PDF generation utilities
+│       └── storage.ts                # Session persistence and localStorage management
 ├── .env.local                        # Environment variables (API keys)
-├── .gitignore                        # Git ignore rules (includes .env.local)
+├── .gitignore                        # Git ignore rules
 ├── package.json                      # Dependencies and scripts
 ├── tailwind.config.ts                # Tailwind CSS configuration
 ├── tsconfig.json                     # TypeScript configuration
 ├── next.config.js                    # Next.js configuration
 ├── postcss.config.js                 # PostCSS configuration
+├── vercel.json                       # Vercel deployment configuration
 └── README.md                         # This comprehensive documentation
 ```
 
-### 📂 Complete File Reference
+## 📂 Key File Reference
 
 | File | Purpose | Features | Easy to Edit? |
 |------|---------|----------|---------------|
 | `src/config/roundtable-config.ts` | **Main Configuration** - Strategic questions, AI prompts, UI text | Session settings, AI behavior, facilitator guidance | ✅ **YES** |
-| `src/components/RoundtableCanvas.tsx` | **Main Interface** - Facilitator UI with speech-to-text | Real-time transcription, AI insights, session management | ⚠️ Code changes |
-| `src/components/SessionSummary.tsx` | **Summary & Export** - Professional summary display | Narrative summaries, PDF/CSV export, executive formatting | ⚠️ Code changes |
-| `src/app/api/analyze/route.ts` | **AI Co-Facilitation** - GPT-4o strategic analysis | Real-time insights, cross-question linking, session memory, rate limiting | ⚠️ Code changes |
-| `src/app/api/generate-summary/route.ts` | **Summary Generation** - Comprehensive narrative summaries | Executive summaries, strategic recommendations, export data | ⚠️ Code changes |
-| `src/utils/logger.ts` | **Enhanced Logging** - Error tracking and performance monitoring | Structured logging, performance metrics, debugging support | ⚠️ Code changes |
-| `src/__tests__/api/analyze.test.ts` | **API Testing** - Rate limiting and endpoint validation | Jest tests, mocked dependencies, safety-first testing | 🧪 Test changes |
-| `src/__tests__/test-utils/mocks/` | **Test Infrastructure** - Centralized mocks and test data | UI mocks, data structures, OpenAI client mocks | 🧪 Test changes |
-| `jest.config.js` | **Test Configuration** - Jest testing environment setup | Node environment, TypeScript support, test patterns | 🧪 Test changes |
-| `.env.local` | **API Keys & Secrets** - Environment variables | OpenAI API key configuration | ✅ **YES** |
-| `src/app/globals.css` | **Professional Styling** - Tailwind CSS and custom styles | Responsive design, animations, professional theme | 🎨 Design changes |
+| `src/components/RoundtableCanvasV2.tsx` | **Main UI Component** - Complete facilitator interface | Multi-speaker voice transcription, AI insights, session management | ⚠️ Code changes |
+| `src/components/SessionSummary.tsx` | **PDF Export & Summary** - Professional summary display | Executive summaries, PDF generation, session reports | ⚠️ Code changes |
+| `src/app/api/analyze-live/route.ts` | **AI Co-Facilitation** - Real-time strategic analysis | OpenAI GPT insights, follow-up questions, session context | ⚠️ Code changes |
+| `src/app/api/generate-summary/route.ts` | **Summary Generation** - Comprehensive session summaries | Executive reports, strategic recommendations, export data | ⚠️ Code changes |
+| `src/hooks/useSpeechTranscription.ts` | **Speech Recognition** - Multi-engine voice transcription | Web Speech API, Whisper fallback, error handling | ⚠️ Code changes |
+| `src/utils/storage.ts` | **Session Persistence** - localStorage management | Auto-save, session recovery, data persistence | ⚠️ Code changes |
+| `src/utils/pdfExport.ts` | **PDF Generation** - Professional document export | jsPDF integration, formatting, session reports | ⚠️ Code changes |
+| `src/utils/logger.ts` | **Error Tracking** - Enhanced logging system | Structured logging, performance metrics, debugging | ⚠️ Code changes |
+| `.env.local` | **API Keys & Secrets** - Environment variables | OpenAI API key, secure configuration | ✅ **YES** |
+| `src/app/globals.css` | **Styling** - Tailwind CSS and custom styles | Responsive design, animations, professional theme | 🎨 Design changes |
 
 ## 🎯 **AI FACILITATOR PROMPT LOCATIONS** (Easy Editing Guide)
 
