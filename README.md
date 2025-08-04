@@ -1,21 +1,48 @@
 # AI Co-Facilitator Agent
+## Strategic AI Transformation Roundtables for Enterprise Leaders
 
-**🎉 STABLE PRODUCTION VERSION: Multi-speaker voice transcription, unlimited participants, and AI-powered insights!**
+**🚀 PRODUCTION READY**: Professional-grade co-facilitator for strategic discussions about "When AI Becomes How the Enterprise Works"
 
-An intelligent AI co-facilitator for strategic roundtable discussions, designed specifically for executive teams navigating AI transformation. Features robust voice transcription with unlimited speakers, real-time AI analysis, and comprehensive session management - all deployed on a secure, scalable platform.
+An intelligent AI co-facilitator designed specifically for executive teams navigating the shift from AI experimentation to true transformation. Features sophisticated voice transcription, real-time strategic analysis, and comprehensive session management—all deployed on a secure, enterprise-ready platform.
 
-## ✅ Current Features (Stable Production Version)
+---
 
-### 🎯 Core Functionality
-- **🎤 Multi-Speaker Voice Transcription**: Unlimited participants with Web Speech API and fallback systems
-- **📝 Manual Entry Fallback**: Custom modal for transcript input when voice recognition fails
-- **🧠 AI Co-Facilitator**: Real-time insights and follow-up questions powered by OpenAI GPT
-- **📋 Tabbed Analytics UI**: Separate panels for "Get Insights" and "Follow-up Questions"
-- **💾 Session Management**: Auto-save to localStorage with session recovery
-- **📄 PDF Export**: "Summarize Entire Session" with professional formatting
-- **🔀 Single-Page Application**: Unified interface with transcript and AI analysis panels
+## ✨ **Why This Matters**
 
-### 🛠️ Production Features
+When facilitating strategic discussions about AI transformation with senior executives, you need a tool that embodies the sophistication you're advocating for. This co-facilitator doesn't just capture conversation—**it demonstrates reflexive AI systems in action**, becoming a live example of the intelligence layer you're discussing.
+
+### **The Meta-Moment Magic** 🎭
+At the core of your session, you'll demonstrate the co-facilitator tool itself as an example of reflexive systems—AI that learns from participation and compounds organizational intelligence in real-time.
+
+---
+
+## 🎯 **Current Session Focus: "When AI Becomes How the Enterprise Works"**
+
+This application is optimized for strategic conversations about three fundamental shifts:
+
+**1. Tools → Agents**  
+Moving from AI you use to AI you work with
+
+**2. Outputs → Feedback Loops**  
+Building systems that learn and improve over time  
+
+**3. Individual Productivity → Shared Intelligence Layer**  
+
+---
+
+## ✅ **Production-Ready Features**
+
+### **🎤 Multi-Speaker Voice Transcription**
+- **Unlimited participants** with Web Speech API
+- **Real-time transcription** with live editing capabilities
+- **Intelligent fallbacks** when speech recognition isn't available
+- **HTTPS optimized** for production environments
+
+### **🧠 AI Strategic Analysis**
+- **GPT-4o powered insights** focused on AI transformation patterns
+- **Real-time analysis** of discussion themes and strategic implications
+- **Session memory** that builds context across all conversation phases
+- **Follow-up questions** that deepen strategic thinking
 - **✅ TypeScript Ready**: Zero build errors, production-stable codebase
 - **🚫 No Participant Limits**: Artificial 4-speaker restriction completely removed
 - **⚡ Real-time Transcription**: Live speech-to-text with restart protection
