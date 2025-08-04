@@ -261,19 +261,22 @@ const RoundtableCanvasV2: React.FC = () => {
           console.log('✅ Live AI Analysis (new endpoint):', liveData);
           
           if (liveData.success) {
-            // Add AI insight to session context with enhanced metadata
-            setSessionContext(prev => ({
-              ...prev,
-              aiInsights: [...prev.aiInsights, {
-                id: `insight_${Date.now()}`,
-                type: analysisType,
-                content: liveData.insights || liveData.content || liveData.analysis,
-                timestamp: new Date(),
-                confidence: liveData.confidence,
-                suggestions: liveData.suggestions || [],
-                metadata: liveData.metadata
-              }],
-            }));
+            // Replace existing insight of same type or add new one
+            setSessionContext(prev => {
+              const existingInsights = prev.aiInsights.filter(insight => insight.type !== analysisType);
+              return {
+                ...prev,
+                aiInsights: [...existingInsights, {
+                  id: `insight_${Date.now()}`,
+                  type: analysisType,
+                  content: liveData.insights || liveData.content || liveData.analysis,
+                  timestamp: new Date(),
+                  confidence: liveData.confidence,
+                  suggestions: liveData.suggestions || [],
+                  metadata: liveData.metadata
+                }],
+              };
+            });
             
             return liveData;
           }
@@ -465,20 +468,16 @@ const RoundtableCanvasV2: React.FC = () => {
     if (!insights) return '';
     
     return insights
-      // Format bold headers
-      .replace(/\*\*(.*?)\*\*/g, '<h4 class="font-semibold text-gray-900 mt-6 mb-3 pb-2 border-b border-gray-200 flex items-center"><span class="w-1 h-4 bg-purple-500 rounded-full mr-3"></span>$1</h4>')
-      // Format bullet points
-      .replace(/• (.*?)(?:\n|$)/g, '<li class="text-gray-700 mb-2 leading-relaxed pl-6 relative">$1</li>')
-      // Wrap consecutive list items in ul tags
-      .replace(/(<li.*?<\/li>\s*)+/g, '<ul class="space-y-3 mb-6 ml-0">$&</ul>')
+      // Format numbered items (1. 2. 3. etc.)
+      .replace(/^(\d+)\. (.+?):/gm, '<div class="mb-4"><h5 class="font-semibold text-gray-900 mb-2 flex items-center"><span class="w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm mr-2">$1</span>$2</h5>')
+      // Close the div after the content
+      .replace(/(<h5.*?<\/h5>)([\s\S]*?)(?=<div|$)/g, '$1<p class="text-gray-700 ml-8 leading-relaxed">$2</p></div>')
       // Format quotes
       .replace(/"([^"]+)"/g, '<span class="bg-blue-50 px-2 py-1 rounded text-blue-800 font-medium italic">"$1"</span>')
-      // Add proper paragraph spacing
-      .replace(/\n\n/g, '</p><p class="mb-4">')
-      .replace(/^/, '<p class="mb-4">')
-      .replace(/$/, '</p>')
-      // Clean up empty paragraphs
-      .replace(/<p class="mb-4"><\/p>/g, '');
+      // Add paragraph breaks for better spacing
+      .replace(/\n\n/g, '<br><br>')
+      // Clean up any remaining line breaks
+      .replace(/\n/g, ' ');
   }, []);
 
   // Enhanced content validation (Priority 4: Helper Functions)
