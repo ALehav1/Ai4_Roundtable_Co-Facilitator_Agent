@@ -794,6 +794,26 @@ const RoundtableCanvasV2: React.FC = () => {
           </div>
           
           <div className="flex space-x-2">
+            {/* Voice Recording Toggle Button */}
+            <button
+              onClick={() => {
+                if (speechTranscription.isListening) {
+                  speechTranscription.stop();
+                  setIsRecording(false);
+                } else {
+                  speechTranscription.start();
+                  setIsRecording(true);
+                }
+              }}
+              className={`px-3 py-1.5 text-white text-sm rounded font-medium ${
+                speechTranscription.isListening 
+                  ? 'bg-red-600 hover:bg-red-700 animate-pulse' 
+                  : 'bg-green-600 hover:bg-green-700'
+              }`}
+            >
+              {speechTranscription.isListening ? '⏹️ Stop Voice' : '🎤 Start Voice'}
+            </button>
+            
             <button
               onClick={addManualEntry}
               className="px-3 py-1.5 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 font-medium"
