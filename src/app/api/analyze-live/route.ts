@@ -203,8 +203,8 @@ export async function POST(request: NextRequest) {
     // Build strict prompt
     const userPrompt = buildLiveAnalysisPrompt(
       analysisType,
-      sessionTopic,
-      transcript
+      transcript,
+      { title: sessionTopic }
     );
 
     // Initialize OpenAI client (check all possible env var names)
