@@ -259,7 +259,7 @@ const RoundtableCanvasV2: React.FC = () => {
               aiInsights: [...prev.aiInsights, {
                 id: `insight_${Date.now()}`,
                 type: analysisType,
-                content: liveData.content,
+                content: liveData.insights || liveData.content || liveData.analysis,
                 timestamp: new Date(),
                 confidence: liveData.confidence,
                 suggestions: liveData.suggestions || [],

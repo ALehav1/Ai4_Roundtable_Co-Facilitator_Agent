@@ -144,10 +144,26 @@ function createWebSpeechEngine(): SpeechEngine {
   const MAX_CONSECUTIVE_NETWORK_ERRORS = 5;
 
   const isSupported = () => {
-    // Simple browser detection (from working Nuclear Fix commit)
-    return typeof window !== 'undefined' && 
-           window.isSecureContext && 
-           'webkitSpeechRecognition' in window;
+    // Enhanced browser detection for Chrome vs Chromium compatibility
+    if (typeof window === 'undefined' || !window.isSecureContext) {
+      return false;
+    }
+    
+    // Check for Web Speech API availability
+    if (!('webkitSpeechRecognition' in window)) {
+      return false;
+    }
+    
+    // Detect Chromium vs Chrome for better error handling
+    const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+    const isChromium = /Chromium/.test(navigator.userAgent);
+    
+    // Warn about Chromium limitations but still allow attempt
+    if (isChromium && !isChrome) {
+      console.log('🎤 Browser Detection: Chromium detected - voice recognition may have network limitations. Consider using Chrome for best results.');
+    }
+    
+    return true;
   };
 
   const start = async () => {
