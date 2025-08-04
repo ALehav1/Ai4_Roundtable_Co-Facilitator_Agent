@@ -1232,7 +1232,7 @@ const RoundtableCanvasV2: React.FC = () => {
                   <textarea
                     value={manualEntryText}
                     onChange={(e) => setManualEntryText(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md h-24 resize-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md h-24 resize-none text-left"
                     placeholder="Enter what was said..."
                     autoFocus
                   />
