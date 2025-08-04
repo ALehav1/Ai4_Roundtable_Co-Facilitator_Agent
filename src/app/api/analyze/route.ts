@@ -15,6 +15,12 @@ import { unstable_noStore as noStore } from 'next/cache';
 import { z } from 'zod';
 import { aiConfig, sessionConfig, getAIPromptForContext } from '@/config/roundtable-config';
 
+// CRITICAL: Force dynamic rendering to fix Vercel deployment pipeline
+// These exports prevent Next.js 14 from caching this API route as static
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 // GEMINI PHASE 1.1: Define schema for incoming requests (bulletproof validation)
 const AnalyzeRequestSchema = z.object({
   questionContext: z.string().min(1),

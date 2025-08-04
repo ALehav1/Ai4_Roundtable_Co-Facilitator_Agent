@@ -17,6 +17,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { unstable_noStore as noStore } from 'next/cache';
 import { z } from 'zod';
 
+// CRITICAL: Force dynamic rendering to fix Vercel deployment pipeline
+// These exports prevent Next.js 14 from caching this API route as static
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 // Flexible schema for live analysis requests (allow empty transcripts)
 const LiveAnalyzeRequestSchema = z.object({
   sessionTopic: z.string().min(1),

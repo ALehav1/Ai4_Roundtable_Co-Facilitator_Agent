@@ -12,6 +12,12 @@
 import RoundtableCanvasV2 from '@/components/RoundtableCanvasV2';
 import { sessionConfig, uiText } from '@/config/roundtable-config';
 
+// CRITICAL: Force dynamic rendering to fix Vercel deployment pipeline
+// These exports prevent Next.js 14 from caching this route as static
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 export default function Home() {
   return (
     <main className="min-h-screen">
