@@ -36,3 +36,4 @@ export const metadata = {
   authors: [{ name: 'AI4 Roundtable Team' }],
   robots: 'noindex, nofollow', // Prevent search engine indexing for live sessions
 };
+// Force rebuild Sun Aug  3 20:01:16 EDT 2025
