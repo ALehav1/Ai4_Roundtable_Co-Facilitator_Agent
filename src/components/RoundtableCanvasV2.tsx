@@ -796,17 +796,17 @@ const RoundtableCanvasV2: React.FC = () => {
             </p>
           </div>
           
-          <div className="flex space-x-3">
+          <div className="flex space-x-2">
             <button
               onClick={addManualEntry}
-              className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+              className="px-3 py-1.5 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 font-medium"
             >
               ➕ Manual Entry
             </button>
             
             <button
               onClick={endSession}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              className="px-3 py-1.5 bg-red-600 text-white text-sm rounded hover:bg-red-700 font-medium"
             >
               ⏹️ End Session
             </button>
@@ -876,42 +876,9 @@ const RoundtableCanvasV2: React.FC = () => {
         </div>
       </div>
 
-      {/* Session Utilities */}
-      <div className="bg-gray-50 rounded-lg p-4 border-t mt-4">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-600">📁 Session Utilities</span>
-          <button
-            onClick={handleExportPDF}
-            disabled={sessionContext.liveTranscript.length === 0 || isExporting}
-            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium text-sm"
-          >
-            {isExporting ? '📄 Exporting...' : '📄 Export PDF'}
-          </button>
-        </div>
-        <p className="text-xs text-gray-500 mt-2">
-          Export your session transcript and AI insights to PDF
-        </p>
-      </div>
 
-      {/* Live AI insights */}
-      {sessionContext.aiInsights.length > 0 && (
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h3 className="text-xl font-bold mb-4">🧠 Live AI Insights</h3>
-          <div className="space-y-3">
-            {sessionContext.aiInsights.map((insight) => (
-              <div key={insight.id} className="bg-purple-50 p-4 rounded border-l-4 border-purple-500">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="font-semibold text-purple-600 capitalize">{insight.type}</span>
-                  <span className="text-xs text-purple-500">
-                    {insight.timestamp.toLocaleTimeString()}
-                  </span>
-                </div>
-                <p className="text-gray-800">{insight.content}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+
+
     </div>
     );
   };
@@ -962,90 +929,171 @@ const RoundtableCanvasV2: React.FC = () => {
         </div>
       </div>
 
-      {/* All AI Insights Display */}
-      {sessionContext.aiInsights.length > 0 ? (
-        <div className="flex-1 overflow-y-auto px-4">
-          <div className="space-y-3">
-            {sessionContext.aiInsights.map((insight) => (
-              <div key={insight.id} className={`bg-white p-3 rounded shadow-sm ${
-                insight.isError 
-                  ? 'border-l-4 border-red-500' 
-                  : insight.isLegacy 
-                    ? 'border-l-4 border-yellow-500' 
-                    : insight.type === 'followup'
-                      ? 'border-l-4 border-blue-500'
+      {/* Separate Insights and Follow-up Questions Sections */}
+      <div className="flex-1 overflow-y-auto px-4 space-y-4">
+        
+        {/* AI Insights Section */}
+        <div className="bg-purple-50 rounded-lg p-3">
+          <h3 className="text-sm font-bold text-purple-800 mb-3 flex items-center gap-2">
+            💡 AI Insights
+            <span className="text-xs bg-purple-200 text-purple-700 px-2 py-1 rounded">
+              {sessionContext.aiInsights.filter(i => i.type !== 'followup').length}
+            </span>
+          </h3>
+          
+          {sessionContext.aiInsights.filter(insight => insight.type !== 'followup').length > 0 ? (
+            <div className="space-y-2">
+              {sessionContext.aiInsights
+                .filter(insight => insight.type !== 'followup')
+                .map((insight) => (
+                <div key={insight.id} className={`bg-white p-3 rounded shadow-sm ${
+                  insight.isError 
+                    ? 'border-l-4 border-red-500' 
+                    : insight.isLegacy 
+                      ? 'border-l-4 border-yellow-500' 
                       : 'border-l-4 border-purple-500'
-              }`}>
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-semibold uppercase ${
-                      insight.isError 
-                        ? 'text-red-600' 
-                        : insight.isLegacy 
-                          ? 'text-yellow-600' 
-                          : insight.type === 'followup'
-                            ? 'text-blue-600'
+                }`}>
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-semibold uppercase ${
+                        insight.isError 
+                          ? 'text-red-600' 
+                          : insight.isLegacy 
+                            ? 'text-yellow-600' 
                             : 'text-purple-600'
-                    }`}>
-                      {insight.type === 'followup' ? '❓' : '💡'} {insight.type}
+                      }`}>
+                        💡 {insight.type}
+                      </span>
+                      {insight.confidence !== undefined && (
+                        <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                          {Math.round(insight.confidence * 100)}% confidence
+                        </span>
+                      )}
+                      {insight.isLegacy && (
+                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded">
+                          Legacy
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {insight.timestamp.toLocaleTimeString()}
                     </span>
-                    {insight.confidence !== undefined && (
-                      <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                        {Math.round(insight.confidence * 100)}% confidence
-                      </span>
-                    )}
-                    {insight.isLegacy && (
-                      <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded">
-                        Legacy
-                      </span>
-                    )}
                   </div>
-                  <span className="text-xs text-gray-500">
-                    {insight.timestamp.toLocaleTimeString()}
-                  </span>
+                  <div className="text-sm text-gray-800 leading-relaxed mb-2">
+                    {formatInsightContent(insight.content)}
+                  </div>
+                  
+                  {/* Display suggestions if available */}
+                  {insight.suggestions && insight.suggestions.length > 0 && (
+                    <div className="mt-3 pt-2 border-t border-gray-100">
+                      <p className="text-xs font-semibold text-gray-600 mb-2">Suggestions:</p>
+                      <ul className="text-xs text-gray-700 space-y-1">
+                        {insight.suggestions.slice(0, 3).map((suggestion: string, idx: number) => (
+                          <li key={idx} className="flex items-start gap-1">
+                            <span className="mt-0.5 text-purple-500">•</span>
+                            <span>{suggestion}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {/* Display metadata for new endpoint */}
+                  {insight.metadata && (
+                    <div className="mt-2 text-xs text-gray-500">
+                      Tokens: {insight.metadata.tokensUsed} | Length: {insight.metadata.transcriptLength}
+                    </div>
+                  )}
                 </div>
-                <div className="text-sm text-gray-800 leading-relaxed mb-2">
-                  {formatInsightContent(insight.content)}
+              ))}
+            </div>
+          ) : (
+            <div className="text-center text-purple-600 py-4">
+              <p className="text-sm">No insights yet</p>
+              <p className="text-xs text-purple-500 mt-1">Click "Get Insights" to analyze the conversation</p>
+            </div>
+          )}
+        </div>
+
+        {/* Follow-up Questions Section */}
+        <div className="bg-blue-50 rounded-lg p-3">
+          <h3 className="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2">
+            ❓ Follow-up Questions
+            <span className="text-xs bg-blue-200 text-blue-700 px-2 py-1 rounded">
+              {sessionContext.aiInsights.filter(i => i.type === 'followup').length}
+            </span>
+          </h3>
+          
+          {sessionContext.aiInsights.filter(insight => insight.type === 'followup').length > 0 ? (
+            <div className="space-y-2">
+              {sessionContext.aiInsights
+                .filter(insight => insight.type === 'followup')
+                .map((insight) => (
+                <div key={insight.id} className="bg-white p-3 rounded shadow-sm border-l-4 border-blue-500">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold uppercase text-blue-600">
+                        ❓ {insight.type}
+                      </span>
+                      {insight.confidence !== undefined && (
+                        <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                          {Math.round(insight.confidence * 100)}% confidence
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {insight.timestamp.toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-800 leading-relaxed mb-2">
+                    {formatInsightContent(insight.content)}
+                  </div>
+                  
+                  {/* Display suggestions if available */}
+                  {insight.suggestions && insight.suggestions.length > 0 && (
+                    <div className="mt-3 pt-2 border-t border-gray-100">
+                      <p className="text-xs font-semibold text-gray-600 mb-2">Suggested Questions:</p>
+                      <ul className="text-xs text-gray-700 space-y-1">
+                        {insight.suggestions.slice(0, 3).map((suggestion: string, idx: number) => (
+                          <li key={idx} className="flex items-start gap-1">
+                            <span className="mt-0.5 text-blue-500">•</span>
+                            <span>{suggestion}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {/* Display metadata for new endpoint */}
+                  {insight.metadata && (
+                    <div className="mt-2 text-xs text-gray-500">
+                      Tokens: {insight.metadata.tokensUsed} | Length: {insight.metadata.transcriptLength}
+                    </div>
+                  )}
                 </div>
-                
-                {/* Display suggestions if available */}
-                {insight.suggestions && insight.suggestions.length > 0 && (
-                  <div className="mt-3 pt-2 border-t border-gray-100">
-                    <p className="text-xs font-semibold text-gray-600 mb-2">Suggestions:</p>
-                    <ul className="text-xs text-gray-700 space-y-1">
-                      {insight.suggestions.slice(0, 3).map((suggestion: string, idx: number) => (
-                        <li key={idx} className="flex items-start gap-1">
-                          <span className={`mt-0.5 ${
-                            insight.type === 'followup' ? 'text-blue-500' : 'text-purple-500'
-                          }`}>•</span>
-                          <span>{suggestion}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                
-                {/* Display metadata for new endpoint */}
-                {insight.metadata && (
-                  <div className="mt-2 text-xs text-gray-500">
-                    Tokens: {insight.metadata.tokensUsed} | Length: {insight.metadata.transcriptLength}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center text-blue-600 py-4">
+              <p className="text-sm">No follow-up questions yet</p>
+              <p className="text-xs text-blue-500 mt-1">Click "Follow-up Questions" to generate questions</p>
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="flex-1 flex items-center justify-center text-center text-gray-500 p-8">
-          <div>
-            <div className="text-4xl mb-4">🤖</div>
-            <p className="text-sm">AI insights will appear here</p>
-            <p className="text-xs text-gray-400 mt-2">
-              Start recording or add manual entries to enable AI analysis
-            </p>
+
+        {/* Empty State for Both */}
+        {sessionContext.aiInsights.length === 0 && (
+          <div className="flex-1 flex items-center justify-center text-center text-gray-500 p-8">
+            <div>
+              <div className="text-4xl mb-4">🤖</div>
+              <p className="text-sm">AI analysis will appear here</p>
+              <p className="text-xs text-gray-400 mt-2">
+                Start recording or add manual entries, then use the analysis buttons above
+              </p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Session Stats */}
       {sessionState === 'discussion' && (
