@@ -19,7 +19,7 @@ type SessionState = 'idle' | 'intro' | 'discussion' | 'summary' | 'completed';
 interface TranscriptEntry {
   id: string;
   timestamp: Date;
-  speaker: string;
+  speaker?: string; // Optional - only used for legacy entries
   text: string;
   confidence?: number; // Speech recognition confidence
   isAutoDetected: boolean; // vs manual entry
@@ -97,7 +97,7 @@ const RoundtableCanvasV2: React.FC = () => {
 
   // Live transcript state
   const [isRecording, setIsRecording] = useState(false);
-  const [currentSpeaker, setCurrentSpeaker] = useState<string>('Speaker');
+  const [currentSpeaker, setCurrentSpeaker] = useState<string>('Ari Lehavi, Head of Applied AI at Moody\'s');
   const [interimTranscript, setInterimTranscript] = useState<string>('');
 
   // Enhanced manual entry modal state
@@ -131,7 +131,6 @@ const RoundtableCanvasV2: React.FC = () => {
       if (event.text.trim()) {
         addTranscriptEntry({
           text: event.text.trim(),
-          speaker: currentSpeaker || 'Participant',
           confidence: event.confidence,
           isAutoDetected: true,
         });
@@ -228,41 +227,74 @@ const RoundtableCanvasV2: React.FC = () => {
   }, [speechTranscription]);
 
   // AI analysis with live transcript context
+  // ✅ CLAUDE'S FIX #2: Comprehensive callAIAnalysis with loading states and error handling
   const callAIAnalysis = useCallback(async (analysisType: string = 'insights') => {
+    // ✅ PREVENT MULTIPLE SIMULTANEOUS CALLS
+    if (sessionContext.aiInsights.some(insight => insight.isLoading)) {
+      console.log('🚫 AI analysis already in progress, skipping...');
+      return;
+    }
+
     try {
-      // 🚨 CRITICAL DEBUG - Log raw transcript entries first
-      console.log('🚨 DEBUG - Raw liveTranscript entries:', JSON.stringify(sessionContext.liveTranscript, null, 2));
+      // Build appropriate transcript based on analysis type
+      let transcriptText: string;
+      let transcriptEntries = sessionContext.liveTranscript;
       
-      // 🧹 SANITIZE transcript entries - strip any HTML
-      const cleanTranscriptEntries = sessionContext.liveTranscript.map(entry => ({
-        speaker: entry.speaker,
-        text: entry.text.replace(/<[^>]*>/g, '') // Strip all HTML tags
-      }));
-      
-      console.log('🧹 DEBUG - Cleaned transcript entries:', JSON.stringify(cleanTranscriptEntries, null, 2));
-      
-      // Build live transcript for AI context
-      const transcriptText = cleanTranscriptEntries
-        .map(entry => `${entry.speaker}: ${entry.text}`)
-        .join('\n');
-      
-      // 🔍 CRITICAL DEBUG - Check if transcript contains HTML contamination
-      console.log('🚨 DEBUG - Final transcript being sent to AI:');
-      console.log('---START TRANSCRIPT---');
-      console.log(transcriptText);
-      console.log('---END TRANSCRIPT---');
-      
-      if (transcriptText.includes('<div') || transcriptText.includes('class=')) {
-        console.error('🚨 FRONTEND CONTAMINATION DETECTED: Transcript contains HTML!');
-        console.error('Contaminated transcript:', transcriptText);
+      if (analysisType === 'insights') {
+        // For insights: Find the last insight and only include transcript entries after that point
+        const lastInsightIndex = sessionContext.aiInsights
+          .map(insight => insight.type === 'insights' ? insight.timestamp : null)
+          .filter(timestamp => timestamp !== null)
+          .length;
+        
+        // Get entries since the last insight (track by entry index rather than timestamp for accuracy)
+        const lastAnalyzedEntryCount = sessionContext.aiInsights
+          .filter(insight => insight.type === 'insights' && !insight.isError)
+          .reduce((maxCount, insight) => {
+            const entryCountAtInsight = insight.transcriptEntryCount || 0;
+            return Math.max(maxCount, entryCountAtInsight);
+          }, 0);
+        
+        transcriptEntries = sessionContext.liveTranscript.slice(lastAnalyzedEntryCount);
+        
+        if (transcriptEntries.length === 0) {
+          // No new content since last insights
+          transcriptText = "No new conversation content has been added since the last insight generation.";
+        } else {
+          transcriptText = transcriptEntries
+            .map(entry => entry.text) // Remove speaker labels as per user requirements
+            .join('\n');
+        }
+        
+        console.log(`🔍 Insights Analysis: Analyzing ${transcriptEntries.length} new entries (from entry ${lastAnalyzedEntryCount} onwards)`);
+      } else {
+        // For synthesis and other types: Use cumulative transcript up to current point
+        transcriptText = sessionContext.liveTranscript
+          .map(entry => entry.text) // Remove speaker labels as per user requirements
+          .join('\n');
+        console.log(`📊 ${analysisType} Analysis: Analyzing full cumulative transcript (${sessionContext.liveTranscript.length} entries)`);
       }
       
       console.log('🔍 Starting AI Analysis:', {
         type: analysisType,
         transcriptLength: transcriptText.length,
-        entryCount: cleanTranscriptEntries.length,
+        entryCount: sessionContext.liveTranscript.length,
         topic: sessionContext.currentTopic
       });
+
+      // ✅ ADD LOADING STATE TO PREVENT LOOPS
+      const loadingInsightId = `loading_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      setSessionContext(prev => ({
+        ...prev,
+        aiInsights: [...prev.aiInsights, {
+          id: loadingInsightId,
+          type: analysisType,
+          content: '',
+          timestamp: new Date(),
+          confidence: 0,
+          isLoading: true // ✅ ADD THIS FLAG
+        }]
+      }));
 
       // TRY NEW /api/analyze-live endpoint first (strict JSON)
       try {
@@ -272,121 +304,127 @@ const RoundtableCanvasV2: React.FC = () => {
           body: JSON.stringify({
             sessionTopic: sessionContext.currentTopic || 'Strategic Planning Session',
             liveTranscript: transcriptText || "No conversation content has been captured yet in this live session.",
-            analysisType,
-            sessionDuration: Math.floor((Date.now() - sessionContext.startTime.getTime()) / 60000),
+            analysisType: analysisType, // ✅ NOW INCLUDES 'transition'
+            participantCount: Math.max(1, sessionContext.liveTranscript.length > 0 ? 1 : 1), // Single conversation flow without speaker differentiation
             clientId: 'live-session'
-          }),
+          })
         });
 
         if (liveResponse.ok) {
-          const liveData = await liveResponse.json();
-          console.log('✅ Live AI Analysis (new endpoint):', liveData);
+          const result = await liveResponse.json();
+          console.log('✅ Live AI Analysis (new endpoint):', result);
           
-          if (liveData.success) {
-            const aiContent = liveData.insights || liveData.content || liveData.analysis;
-            
-            // 🚨 CRITICAL: Check for contamination before setting
-            if (aiContent && (aiContent.includes('class=') || aiContent.includes('font-semibold') || aiContent.includes('bg-purple'))) {
-              console.error('🚨 CONTAMINATED AI RESPONSE DETECTED!');
-              console.error('Contaminated response:', aiContent);
-              setSessionContext(prev => {
-                const existingInsights = prev.aiInsights.filter(insight => insight.type !== analysisType);
-                return {
-                  ...prev,
-                  aiInsights: [...existingInsights, {
-                    id: `insight_${Date.now()}`,
-                    type: analysisType,
-                    content: 'Error: AI response contaminated. Please refresh and try again.',
-                    timestamp: new Date(),
-                    confidence: 0,
-                    suggestions: [],
-                    metadata: { error: 'contamination_detected' }
-                  }],
-                };
-              });
-              return;
-            }
-            
-            // 🔍 DEBUG: Log clean AI response
-            console.log('🔍 Clean AI Response received:', aiContent);
-            
-            // Replace existing insight of same type or add new one
-            setSessionContext(prev => {
-              const existingInsights = prev.aiInsights.filter(insight => insight.type !== analysisType);
-              return {
-                ...prev,
-                aiInsights: [...existingInsights, {
-                  id: `insight_${Date.now()}`,
-                  type: analysisType,
-                  content: aiContent,
-                  timestamp: new Date(),
-                  confidence: liveData.confidence,
-                  suggestions: liveData.suggestions || [],
-                  metadata: liveData.metadata
-                }],
-              };
-            });
-            
-            return liveData;
+          if (result.success && result.content) {
+            // ✅ REPLACE LOADING INSIGHT WITH REAL RESULT
+            setSessionContext(prev => ({
+              ...prev,
+              aiInsights: prev.aiInsights.map(insight => 
+                insight.id === loadingInsightId 
+                  ? {
+                      id: `insight_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                      type: analysisType,
+                      content: result.content,
+                      timestamp: new Date(),
+                      confidence: result.confidence || 0.85,
+                      suggestions: result.suggestions || [],
+                      metadata: result.metadata || {},
+                      transcriptEntryCount: prev.liveTranscript.length, // ✅ TRACK TRANSCRIPT POSITION FOR INCREMENTAL INSIGHTS
+                      isLoading: false // ✅ CLEAR LOADING STATE
+                    }
+                  : insight
+              )
+            }));
+            return; // ✅ SUCCESS - don't fall back to legacy endpoint
           }
         }
-        
-        console.log('⚠️ Live endpoint failed, falling back to legacy endpoint');
+
+        // ✅ REMOVE LOADING INSIGHT IF FAILED
+        setSessionContext(prev => ({
+          ...prev,
+          aiInsights: prev.aiInsights.filter(insight => insight.id !== loadingInsightId)
+        }));
+
       } catch (liveError) {
-        console.log('⚠️ Live endpoint error, using fallback:', liveError);
+        console.log('⚠️ Live endpoint failed, falling back to legacy endpoint');
+        
+        // ✅ REMOVE LOADING INSIGHT
+        setSessionContext(prev => ({
+          ...prev,
+          aiInsights: prev.aiInsights.filter(insight => insight.id !== loadingInsightId)
+        }));
       }
 
-      // FALLBACK to legacy /api/analyze endpoint
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          questionContext: `Live Discussion Session - ${sessionContext.currentTopic || 'Strategic Planning'}`,
-          currentTranscript: transcriptText || "No conversation content has been captured yet in this live session.",
-          analysisType,
-        }),
-      });
+      // FALLBACK: Try legacy /api/analyze endpoint  
+      try {
+        const legacyResponse = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            questionContext: sessionContext.currentTopic || 'Strategic Planning Session',
+            currentTranscript: transcriptText || "No comments have been added yet.",
+            analysisType: analysisType === 'transition' ? 'insights' : analysisType // ✅ MAP 'transition' to 'insights' for legacy
+          })
+        });
+        
+        if (legacyResponse.ok) {
+          const legacyResult = await legacyResponse.text();
+          console.log('✅ Legacy AI Analysis:', legacyResult);
+          
+          // ✅ ADD LEGACY RESULT
+          setSessionContext(prev => ({
+            ...prev,
+            aiInsights: [...prev.aiInsights, {
+              id: `insight_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              type: analysisType,
+              content: legacyResult,
+              timestamp: new Date(),
+              confidence: 0.8,
+              transcriptEntryCount: prev.liveTranscript.length, // ✅ TRACK TRANSCRIPT POSITION FOR INCREMENTAL INSIGHTS
+              isLegacy: true,
+              isLoading: false
+            }]
+          }));
+          return;
+        }
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`Legacy API failed with status: ${legacyResponse.status}`);
+
+      } catch (legacyError) {
+        console.error('❌ Both AI endpoints failed:', legacyError);
+        
+        // ✅ ADD ERROR INSIGHT INSTEAD OF THROWING
+        setSessionContext(prev => ({
+          ...prev,
+          aiInsights: [...prev.aiInsights, {
+            id: `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            type: analysisType,
+            content: 'AI analysis temporarily unavailable. Please try again or continue with manual facilitation.',
+            timestamp: new Date(),
+            confidence: 0,
+            isError: true,
+            isLoading: false
+          }]
+        }));
       }
 
-      const data = await response.json();
-      console.log('✅ Legacy AI Analysis (fallback):', data);
-
-      // Add AI insight to session context (legacy format)
-      setSessionContext(prev => ({
-        ...prev,
-        aiInsights: [...prev.aiInsights, {
-          id: `insight_${Date.now()}`,
-          type: analysisType,
-          content: data.insights || data.analysis || data.result,
-          timestamp: new Date(),
-          confidence: 0.8, // Default confidence for legacy endpoint
-          isLegacy: true
-        }],
-      }));
-
-      return data;
     } catch (error) {
-      console.error('❌ AI Analysis Error (both endpoints failed):', error);
+      console.error('❌ AI Analysis Error:', error);
       
-      // Add error insight to maintain UX
+      // ✅ HANDLE ALL ERRORS GRACEFULLY - NO UNHANDLED PROMISES
       setSessionContext(prev => ({
         ...prev,
-        aiInsights: [...prev.aiInsights, {
-          id: `error_${Date.now()}`,
-          type: 'error',
+        aiInsights: [...prev.aiInsights.filter(insight => !insight.isLoading), {
+          id: `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          type: analysisType,
           content: 'AI analysis temporarily unavailable. Please try again or continue with manual facilitation.',
           timestamp: new Date(),
           confidence: 0,
-          isError: true
-        }],
+          isError: true,
+          isLoading: false
+        }]
       }));
-      
-      throw error;
     }
-  }, [sessionContext]);
+  }, [sessionContext.liveTranscript, sessionContext.currentTopic]); // ✅ PROPER DEPENDENCIES
 
   // Agenda Navigation Functions
   const goToNextQuestion = useCallback(() => {
@@ -394,7 +432,7 @@ const RoundtableCanvasV2: React.FC = () => {
     if (sessionContext.currentQuestionIndex < totalQuestions - 1) {
       const currentQuestion = getCurrentQuestion(sessionContext.currentQuestionIndex);
       const timeSpent = sessionContext.questionStartTime 
-        ? Math.floor((Date.now() - sessionContext.questionStartTime.getTime()) / 60000)
+        ? Math.floor((Date.now() - sessionContext.questionStartTime.getTime()) / (60 * 1000))
         : 0;
 
       setSessionContext(prev => ({
@@ -413,7 +451,7 @@ const RoundtableCanvasV2: React.FC = () => {
 
       // Auto-trigger AI analysis for the transition
       setTimeout(() => {
-        callAIAnalysis('transition');
+        callAIAnalysis('facilitation'); // ✅ FIXED: Use valid enum value instead of 'transition'
       }, 1000);
     }
   }, [sessionContext, callAIAnalysis]);
@@ -514,23 +552,7 @@ const RoundtableCanvasV2: React.FC = () => {
   
   // Enhanced formatting for AI insights content (Priority 4: Helper Functions)
   // 🚨 SIMPLIFIED FORMATTING ONLY - NO COMPLEX CSS REFERENCES
-  const formatAIInsights = useCallback((insights: string) => {
-    if (!insights) return '';
-    
-    // 🔍 DEBUG: Log what we're formatting
-    console.log('🔍 Formatting AI insights:', insights);
-    
-    // 🚨 SIMPLE FORMATTING ONLY
-    return insights
-      .split('\n')
-      .map(line => {
-        if (line.match(/^\d+\./)) {
-          return `<div class="mb-3 p-3 bg-gray-50 rounded-lg">${line}</div>`;
-        }
-        return line;
-      })
-      .join('\n');
-  }, []);
+  // ✅ REMOVED formatAIInsights - was causing infinite loop with console.log side effects
 
   // Enhanced content validation (Priority 4: Helper Functions)
   const hasTranscriptContent = useCallback((transcriptEntries: any[]) => {
@@ -620,7 +642,6 @@ const RoundtableCanvasV2: React.FC = () => {
       
       addTranscriptEntry({
         text: manualEntryText.trim(),
-        speaker: finalSpeakerName,
         isAutoDetected: false,
       });
       setShowManualModal(false);
@@ -796,10 +817,10 @@ const RoundtableCanvasV2: React.FC = () => {
               
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">Strategic Session Topic</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Session Topic</label>
                   <input
                     type="text"
-                    value={sessionContext.currentTopic || ''}
+                    value={sessionContext.currentTopic || 'When AI Becomes How the Enterprise Works'}
                     onChange={(e) => setSessionContext(prev => ({
                       ...prev,
                       currentTopic: e.target.value
@@ -811,13 +832,13 @@ const RoundtableCanvasV2: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">Your Strategic Role</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Facilitator</label>
                   <input
                     type="text"
-                    value={currentSpeaker}
+                    value={currentSpeaker || 'Ari Lehavi, Head of Applied AI at Moody\'s'}
                     onChange={(e) => setCurrentSpeaker(e.target.value)}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                    placeholder="Chief Strategy Officer, Innovation Leader, Transformation Director"
+                    placeholder="Ari Lehavi, Head of Applied AI at Moody's"
                   />
                   <p className="text-xs text-gray-500 mt-1">This identifies your contributions in transcripts and analysis</p>
                 </div>
@@ -894,27 +915,7 @@ const RoundtableCanvasV2: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-2xl p-6">
-              <h3 className="font-semibold text-blue-900 mb-3 flex items-center">
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                Strategic Session Framework
-              </h3>
-              <div className="text-sm text-blue-800 space-y-2">
-                <p><span className="font-medium">Phase 1:</span> Current AI Landscape Assessment</p>
-                <p><span className="font-medium">Phase 2:</span> Enterprise Readiness & Capabilities</p>
-                <p><span className="font-medium">Phase 3:</span> Strategic Integration Opportunities</p>
-                <p><span className="font-medium">Phase 4:</span> Implementation Roadmap & Success Metrics</p>
-              </div>
-              <div className="mt-4 p-3 bg-white bg-opacity-50 rounded-lg">
-                <p className="text-xs text-blue-700">
-                  <span className="font-medium">Duration:</span> 60-90 minutes • 
-                  <span className="font-medium">Participants:</span> 3-8 executives • 
-                  <span className="font-medium">Output:</span> Strategic action plan
-                </p>
-              </div>
-            </div>
+
           </div>
         </div>
       </div>
@@ -1063,13 +1064,6 @@ const RoundtableCanvasV2: React.FC = () => {
                 <h2 className="text-xl font-semibold">Strategic Discussion Capture</h2>
                 <div className="flex items-center space-x-4 text-sm text-blue-100">
                   <span>{sessionContext.currentTopic || 'Enterprise AI Transformation'}</span>
-                  <span>•</span>
-                  <span className="flex items-center">
-                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v8a2 2 0 002 2h3l3 3 3-3h3a2 2 0 002-2z" clipRule="evenodd"/>
-                    </svg>
-                    {sessionContext.liveTranscript.length} insights captured
-                  </span>
                 </div>
               </div>
             </div>
@@ -1087,19 +1081,7 @@ const RoundtableCanvasV2: React.FC = () => {
         {/* Executive Control Panel */}
         <div className="bg-gradient-to-r from-gray-50 to-blue-50 px-6 py-5 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            {/* Speaker Configuration */}
-            <div className="flex items-center space-x-4">
-              <div className="min-w-0 flex-1">
-                <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Active Speaker</label>
-                <input
-                  type="text"
-                  value={currentSpeaker}
-                  onChange={(e) => setCurrentSpeaker(e.target.value)}
-                  className="w-48 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-medium"
-                  placeholder="Executive Name or Role"
-                />
-              </div>
-            </div>
+
             
             {/* Professional Action Controls */}
             <div className="flex items-center space-x-3">
@@ -1226,71 +1208,31 @@ const RoundtableCanvasV2: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div 
-              ref={transcriptRef}
-              className="space-y-4 max-h-96 overflow-y-auto"
-            >
-              {sessionContext.liveTranscript.map((entry, index) => (
-                <div key={entry.id} className="bg-gray-50/80 rounded-xl p-4 border border-gray-200 hover:bg-gray-50 transition-colors fade-in-up">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-blue-600 font-semibold text-sm">
-                          {entry.speaker.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-blue-600 font-medium text-sm">
-                          {entry.speaker}
-                        </span>
-                        <span className="text-xs text-gray-500 ml-2">
-                          {entry.timestamp.toLocaleTimeString()}
-                          {entry.isAutoDetected && <span className="ml-1">🎤</span>}
-                        </span>
-                      </div>
+            <div className="space-y-4">
+              <div 
+                ref={transcriptRef}
+                className="bg-white rounded-xl p-6 border border-gray-200 max-h-96 overflow-y-auto"
+              >
+                <div className="prose prose-sm max-w-none">
+                  {sessionContext.liveTranscript.length === 0 ? (
+                    <p className="text-gray-500 italic text-center py-8">
+                      No conversation captured yet. Start speaking or click "Add Manual Entry" to begin.
+                    </p>
+                  ) : (
+                    <div className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+                      {formatTranscriptText(sessionContext.liveTranscript)}
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <button 
-                        className="text-gray-400 hover:text-blue-600 p-1 rounded hover:bg-blue-50 transition-colors"
-                        title="Edit entry"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                        </svg>
-                      </button>
-                      <button 
-                        className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors"
-                        title="Delete entry"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-gray-800 leading-relaxed pl-11">
-                    {entry.text}
-                  </p>
+                  )}
                 </div>
-              ))}
+              </div>
               
               {/* Show interim results with professional styling */}
               {interimTranscript && (
                 <div className="bg-yellow-50/80 rounded-xl p-4 border border-yellow-200 animate-pulse">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                        <span className="text-yellow-600 font-semibold text-sm">
-                          {currentSpeaker.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-yellow-600 font-medium text-sm">{currentSpeaker}</span>
-                        <span className="text-xs text-yellow-500 ml-2">Speaking...</span>
-                      </div>
-                    </div>
+                  <div className="flex items-center space-x-3 mb-2">
+                    <span className="text-yellow-600 font-medium text-sm">Speaking...</span>
                   </div>
-                  <p className="text-gray-700 italic pl-11">{interimTranscript}</p>
+                  <p className="text-gray-700 italic">{interimTranscript}</p>
                 </div>
               )}
             </div>
@@ -1305,300 +1247,141 @@ const RoundtableCanvasV2: React.FC = () => {
     );
   };
 
+  // Format transcript text with punctuation and paragraph breaks
+  const formatTranscriptText = (transcript: TranscriptEntry[]): string => {
+    if (transcript.length === 0) return '';
+    
+    let formattedText = '';
+    let previousTimestamp: Date | null = null;
+    
+    transcript.forEach((entry, index) => {
+      const currentText = entry.text.trim();
+      if (!currentText) return;
+      
+      // Detect pause (more than 3 seconds between entries)
+      const isPause = previousTimestamp && 
+        (entry.timestamp.getTime() - previousTimestamp.getTime()) > 3000;
+      
+      // Add paragraph break after significant pause
+      if (isPause && formattedText.length > 0) {
+        formattedText += '\n\n';
+      } else if (formattedText.length > 0) {
+        formattedText += ' ';
+      }
+      
+      // Process the text for natural punctuation
+      let processedText = currentText;
+      
+      // Add commas after common speech patterns
+      processedText = processedText.replace(/\b(and|but|so|well|now|then|also|actually|basically)\b/gi, (match, word) => {
+        const prevChar = processedText[processedText.indexOf(match) - 1];
+        return (prevChar && prevChar !== ',' && prevChar !== ' ') ? ', ' + word : word;
+      });
+      
+      // Add periods before introducing new topics or speakers
+      processedText = processedText.replace(/\b(I am|my name is|this is|hi I'm|hello I'm|I work|I run)\b/gi, (match, phrase) => {
+        const isStart = processedText.indexOf(match) < 10;
+        return isStart ? match : '. ' + phrase;
+      });
+      
+      // Capitalize first letter if needed
+      if (formattedText.length === 0 || formattedText.endsWith('\n\n')) {
+        processedText = processedText.charAt(0).toUpperCase() + processedText.slice(1);
+      }
+      
+      formattedText += processedText;
+      previousTimestamp = entry.timestamp;
+    });
+    
+    // Add final period if text doesn't end with punctuation
+    if (formattedText && !formattedText.match(/[.!?]$/)) {
+      formattedText += '.';
+    }
+    
+    return formattedText;
+  };
+
   // Render AI Assistance Panel (RIGHT PANE)
-  const renderAIAssistancePanel = () => (
-    <div className="h-full">
-      {/* AI Panel Header with PDF Export */}
-      <div className="bg-white p-4 border-b border-gray-200 mb-4">
-        <div className="flex justify-between items-center mb-3">
-          <h2 className="text-lg font-bold text-gray-800">
-            🧠 AI Co-Facilitator
-          </h2>
-          {/* Summarize Entire Session Button */}
-          <button
-            onClick={handleExportPDF}
-            disabled={sessionContext.liveTranscript.length === 0}
-            className="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium flex items-center gap-2"
-          >
-            📊 Summarize Entire Session
-          </button>
-        </div>
-        
-        {/* Enhanced Professional AI Analysis Controls */}
-        <div className="flex space-x-4 mb-6">
-          <button
-            onClick={() => {
-              if (sessionContext.liveTranscript.length > 0) {
-                callAIAnalysis('insights');
-                setActiveAnalyticsTab('insights');
-              }
-            }}
-            disabled={sessionContext.liveTranscript.length === 0}
-            className="flex-1 bg-gradient-to-r from-purple-600 to-purple-700 text-white px-6 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:from-purple-700 hover:to-purple-800 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-            </svg>
-            <span>Get Insights</span>
-          </button>
-          <button
-            onClick={() => {
-              if (sessionContext.liveTranscript.length > 0) {
-                callAIAnalysis('followup');
-                setActiveAnalyticsTab('followup');
-              }
-            }}
-            disabled={sessionContext.liveTranscript.length === 0}
-            className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:from-blue-700 hover:to-blue-800 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            <span>Follow-up Questions</span>
-          </button>
-        </div>
-        
-        {/* Tab Navigation */}
-        {sessionContext.aiInsights.length > 0 && (
-          <div className="flex bg-gray-100 rounded-lg p-1">
+  const renderAIAssistancePanel = () => {
+    // ✅ GET ONLY THE LATEST NON-LOADING INSIGHT (no function call in render)
+    const latestInsight = sessionContext.aiInsights
+      .filter(insight => !insight.isLoading)
+      .slice(-1)[0];
+
+    return (
+      <div className="h-full overflow-y-auto">
+        {/* AI Panel Header */}
+        <div className="bg-white p-4 border-b border-gray-200 mb-4">
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">🧠 AI Co-Facilitator</h3>
+          <div className="flex gap-2 flex-wrap">
             <button
-              onClick={() => setActiveAnalyticsTab('insights')}
-              className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                activeAnalyticsTab === 'insights'
-                  ? 'bg-white text-purple-700 shadow-sm'
-                  : 'text-gray-600 hover:text-purple-600'
-              }`}
+              onClick={() => callAIAnalysis('insights')}
+              disabled={sessionContext.aiInsights.some(insight => insight.isLoading)}
+              className="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              💡 Insights ({sessionContext.aiInsights.filter(i => i.type !== 'followup').length})
+              ⭐ Get Insights
             </button>
             <button
-              onClick={() => setActiveAnalyticsTab('followup')}
-              className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                activeAnalyticsTab === 'followup'
-                  ? 'bg-white text-blue-700 shadow-sm'
-                  : 'text-gray-600 hover:text-blue-600'
-              }`}
+              onClick={() => callAIAnalysis('followup')}
+              disabled={sessionContext.aiInsights.some(insight => insight.isLoading)}
+              className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              ❓ Questions ({sessionContext.aiInsights.filter(i => i.type === 'followup').length})
+              ❓ Follow-up Questions
+            </button>
+            <button
+              onClick={() => callAIAnalysis('synthesis')}
+              disabled={sessionContext.aiInsights.some(insight => insight.isLoading)}
+              className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              📊 Synthesize
+            </button>
+            <button
+              onClick={handleExportPDF}
+              disabled={isExporting || sessionContext.liveTranscript.length === 0}
+              className="px-3 py-1 bg-orange-600 text-white text-sm rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+              title="Export session summary as PDF"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+              <span>{isExporting ? 'Exporting...' : '📄 Export PDF'}</span>
             </button>
           </div>
-        )}
-      </div>
-
-      {/* Professional AI Insights & Follow-up Questions Display */}
-      <div className="flex-1 overflow-y-auto px-4">
-        {sessionContext.aiInsights.length === 0 ? (
-          // Professional Empty State
-          activeAnalyticsTab === 'insights' ? (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-purple-50 to-purple-100 px-6 py-4 border-b border-purple-200">
-                <div className="flex items-center">
-                  <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center mr-3">
-                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">AI Strategic Analysis</h3>
-                    <p className="text-xs text-gray-600">Ready to analyze discussion patterns</p>
-                  </div>
-                </div>
-              </div>
-              <div className="p-12">
-                <div className="text-center">
-                  <div className="w-16 h-16 mx-auto bg-purple-100 rounded-full flex items-center justify-center mb-4">
-                    <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
-                  </div>
-                  <h4 className="font-semibold text-gray-900 mb-2">Strategic Analysis Ready</h4>
-                  <p className="text-sm text-gray-600 mb-6">
-                    Capture discussion points to receive strategic insights and transformation patterns
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4 border-b border-blue-200">
-                <div className="flex items-center">
-                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Strategic Follow-up Questions</h3>
-                    <p className="text-xs text-gray-600">Ready to generate strategic follow-ups</p>
-                  </div>
-                </div>
-              </div>
-              <div className="p-12">
-                <div className="text-center">
-                  <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                    <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                  </div>
-                  <h4 className="font-semibold text-gray-900 mb-2">Strategic Questions Ready</h4>
-                  <p className="text-sm text-gray-600 mb-6">
-                    Generate follow-up questions to guide deeper strategic discussion
-                  </p>
-                </div>
-              </div>
-            </div>
-          )
-        ) : (
-          // Professional Content Display with Enhanced Containers
-          activeAnalyticsTab === 'insights' ? (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-purple-50 to-purple-100 px-6 py-4 border-b border-purple-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center mr-3">
-                      <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">AI Strategic Insights</h3>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">
-                          {sessionContext.aiInsights.filter(i => i.type !== 'followup').length} insights
-                        </span>
-                        <span className="text-xs text-gray-500">{new Date().toLocaleTimeString()}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-4">
-                {sessionContext.aiInsights
-                  .filter(insight => insight.type !== 'followup')
-                  .map((insight) => (
-                    <div key={insight.id} className="bg-gradient-to-r from-purple-50 to-white rounded-lg border border-purple-200 p-4 shadow-sm">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
-                            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                            </svg>
-                          </div>
-                          <span className="text-sm font-semibold text-gray-900">Strategic Insight</span>
-                          {insight.confidence && (
-                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">
-                              {Math.round(insight.confidence * 100)}% confidence
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-xs text-gray-500">{insight.timestamp.toLocaleTimeString()}</span>
-                      </div>
-                      <div className="text-sm text-gray-800 leading-relaxed" dangerouslySetInnerHTML={{ __html: formatAIInsights(insight.content) }} />
-                      {insight.suggestions && insight.suggestions.length > 0 && (
-                        <div className="mt-4 pt-3 border-t border-purple-200">
-                          <p className="text-xs font-semibold text-purple-700 mb-2">Recommendations:</p>
-                          <ul className="text-xs text-gray-700 space-y-1">
-                            {insight.suggestions.slice(0, 3).map((suggestion: string, idx: number) => (
-                              <li key={idx} className="flex items-start gap-2">
-                                <span className="text-purple-500 mt-0.5">•</span>
-                                <span>{suggestion}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  
-                {sessionContext.aiInsights.filter(i => i.type !== 'followup').length === 0 && (
-                  <div className="text-center py-8">
-                    <div className="w-16 h-16 mx-auto bg-purple-100 rounded-full flex items-center justify-center mb-4">
-                      <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                      </svg>
-                    </div>
-                    <p className="text-sm text-gray-600">Generate insights to see strategic analysis here</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            // Follow-up Questions Container
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4 border-b border-blue-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">Strategic Follow-up Questions</h3>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">
-                          {sessionContext.aiInsights.filter(i => i.type === 'followup').length} questions
-                        </span>
-                        <span className="text-xs text-gray-500">{new Date().toLocaleTimeString()}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-4 p-6">
-                {sessionContext.aiInsights
-                  .filter(insight => insight.type === 'followup')
-                  .map((insight) => (
-                    <div key={insight.id} className="bg-gradient-to-r from-blue-50 to-white rounded-lg border border-blue-200 p-4 shadow-sm">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                          </div>
-                          <span className="text-sm font-semibold text-gray-900">Strategic Question</span>
-                          {insight.confidence && (
-                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">
-                              {Math.round(insight.confidence * 100)}% confidence
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-xs text-gray-500">{insight.timestamp.toLocaleTimeString()}</span>
-                      </div>
-                      <div className="text-sm text-gray-800 leading-relaxed" dangerouslySetInnerHTML={{ __html: formatAIInsights(insight.content) }} />
-                    </div>
-                  ))}
-                  
-                {sessionContext.aiInsights.filter(i => i.type === 'followup').length === 0 && (
-                  <div className="text-center py-8">
-                    <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                      <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                      </svg>
-                    </div>
-                    <p className="text-sm text-gray-600">Generate questions to see strategic follow-ups here</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )
-        )}
-      </div>
-
-      {/* Session Stats */}
-      {sessionState === 'discussion' && (
-        <div className="mt-6 bg-blue-50 p-4 rounded">
-          <h4 className="text-sm font-semibold text-blue-800 mb-2">Session Stats</h4>
-          <div className="text-xs text-blue-600 space-y-1">
-            <p><strong>Entries:</strong> {sessionContext.liveTranscript.length}</p>
-            <p><strong>Duration:</strong> {Math.floor((Date.now() - sessionContext.startTime.getTime()) / 60000)}min</p>
-            <p><strong>AI Insights:</strong> {sessionContext.aiInsights.length}</p>
-          </div>
         </div>
-      )}
-    </div>
-  );
+
+        {/* AI Insights Display */}
+        <div className="p-4">
+          {sessionContext.aiInsights.some(insight => insight.isLoading) ? (
+            <div className="flex items-center space-x-2 text-gray-600">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              <span>AI analyzing...</span>
+            </div>
+          ) : latestInsight ? (
+            <div className={`p-4 rounded-lg ${latestInsight.isError ? 'bg-yellow-50 border border-yellow-200' : 'bg-blue-50 border border-blue-200'}`}>
+              <div className="text-sm text-gray-600 mb-2">
+                {latestInsight.isError ? '⚠️ Error' : '🤖'} AI Analysis ({latestInsight.type})
+                {latestInsight.isLegacy && ' - Legacy'}
+                <span className="float-right">{latestInsight.timestamp.toLocaleTimeString()}</span>
+              </div>
+              <div className="text-gray-800 whitespace-pre-line">
+                {/* ✅ DIRECT DISPLAY - NO FUNCTION CALL */}
+                {latestInsight.content}
+              </div>
+              {latestInsight.confidence > 0 && (
+                <div className="text-xs text-gray-500 mt-2">
+                  Confidence: {Math.round(latestInsight.confidence * 100)}%
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-gray-500 italic">
+              Start recording or add manual entries, then use the analysis buttons above
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   // Render summary state
   const renderSummaryState = () => (
@@ -1609,7 +1392,7 @@ const RoundtableCanvasV2: React.FC = () => {
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-blue-50 p-4 rounded">
             <h3 className="font-semibold text-blue-800">Duration</h3>
-            <p className="text-2xl text-blue-600">{Math.floor((sessionContext.duration || 0) / 60)}:{String((sessionContext.duration || 0) % 60).padStart(2, '0')}</p>
+            <p className="text-2xl text-blue-600">{Math.floor((sessionContext.duration || 0) / (60))}:{String((sessionContext.duration || 0) % 60).padStart(2, '0')}</p>
           </div>
           
           <div className="bg-green-50 p-4 rounded">
@@ -1662,30 +1445,9 @@ const RoundtableCanvasV2: React.FC = () => {
 
             {/* Right: Session Status */}
             <div className="flex items-center space-x-6">
-              {/* Phase Progress */}
-              {getCurrentQuestion(sessionContext.currentQuestionIndex) && (
-                <div className="text-right">
-                  <div className="text-sm font-medium text-white">
-                    Phase {sessionContext.currentQuestionIndex + 1} of {getTotalQuestions()}
-                  </div>
-                  <div className="text-xs text-blue-200">
-                    {Math.round(((sessionContext.currentQuestionIndex + 1) / getTotalQuestions()) * 100)}% Complete
-                  </div>
-                </div>
-              )}
+
               
-              {/* Live Status */}
-              <div className="flex items-center space-x-2">
-                <div className={`w-2 h-2 rounded-full ${sessionState === 'discussion' ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
-                <div className="text-right">
-                  <div className="text-sm font-medium text-white">
-                    {sessionContext.liveTranscript.length} insights captured
-                  </div>
-                  <div className="text-xs text-blue-200">
-                    {sessionState === 'discussion' ? 'Session Active' : sessionState === 'intro' ? 'Ready to Begin' : 'Session Paused'}
-                  </div>
-                </div>
-              </div>
+
             </div>
           </div>
         </div>

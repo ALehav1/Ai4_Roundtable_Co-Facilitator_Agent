@@ -14,13 +14,15 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { sessionConfig } from '@/config/roundtable-config';
 
+// Viewport configuration (required separate export in Next.js 13+)
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 // Application metadata for SEO and social sharing
 export const metadata: Metadata = {
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-  },
   title: {
     default: sessionConfig.title,
     template: `%s | ${sessionConfig.title}`
@@ -59,13 +61,6 @@ export const metadata: Metadata = {
   },
   
 
-};
-
-// Viewport settings for responsive design (Next.js 15 requirement)
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
 };
 
 interface RootLayoutProps {

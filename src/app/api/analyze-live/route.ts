@@ -27,7 +27,7 @@ export const fetchCache = 'force-no-store';
 const LiveAnalyzeRequestSchema = z.object({
   sessionTopic: z.string().min(1),
   liveTranscript: z.string().default('No conversation content captured yet.'),
-  analysisType: z.enum(['insights', 'synthesis', 'followup', 'cross_reference', 'facilitation']),
+  analysisType: z.enum(['insights', 'synthesis', 'followup', 'cross_reference', 'facilitation', 'transition']), // ✅ ADD 'transition'
   sessionDuration: z.number().optional(),
   clientId: z.string().optional().default('anonymous')
 });
@@ -87,16 +87,19 @@ function buildLiveAnalysisPrompt(
   // 🚨 ULTRA CLEAN PROMPTS - NO MENTION OF FORMATTING
   
   if (analysisType === 'insights') {
-    return `You are analyzing a business discussion transcript. Provide exactly 4 numbered points:
+    return `PHASE-SPECIFIC INSIGHTS - Analyze only the NEW content in this transcript since the last insight generation:
 
 TRANSCRIPT:
 ${transcript}
 
-RESPONSE FORMAT:
-1. Key theme: [your analysis]
-2. Pattern observed: [your observation]  
-3. Important quote: [exact quote from transcript]
-4. Recommended next step: [your recommendation]
+Based ONLY on what was actually discussed in the transcript above, provide:
+
+1. **New Theme Identified**: [What new theme or topic emerged in this portion]
+2. **Key Quote or Statement**: [Most important direct quote from the actual conversation]
+3. **Participant Insight**: [What insight or perspective was actually shared by participants]
+4. **Discussion Pattern**: [What pattern or dynamic you observe in how the conversation is developing]
+
+IMPORTANT: Only analyze content that was ACTUALLY discussed in the transcript. Quote exactly from the conversation. If the transcript is empty or lacks substantive new content since the last analysis, state "No significant new content to analyze since last insights."
 
 Respond with only plain text. Use the exact numbering shown above.`;
   }
@@ -126,12 +129,51 @@ Provide 4 numbered connection points about themes, patterns, and strategic impli
   }
   
   if (analysisType === 'synthesis') {
-    return `Synthesize this discussion into key strategic takeaways:
+    return `CUMULATIVE DISCUSSION SYNTHESIS - Analyze the actual conversation below and summarize the key takeaways that were ACTUALLY discussed:
 
 TRANSCRIPT:
 ${transcript}
 
-Provide 4 numbered strategic themes and recommendations.`;
+Based ONLY on what was actually said in this conversation, provide:
+
+1. **Main Topic Discussed**: [What topic was actually covered]
+2. **Key Points Made**: [Actual points raised by participants]
+3. **Decisions or Conclusions**: [Any decisions, agreements, or conclusions reached]
+4. **Action Items or Next Steps**: [Any specific next steps mentioned]
+
+IMPORTANT: Only summarize content that was ACTUALLY discussed in the transcript. Do not add generic advice or recommendations not mentioned by participants. If the transcript is empty or lacks substantive content, state that clearly.
+
+Respond with only plain text. Use the exact numbering shown above.`;
+  }
+  
+  if (analysisType === 'transition') { // ✅ ADD TRANSITION CASE
+    return `Analyze the discussion transition and provide guidance for moving to the next phase:
+
+TRANSCRIPT:
+${transcript}
+
+RESPONSE FORMAT:
+1. Summary: [what was accomplished in this phase]
+2. Key insights: [insights to carry forward]
+3. Readiness assessment: [assessment for next phase]
+4. Suggested transition: [transition points or questions]
+
+Respond with only plain text. Use the exact numbering shown above.`;
+  }
+  
+  if (analysisType === 'facilitation') { // ✅ ADD FACILITATION CASE
+    return `As an expert facilitator, analyze this business discussion and provide facilitation guidance:
+
+TRANSCRIPT:
+${transcript}
+
+RESPONSE FORMAT:
+1. Group dynamics: [what you observe about participation and engagement]
+2. Content insights: [key themes and strategic points emerging]
+3. Process observation: [how the discussion is flowing, any challenges]
+4. Facilitation suggestion: [specific guidance for steering the conversation]
+
+Respond with only plain text. Use the exact numbering shown above.`;
   }
   
   return 'Invalid analysis type';

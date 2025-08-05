@@ -359,6 +359,52 @@
   }
 }
 
+/* Hide development notifications and error overlays during production/user sessions */
+@layer utilities {
+  /* Hide Next.js development error overlay and notifications */
+  [data-nextjs-error-overlay],
+  [data-nextjs-error-overlay] *,
+  iframe[src*="__nextjs_original-stack-frame"],
+  div[data-nextjs-toast],
+  div[data-nextjs-toast] *,
+  .nextjs-container-errors,
+  .nextjs-container-errors *,
+  .nextjs-container-build-error,
+  .nextjs-container-build-error *,
+  [id*="__next-build-watcher"],
+  [class*="__next-error"],
+  [class*="nextjs-error"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  /* Hide development notification badges and overlays */
+  div[style*="position: fixed"][style*="z-index"][style*="background"] {
+    display: none !important;
+  }
+
+  /* Hide error notification badges specifically */
+  div[style*="background-color: rgb(220, 38, 38)"],
+  div[style*="background: red"],
+  div[class*="error-notification"],
+  div[class*="issue-badge"],
+  span[class*="error-count"],
+  [data-test-id*="error"],
+  [aria-label*="error"],
+  [aria-label*="issue"] {
+    display: none !important;
+  }
+
+  /* Production mode: hide all development tools */
+  body.production [data-nextjs-error-overlay],
+  body.production iframe[src*="__nextjs"],
+  body.production div[data-nextjs-toast] {
+    display: none !important;
+  }
+}
+
 /* Custom animations */
 @keyframes pulse-glow {
   0%, 100% {

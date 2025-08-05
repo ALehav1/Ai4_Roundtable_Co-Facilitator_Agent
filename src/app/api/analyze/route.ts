@@ -25,7 +25,7 @@ export const fetchCache = 'force-no-store';
 const AnalyzeRequestSchema = z.object({
   questionContext: z.string().min(1),
   currentTranscript: z.string(),
-  analysisType: z.enum(['insights', 'synthesis', 'followup', 'cross_reference']),
+  analysisType: z.enum(['insights', 'synthesis', 'followup', 'cross_reference', 'transition']), // ✅ ADD 'transition'
   fullHistorySummary: z.string().optional(),
   clientId: z.string().optional()
 });
@@ -93,6 +93,8 @@ ${transcript.trim() || "No comments have been added to the transcript for this q
       return `${baseInstruction}\n**Your Task:** Generate 2 probing follow-up questions based directly on statements in the CURRENT TRANSCRIPT. If the transcript is empty, suggest 2 general opening questions related to the Session Context.`;
     case 'cross_reference':
       return `${baseInstruction}\n**Your Task:** Identify one specific connection between the CURRENT TRANSCRIPT and previous insights. If the transcript is empty, state that no cross-reference is possible yet.`;
+    case 'transition': // ✅ ADD TRANSITION CASE
+      return `${baseInstruction}\n**Your Task:** Analyze the discussion for transition readiness. Summarize what was covered and suggest how to move to the next phase. If the transcript is empty, suggest how to begin the next phase.`;
     default: // 'insights'
       return `${baseInstruction}\n**Your Task:** Identify 2-3 key strategic insights or patterns emerging from the CURRENT TRANSCRIPT. If the transcript is empty, state that insights will be generated once comments are added.`;
   }
