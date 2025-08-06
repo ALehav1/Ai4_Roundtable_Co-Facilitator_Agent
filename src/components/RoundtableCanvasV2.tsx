@@ -4,6 +4,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { sessionConfig, uiText } from '../config/roundtable-config';
 import { useSpeechTranscription, TranscriptEvent } from '../hooks/useSpeechTranscription';
 import { saveSession, loadSession, clearSession, SessionSnapshot } from '../utils/storage';
+import { sessionPresets, getPresetById, presetToTranscriptEntries, type SessionPreset } from '../config/session-presets';
 import { roundtableQuestions, getCurrentQuestion, getTotalQuestions } from '../config/roundtable-config';
 import { generateSessionPDF, prepareSessionDataForExport } from '../utils/pdfExport';
 
@@ -108,6 +109,10 @@ const RoundtableCanvasV2: React.FC = () => {
   const [manualEntryText, setManualEntryText] = useState('');
   const [bulkTranscriptText, setBulkTranscriptText] = useState('');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+
+  // Preset selection state
+  const [selectedPresetId, setSelectedPresetId] = useState<string>('blank_template');
+  const [showPresetModal, setShowPresetModal] = useState(false);
 
   // PDF export state
   const [isExporting, setIsExporting] = useState(false);
@@ -431,30 +436,100 @@ const RoundtableCanvasV2: React.FC = () => {
     const totalQuestions = getTotalQuestions();
     if (sessionContext.currentQuestionIndex < totalQuestions - 1) {
       const currentQuestion = getCurrentQuestion(sessionContext.currentQuestionIndex);
-      const timeSpent = sessionContext.questionStartTime 
-        ? Math.floor((Date.now() - sessionContext.questionStartTime.getTime()) / (60 * 1000))
-        : 0;
+      
+      // Mark current question as completed in agenda progress
+      if (currentQuestion) {
+        setSessionContext(prev => ({
+          ...prev,
+          agendaProgress: {
+            ...prev.agendaProgress,
+            [currentQuestion.id]: {
+              completed: true,
+              timeSpent: prev.questionStartTime ? Date.now() - prev.questionStartTime.getTime() : 0,
+              insights: prev.aiInsights.filter(i => i.timestamp >= (prev.questionStartTime || new Date())).length
+            }
+          },
+          currentQuestionIndex: prev.currentQuestionIndex + 1,
+          questionStartTime: new Date()
+        }));
+      } else {
+        // Fallback if no current question
+        setSessionContext(prev => ({
+          ...prev,
+          currentQuestionIndex: prev.currentQuestionIndex + 1,
+          questionStartTime: new Date()
+        }));
+      }
+      
+      console.log('➡️ Moving to next question');
+    }
+  }, [sessionContext.currentQuestionIndex]);
 
+  // Jump to specific question (new feature)
+  const jumpToQuestion = useCallback((index: number) => {
+    const totalQuestions = getTotalQuestions();
+    if (index >= 0 && index < totalQuestions && index !== sessionContext.currentQuestionIndex) {
+      const currentQuestion = getCurrentQuestion(sessionContext.currentQuestionIndex);
+      
+      // Save progress for current question before jumping
+      if (currentQuestion) {
+        setSessionContext(prev => ({
+          ...prev,
+          agendaProgress: {
+            ...prev.agendaProgress,
+            [currentQuestion.id]: {
+              completed: prev.agendaProgress[currentQuestion.id]?.completed || false,
+              timeSpent: prev.questionStartTime ? Date.now() - prev.questionStartTime.getTime() : 0,
+              insights: prev.aiInsights.filter(i => i.timestamp >= (prev.questionStartTime || new Date())).length
+            }
+          },
+          currentQuestionIndex: index,
+          questionStartTime: new Date()
+        }));
+      } else {
+        // Fallback if no current question
+        setSessionContext(prev => ({
+          ...prev,
+          currentQuestionIndex: index,
+          questionStartTime: new Date()
+        }));
+      }
+      
+      console.log(`🎯 Jumping to question ${index + 1}`);
+    }
+  }, [sessionContext.currentQuestionIndex]);
+
+  // Load a preset into the session
+  const loadPreset = useCallback((presetId: string) => {
+    const preset = getPresetById(presetId);
+    if (!preset) return;
+    
+    // Set session configuration from preset
+    setSessionContext(prev => ({
+      ...prev,
+      currentTopic: preset.sessionTopic || prev.currentTopic
+    }));
+    
+    // Set facilitator name if provided
+    if (preset.facilitatorName) {
+      setCurrentSpeaker(preset.facilitatorName);
+    }
+    
+    // Load initial transcript entries if provided
+    if (preset.initialTranscript.length > 0) {
+      const transcriptEntries = presetToTranscriptEntries(preset);
       setSessionContext(prev => ({
         ...prev,
-        currentQuestionIndex: prev.currentQuestionIndex + 1,
-        questionStartTime: new Date(),
-        agendaProgress: {
-          ...prev.agendaProgress,
-          [currentQuestion?.id || '']: {
-            completed: true,
-            timeSpent: timeSpent,
-            insights: prev.aiInsights.length
-          }
-        }
+        liveTranscript: transcriptEntries
       }));
-
-      // Auto-trigger AI analysis for the transition
-      setTimeout(() => {
-        callAIAnalysis('facilitation'); // ✅ FIXED: Use valid enum value instead of 'transition'
-      }, 1000);
+      
+      // Note: Participants are automatically extracted from the transcript in the UI
+      console.log(`📝 Loaded ${transcriptEntries.length} initial transcript entries`);
     }
-  }, [sessionContext, callAIAnalysis]);
+    
+    console.log(`📋 Loaded preset: ${preset.name}`);
+    setShowPresetModal(false);
+  }, []);
 
   const goToPreviousQuestion = useCallback(() => {
     if (sessionContext.currentQuestionIndex > 0) {
@@ -472,10 +547,19 @@ const RoundtableCanvasV2: React.FC = () => {
 
   // Session persistence functions
   const sessionContextToSnapshot = useCallback((context: SessionContext): SessionSnapshot => {
+    // Calculate participant count from unique speakers in transcript
+    const uniqueSpeakers = new Set(
+      context.liveTranscript
+        .map(entry => entry.speaker)
+        .filter(speaker => speaker && speaker !== 'Unknown Speaker')
+    );
+    const participantCount = Math.max(uniqueSpeakers.size, 1);
+
     return {
       timestamp: Date.now(),
       sessionState: context.state,
       currentTopic: context.currentTopic,
+      participantCount: participantCount,
       startTime: context.startTime.getTime(),
       liveTranscript: context.liveTranscript.map(entry => ({
         id: entry.id,
@@ -816,6 +900,45 @@ const RoundtableCanvasV2: React.FC = () => {
               </h2>
               
               <div className="space-y-6">
+                {/* Preset Selection */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Session Template</label>
+                  <div className="flex space-x-2">
+                    <select
+                      value={selectedPresetId}
+                      onChange={(e) => setSelectedPresetId(e.target.value)}
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                      aria-label="Select session template"
+                    >
+                      <optgroup label="Templates">
+                        {sessionPresets.filter(p => p.category === 'template').map(preset => (
+                          <option key={preset.id} value={preset.id}>{preset.name}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Examples">
+                        {sessionPresets.filter(p => p.category === 'example').map(preset => (
+                          <option key={preset.id} value={preset.id}>{preset.name}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Demos">
+                        {sessionPresets.filter(p => p.category === 'demo').map(preset => (
+                          <option key={preset.id} value={preset.id}>{preset.name}</option>
+                        ))}
+                      </optgroup>
+                    </select>
+                    <button
+                      onClick={() => loadPreset(selectedPresetId)}
+                      className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+                      </svg>
+                      <span>Load</span>
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Choose a template to pre-populate your session with sample content</p>
+                </div>
+
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-3">Session Topic</label>
                   <input
@@ -954,27 +1077,59 @@ const RoundtableCanvasV2: React.FC = () => {
               ></div>
             </div>
             
-            {/* Phase Indicators */}
+            {/* Enhanced Phase Indicators with Click Navigation */}
             <div className="flex justify-between text-xs text-gray-600">
-              {roundtableQuestions.map((question, index) => (
-                <div 
-                  key={index}
-                  className={`text-center flex-1 ${
-                    index <= sessionContext.currentQuestionIndex ? 'text-blue-600 font-medium' : 'text-gray-400'
-                  }`}
-                >
-                  <div className={`w-2 h-2 rounded-full mx-auto mb-1 ${
-                    index <= sessionContext.currentQuestionIndex ? 'bg-blue-600' : 'bg-gray-300'
-                  }`}></div>
-                  <div className="truncate px-1">
-                    Phase {index + 1}
+              {roundtableQuestions.map((question, index) => {
+                const questionProgress = sessionContext.agendaProgress[question.id];
+                const isCompleted = questionProgress?.completed || false;
+                const isCurrent = index === sessionContext.currentQuestionIndex;
+                const isPast = index < sessionContext.currentQuestionIndex;
+                const timeSpent = questionProgress?.timeSpent || 0;
+                
+                return (
+                  <div 
+                    key={index}
+                    onClick={() => jumpToQuestion(index)}
+                    className={`text-center flex-1 cursor-pointer transition-all hover:scale-105 ${
+                      isCurrent ? 'text-blue-600 font-bold' : 
+                      isPast || isCompleted ? 'text-blue-600 font-medium' : 
+                      'text-gray-400'
+                    }`}
+                    title={`${question.description.substring(0, 50)}...\n${isCompleted ? '✅ Completed' : isPast ? '⏸️ In Progress' : '⏳ Upcoming'}${timeSpent > 0 ? `\nTime: ${Math.round(timeSpent / 60000)}min` : ''}`}
+                  >
+                    <div className={`relative w-8 h-8 mx-auto mb-1`}>
+                      {/* Completion indicator */}
+                      <div className={`absolute inset-0 rounded-full ${
+                        isCurrent ? 'bg-blue-600 animate-pulse' :
+                        isCompleted ? 'bg-green-500' :
+                        isPast ? 'bg-blue-500' : 
+                        'bg-gray-300'
+                      }`}>
+                        {isCompleted && (
+                          <svg className="w-4 h-4 text-white absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                          </svg>
+                        )}
+                        {isCurrent && (
+                          <div className="absolute inset-0 rounded-full border-2 border-white"></div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="truncate px-1">
+                      Phase {index + 1}
+                    </div>
+                    {timeSpent > 0 && (
+                      <div className="text-[10px] text-gray-500">
+                        {Math.round(timeSpent / 60000)}m
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
           
-          {/* Navigation Controls */}
+          {/* Enhanced Navigation Controls with Time Tracking */}
           <div className="flex justify-between items-center mt-6">
             <button
               onClick={goToPreviousQuestion}
@@ -996,6 +1151,11 @@ const RoundtableCanvasV2: React.FC = () => {
               <div className="text-xs text-gray-500">
                 Strategic Discussion Phase
               </div>
+              {sessionContext.questionStartTime && (
+                <div className="text-xs text-blue-600 mt-1">
+                  ⏱️ {Math.round((Date.now() - sessionContext.questionStartTime.getTime()) / 60000)} min on current
+                </div>
+              )}
             </div>
             
             <button
@@ -1010,6 +1170,11 @@ const RoundtableCanvasV2: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/>
               </svg>
             </button>
+          </div>
+          
+          {/* Quick Navigation Hint */}
+          <div className="text-center mt-3 text-xs text-gray-500">
+            💡 Tip: Click on any phase indicator above to jump directly to that question
           </div>
         </div>
       </div>

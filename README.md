@@ -48,11 +48,42 @@ npm run dev
 ### **First Session Test**
 
 1. **🧪 Enable Test Mode**: Verify `enableTestMode: true` in `src/config/roundtable-config.ts`
-2. **🌐 Open Application**: Navigate to `http://localhost:3000`
-3. **🎯 Configure Session**: Set session topic and your facilitator role
-4. **🎤 Test Speech**: Click microphone (note: requires HTTPS for full functionality)
-5. **🤖 Try AI Analysis**: Submit responses and observe real-time AI insights
-6. **📄 Generate Summary**: Complete session and export PDF/CSV
+2. **🎯 Select a Preset or Enter Details**: 
+   - Choose from pre-configured session templates (Strategic Planning, Team Retrospective, etc.)
+   - Or manually enter topic, facilitator name, and participants
+3. **🎤 Start Recording**: Click "Start Recording" (or use Manual Entry)
+4. **💬 Speak or Type**: Add discussion points
+5. **🧠 Get AI Insights**: Click analysis buttons for real-time facilitation
+6. **📄 Export Results**: Generate PDF summary when complete
+
+### **📋 Session Presets**
+
+Pre-configured session templates for quick setup:
+
+**Available Presets:**
+- **🎯 Strategic Planning**: AI transformation discussion framework
+- **🔄 Team Retrospective**: Quarterly review template
+- **💡 Blank Session**: Start from scratch
+
+**Using Presets:**
+1. Select a preset from the dropdown in Session Configuration
+2. Click "Load" to populate session details
+3. Preset includes topic, facilitator, and initial discussion prompts
+4. Modify loaded content as needed before starting
+
+**Custom Presets:**
+Edit `src/config/session-presets.ts` to add your own templates:
+```typescript
+{
+  id: 'custom_template',
+  name: 'Your Template Name',
+  category: 'template',
+  sessionTopic: 'Your Topic',
+  facilitatorName: 'Facilitator',
+  initialTranscript: [
+    { speaker: 'Facilitator', text: 'Opening prompt...', isAutoDetected: false }
+  ]
+}
 
 ---
 
