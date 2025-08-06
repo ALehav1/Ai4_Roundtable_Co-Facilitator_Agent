@@ -479,7 +479,7 @@ const RoundtableCanvasV2: React.FC = () => {
       startTime: context.startTime.getTime(),
       liveTranscript: context.liveTranscript.map(entry => ({
         id: entry.id,
-        speaker: entry.speaker,
+        speaker: entry.speaker || 'Unknown Speaker',
         text: entry.text,
         timestamp: entry.timestamp.getTime(),
         isAutoDetected: entry.isAutoDetected,
