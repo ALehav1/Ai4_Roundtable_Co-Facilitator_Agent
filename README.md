@@ -1,53 +1,417 @@
-# 🎯 AI Strategic Co-Facilitator
+# AI Roundtable Co-Facilitator Agent
 
-## **Production-Ready Platform for Executive AI Transformation Discussions**
+**🎯 Enterprise-Ready AI Co-Facilitation Platform for Strategic Leadership Discussions**
 
-**✅ FULLY OPERATIONAL**: Complete, tested, and deployed strategic facilitation platform for senior executives navigating AI transformation.
+A sophisticated AI-powered co-facilitation system designed for strategic roundtable discussions and AI transformation planning. Features advanced multi-layer speech recognition, real-time AI analysis, session persistence, and professional export capabilities.
 
-**🔧 RECENTLY UPDATED**: Critical API fixes, infinite loop prevention, enhanced error handling, PDF export restoration, session configuration improvements, and UI streamlining completed (January 2025).
+## 🌟 **What This Platform Does**
 
-A sophisticated AI-powered co-facilitation platform specifically designed for strategic conversations about "When AI Becomes How the Enterprise Works." Features professional-grade voice transcription, real-time strategic analysis, executive session management, and comprehensive export capabilities—all optimized for C-suite AI transformation discussions.
+Transform your strategic facilitation with AI-powered insights:
 
----
-
-## 🚀 **Live Production Platform**
-
-**🌐 Current Production URL**: https://co-facilitatoragent.vercel.app/
-
-**🎯 Ready for immediate use** in executive AI transformation sessions
-
----
-
-## ✨ **Why This Platform Delivers Strategic Value**
-
-This isn't a generic meeting tool—it's a **strategic intervention platform** designed specifically for facilitating high-stakes AI transformation conversations with senior executives.
-
-### **🎭 The Meta-Moment Magic**
-The platform demonstrates your strategic thesis in real-time: as you discuss reflexive AI systems that learn and compound intelligence, **the co-facilitator itself becomes a live example** of those principles, creating a powerful "show don't tell" moment.
+- **🎤 Intelligent Speech Capture**: Multi-layer speech recognition with automatic fallback (Web Speech API → Whisper → Deepgram)
+- **🧠 Real-Time AI Co-Facilitation**: GPT-4o provides live insights, synthesis, and follow-up questions during discussions
+- **📋 Structured Session Management**: Guided agenda workflow with progress tracking and session memory
+- **💾 Auto-Save & Recovery**: Seamless session persistence with localStorage backup
+- **📄 Professional Export**: Executive-ready PDF summaries and CSV data export
+- **🔒 Enterprise Security**: Rate limiting, secure API key management, and comprehensive error handling
 
 ---
 
-## 🎯 **Optimized for: "When AI Becomes How the Enterprise Works"**
+## 🚀 **Quick Start**
 
-### **The Three Strategic Shifts Framework:**
+### Prerequisites
+- **Node.js 18+** and npm
+- **OpenAI API key** ([Get yours here](https://platform.openai.com/api-keys))
+- **Modern web browser** (Chrome/Edge recommended for speech recognition)
 
-**1. 🔧 Tools → Agents**  
-*Moving from AI you use to AI you work with*
+### Installation
 
-**2. ♻️ Outputs → Feedback Loops**  
-*Building systems that learn and improve over time*
+```bash
+# Clone the repository
+git clone https://github.com/ALehav1/Ai4_Roundtable_Co-Facilitator_Agent.git
+cd ai-roundtable
 
-**3. 🧠 Individual Productivity → Shared Intelligence Layer**  
-*Creating organizational memory that compounds value*
+# Install dependencies
+npm install
+
+# Configure environment variables
+cp .env.example .env.local
+# Edit .env.local and add your OpenAI API key:
+echo "OPENAI_API_KEY=sk-your-actual-key-here" >> .env.local
+
+# Start development server
+npm run dev
+
+# Open http://localhost:3000
+```
+
+### **First Session Test**
+
+1. **🧪 Enable Test Mode**: Verify `enableTestMode: true` in `src/config/roundtable-config.ts`
+2. **🌐 Open Application**: Navigate to `http://localhost:3000`
+3. **🎯 Configure Session**: Set session topic and your facilitator role
+4. **🎤 Test Speech**: Click microphone (note: requires HTTPS for full functionality)
+5. **🤖 Try AI Analysis**: Submit responses and observe real-time AI insights
+6. **📄 Generate Summary**: Complete session and export PDF/CSV
 
 ---
 
-## ⭐ **Complete Feature Set (Production-Ready)**
+## 🏗️ **Architecture Overview**
 
-### **🎤 Professional Voice Transcription**
+### **Tech Stack**
+- **Frontend**: Next.js 15, React 18, TypeScript, Tailwind CSS
+- **AI**: OpenAI GPT-4o for strategic reasoning and co-facilitation
+- **Speech**: Multi-layer system (Web Speech API + Whisper + Deepgram)
+- **Storage**: localStorage for session persistence
+- **Export**: jsPDF + html2canvas for professional documents
+- **Deployment**: Vercel-optimized with edge functions
 
-- ✅ **Multi-speaker recognition** with unlimited participants
-- ✅ **Real-time transcription** with live editing capabilities  
+### **Project Structure**
+```
+src/
+├── app/
+│   ├── api/
+│   │   ├── analyze/route.ts         # Legacy AI analysis endpoint
+│   │   ├── analyze-live/route.ts    # Enhanced AI analysis with strict JSON
+│   │   ├── generate-summary/route.ts # Comprehensive session summaries
+│   │   └── transcribe/route.ts      # Whisper speech fallback
+│   ├── globals.css                  # Professional styling and animations
+│   ├── layout.tsx                   # Root layout with metadata
+│   └── page.tsx                     # Main application entry point
+├── components/
+│   ├── RoundtableCanvasV2.tsx       # 🎯 Main facilitator interface
+│   └── SessionSummary.tsx           # Summary display and export
+├── config/
+│   └── roundtable-config.ts         # ⭐ MAIN CONFIGURATION FILE
+├── hooks/
+│   └── useSpeechTranscription.ts    # Modular speech recognition system
+├── utils/
+│   ├── storage.ts                   # Session persistence and recovery
+│   ├── pdfExport.ts                 # Professional PDF generation
+│   └── logger.ts                    # Enhanced error tracking
+└── __tests__/                       # Comprehensive testing infrastructure
+```
+
+---
+
+## 🎤 **Advanced Speech Recognition System**
+
+### **3-Layer Fallback Architecture**
+
+```
+Layer 1: Native Web Speech API (HTTPS Required)
+   ↓ (automatic fallback on errors)
+Layer 2: OpenAI Whisper Chunked (Always Available)
+   ↓ (optional premium upgrade)
+Layer 3: Deepgram Streaming (Enterprise Option)
+```
+
+### **Browser Compatibility**
+
+| Browser | Native Speech | Whisper Fallback | Notes |
+|---------|---------------|-------------------|-------|
+| Chrome  | ✅ Full Support | ✅ | Best experience |
+| Edge    | ✅ Full Support | ✅ | Full compatibility |
+| Safari  | ⚠️ Limited | ✅ | Whisper recommended |
+| Firefox | ❌ Not Supported | ✅ | Auto-fallback to Whisper |
+
+### **HTTPS Requirements**
+
+**⚠️ Important**: Native speech recognition requires HTTPS in production
+
+- **Development**: `http://localhost:3000` - Speech disabled, manual entry available
+- **Production**: HTTPS required - Full speech functionality enabled
+- **Testing**: Use ngrok for HTTPS testing: `ngrok http 3000`
+
+---
+
+## 🤖 **AI Co-Facilitation Features**
+
+### **Real-Time Analysis Types**
+
+- **🧠 Insights**: Strategic patterns and themes from actual discussion
+- **🔄 Synthesis**: Connect ideas across participants and questions
+- **❓ Follow-ups**: Intelligent follow-up questions based on conversation gaps
+- **🔗 Cross-Reference**: Link insights across different discussion topics
+- **🎯 Facilitation**: Live guidance for facilitators based on session flow
+
+### **Anti-Hallucination Measures**
+
+- **Strict Prompting**: AI explicitly instructed to only reference actual content
+- **JSON Response Format**: Structured responses prevent fabricated details
+- **Content Validation**: Server-side validation of AI responses
+- **Error Boundaries**: Graceful fallbacks when AI analysis fails
+
+### **Session Memory**
+
+- Cross-question context preservation
+- Participant tracking across multiple responses
+- Strategic theme development throughout session
+- Cumulative insight building
+
+---
+
+## ⚙️ **Configuration**
+
+### **Environment Variables**
+
+```env
+# Required
+OPENAI_API_KEY=sk-your-openai-api-key-here
+
+# Optional Speech Engine Selection
+NEXT_PUBLIC_SPEECH_ENGINE=auto          # auto|webspeech|whisper|deepgram
+
+# Optional Development
+NEXT_PUBLIC_APP_ENV=development
+```
+
+### **Main Configuration File**
+
+Edit `src/config/roundtable-config.ts` to customize:
+
+```typescript
+// Session Settings
+export const sessionConfig = {
+  title: 'Your Roundtable Title',
+  maxParticipants: 20,
+  enableTestMode: true,         // Set false for live sessions
+  rateLimitPerHour: 100,        // API rate limiting
+  autoExportResults: true
+};
+
+// Strategic Questions
+export const roundtableQuestions = [
+  {
+    id: "question_1",
+    title: "Your Strategic Question",
+    description: "Detailed context for facilitators",
+    aiPromptContext: "AI analysis guidance",
+    followUpPrompts: ["Follow-up question 1?", "Follow-up question 2?"]
+  }
+  // Add more questions...
+];
+
+// AI Behavior
+export const aiConfig = {
+  systemPrompt: "Your AI facilitator personality...",
+  temperature: 0.7,             // 0.0 = focused, 1.0 = creative
+  maxTokens: 400               // Response length control
+};
+```
+
+---
+
+## 💰 **Cost Management**
+
+### **Expected Costs (GPT-4o)**
+
+- **Small Session** (5-8 participants, 4-5 questions): ~$8-15
+- **Medium Session** (8-12 participants, 5-7 questions): ~$15-25  
+- **Large Session** (12+ participants, 7+ questions): ~$25-40
+
+### **Cost Controls**
+
+- **🧪 Test Mode**: Complete workflow testing with zero API costs
+- **⏱️ Rate Limiting**: Configurable API call limits (default: 100/hour)
+- **📊 Usage Tracking**: Enhanced logging for cost monitoring
+- **🚨 Error Prevention**: Smart retry logic prevents unnecessary API calls
+- **🎤 Speech-to-Text**: Uses browser Web Speech API - **NO additional cost**
+
+### **Monitoring**
+
+1. **OpenAI Dashboard**: Monitor usage at [platform.openai.com/usage](https://platform.openai.com/usage)
+2. **Application Logs**: Track API calls and token usage in browser console
+3. **Cost Alerts**: Set up alerts in OpenAI dashboard
+
+---
+
+## 🔧 **Development & Testing**
+
+### **Test Mode**
+
+Enable `enableTestMode: true` in config for:
+- Mock AI responses (no API costs)
+- Rapid question flow testing
+- UI/UX validation
+- Export functionality testing
+
+### **Local Development**
+
+```bash
+# Development server
+npm run dev
+
+# Production build test
+npm run build && npm run start
+
+# Run tests
+npm test
+
+# Linting
+npm run lint
+```
+
+### **HTTPS Testing for Speech Recognition**
+
+```bash
+# Option 1: ngrok tunnel (recommended)
+npm install -g ngrok
+npm run dev
+ngrok http 3000
+# Use the https://xxx.ngrok.io URL
+
+# Option 2: Vercel deployment
+vercel deploy
+# Test on live HTTPS URL
+```
+
+---
+
+## 📱 **Session Workflow**
+
+### **1. Session Setup (2 minutes)**
+- Configure session topic and facilitator role
+- Review strategic questions and AI guidance
+- Test speech recognition (if using)
+- Set participant expectations
+
+### **2. Live Discussion (20-45 minutes)**
+- **Real-time transcription** of participant responses
+- **Live AI analysis** with insights, synthesis, and follow-ups
+- **Session memory** maintains context across questions
+- **Progress tracking** with agenda navigation
+
+### **3. Session Conclusion (5 minutes)**
+- **Generate comprehensive summary** with executive formatting
+- **Review key findings** and strategic recommendations
+- **Export results** as PDF (professional) or CSV (analysis)
+- **Save session** for later reference
+
+---
+
+## 🛡️ **Troubleshooting**
+
+### **Speech Recognition Issues**
+
+**Problem**: Microphone not working
+**Solutions**:
+1. Check browser permissions for microphone access
+2. Ensure HTTPS connection (required for Web Speech API)
+3. Try different browser (Chrome/Edge recommended)
+4. Use Whisper fallback: Set `NEXT_PUBLIC_SPEECH_ENGINE=whisper`
+
+### **AI Analysis Errors**
+
+**Problem**: AI responses fail or seem fabricated
+**Solutions**:
+1. Verify OpenAI API key in `.env.local`
+2. Check API usage limits at OpenAI dashboard
+3. Enable test mode for debugging
+4. Review browser console for detailed error messages
+
+### **Session Recovery**
+
+**Problem**: Lost session data
+**Solutions**:
+1. Refresh page - auto-recovery from localStorage
+2. Check browser localStorage is enabled
+3. Clear localStorage if corrupted: `localStorage.clear()`
+
+### **PDF Export Issues**
+
+**Problem**: PDF export fails
+**Solutions**:
+1. Ensure session has content before exporting
+2. Try exporting smaller sessions first
+3. Check browser supports PDF generation
+4. Refresh page and retry
+
+---
+
+## 🚀 **Deployment to Vercel**
+
+### **1. Prepare for Deployment**
+
+```bash
+# Test production build locally
+npm run build
+
+# Verify no TypeScript errors
+npm run lint
+```
+
+### **2. Deploy to Vercel**
+
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# Login to Vercel
+vercel login
+
+# Deploy from project root
+vercel
+
+# Configure environment variables in Vercel dashboard:
+# OPENAI_API_KEY=your-key-here
+```
+
+### **3. Production Verification**
+
+- Test speech recognition on HTTPS
+- Verify AI analysis works correctly
+- Test session persistence and recovery
+- Validate PDF/CSV export functionality
+
+---
+
+## 🤝 **Contributing**
+
+### **Development Guidelines**
+
+1. **Configuration First**: Make changes in `roundtable-config.ts` when possible
+2. **Test Mode**: Always test new features in test mode first
+3. **TypeScript**: Maintain strict type safety
+4. **Error Handling**: Add comprehensive error boundaries
+5. **Logging**: Include structured logging for debugging
+
+### **Key Files for Customization**
+
+| File | Purpose | Edit Difficulty |
+|------|---------|----------------|
+| `src/config/roundtable-config.ts` | ⭐ Main configuration | Easy |
+| `src/components/RoundtableCanvasV2.tsx` | Main interface | Advanced |
+| `src/app/api/analyze-live/route.ts` | AI analysis logic | Advanced |
+| `src/app/api/generate-summary/route.ts` | Summary generation | Advanced |
+
+---
+
+## 📚 **Additional Resources**
+
+- **OpenAI API Documentation**: [platform.openai.com/docs](https://platform.openai.com/docs)
+- **Next.js Documentation**: [nextjs.org/docs](https://nextjs.org/docs)
+- **Vercel Deployment**: [vercel.com/docs](https://vercel.com/docs)
+- **Web Speech API**: [developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API)
+
+---
+
+## 📄 **License**
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🎯 **Support**
+
+For questions, issues, or feature requests:
+
+1. **Configuration Issues**: Check `src/config/roundtable-config.ts`
+2. **Technical Issues**: Review browser console logs
+3. **API Issues**: Verify OpenAI API key and usage limits
+4. **Speech Issues**: Test with different browsers or use Whisper fallback
+
+**Built for Strategic Facilitators by Strategic Facilitators** 🚀  
 - ✅ **Production-optimized** for HTTPS environments
 - ✅ **Smart fallbacks** when speech recognition unavailable
 - ✅ **Manual entry modes** including bulk paste and file upload
