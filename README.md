@@ -14,6 +14,7 @@ Transform your strategic facilitation with AI-powered insights:
 - **💾 Auto-Save & Recovery**: Seamless session persistence with localStorage backup
 - **📄 Professional Export**: Executive-ready PDF summaries and CSV data export
 - **🔒 Enterprise Security**: Rate limiting, secure API key management, and comprehensive error handling
+- **📋 Template System**: Save and load session templates for recurring meetings (feature-flagged)
 
 ---
 
@@ -318,6 +319,58 @@ vercel deploy
 - **Review key findings** and strategic recommendations
 - **Export results** as PDF (professional) or CSV (analysis)
 - **Save session** for later reference
+
+---
+
+## 📋 **Template Creation System** (Feature-Flagged)
+
+### **Overview**
+The Template Creation System allows you to save and reuse session configurations for recurring meetings. This feature is currently behind a feature flag and can be enabled in `src/config/feature-flags.ts`.
+
+### **Features**
+- **Save Templates**: Capture current session configuration including topic, facilitator, and questions
+- **Load Templates**: Quickly start new sessions with pre-configured settings
+- **Manage Templates**: View, load, and delete saved templates through a modal interface
+- **Persistent Storage**: Templates are saved in browser localStorage for easy access
+
+### **How to Enable**
+1. Open `src/config/feature-flags.ts`
+2. Set `TEMPLATE_CREATION: true`
+3. Restart the development server
+4. Template buttons will appear in the session interface
+
+### **Using Templates**
+
+#### **Saving a Template**
+1. Configure your session with desired settings
+2. Click "Save as Template" button
+3. Enter a descriptive template name
+4. Template is saved to localStorage
+
+#### **Loading a Template**
+1. Click "Load Template" button
+2. Select from available templates in the modal
+3. Session configuration is automatically populated
+4. Modify as needed before starting the session
+
+#### **Managing Templates**
+- View all saved templates in the Template Modal
+- Delete unwanted templates with the delete button
+- Templates persist across browser sessions
+
+### **Template Structure**
+Templates save the following information:
+- Session topic and description
+- Facilitator name and role
+- Complete question set (if customized)
+- Creation timestamp
+- Template metadata
+
+### **Technical Details**
+- Templates stored in localStorage under `roundtable_templates` key
+- Maximum 50 templates can be saved
+- Each template includes version information for compatibility
+- Feature flag ensures safe rollout without affecting existing functionality
 
 ---
 

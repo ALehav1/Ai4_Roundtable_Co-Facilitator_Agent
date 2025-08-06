@@ -461,7 +461,7 @@ export function getStorageInfo(): {
       used,
       available,
       percentage,
-      canSave: available > MAX_STORAGE_SIZE * 0.1, // Need at least 10% free
+      canSave: used < available * 0.9, // Leave 10% buffer
       metadata
     };
   } catch {
@@ -471,5 +471,165 @@ export function getStorageInfo(): {
       percentage: 0,
       canSave: true
     };
+  }
+}
+
+// ============================================================================
+// TEMPLATE MANAGEMENT FUNCTIONS (Phase 1 Enhancement)
+// ============================================================================
+
+/**
+ * Session template interface for saving reusable session configurations
+ */
+export interface SessionTemplate {
+  id: string;
+  name: string;
+  category: 'strategic' | 'retrospective' | 'custom';
+  description?: string;
+  tags?: string[];
+  createdAt: number;
+  updatedAt: number;
+  questions: any[]; // Using any to match existing structure
+  aiConfig?: any;
+  sessionTopic?: string;
+  facilitatorName?: string;
+}
+
+const TEMPLATES_KEY = 'ai-roundtable-templates';
+const MAX_TEMPLATES = 20; // Limit number of templates to prevent storage issues
+
+/**
+ * Save a session template to localStorage
+ * @param template - The template to save
+ */
+export function saveTemplate(template: SessionTemplate): void {
+  try {
+    const existing = loadTemplates();
+    
+    // Check template limit
+    if (existing.length >= MAX_TEMPLATES && !existing.find(t => t.id === template.id)) {
+      console.warn(`Template limit reached (${MAX_TEMPLATES}). Please delete old templates.`);
+      throw new Error(`Maximum number of templates (${MAX_TEMPLATES}) reached`);
+    }
+    
+    // Update or add template
+    const updated = existing.filter(t => t.id !== template.id);
+    updated.push({
+      ...template,
+      updatedAt: Date.now()
+    });
+    
+    // Sort by most recently updated
+    updated.sort((a, b) => b.updatedAt - a.updatedAt);
+    
+    localStorage.setItem(TEMPLATES_KEY, JSON.stringify(updated));
+    console.log(`Template saved: ${template.name} (${template.id})`);
+  } catch (e) {
+    console.error('Failed to save template:', e);
+    throw e; // Re-throw to allow UI to handle error
+  }
+}
+
+/**
+ * Load all saved templates from localStorage
+ * @returns Array of saved templates
+ */
+export function loadTemplates(): SessionTemplate[] {
+  try {
+    const data = localStorage.getItem(TEMPLATES_KEY);
+    if (!data) return [];
+    
+    const templates = JSON.parse(data);
+    
+    // Validate template structure
+    const validTemplates = templates.filter((t: any) => {
+      return t.id && t.name && t.category && t.createdAt && t.questions;
+    });
+    
+    if (validTemplates.length !== templates.length) {
+      console.warn(`Filtered out ${templates.length - validTemplates.length} invalid templates`);
+    }
+    
+    return validTemplates;
+  } catch (e) {
+    console.warn('Failed to load templates:', e);
+    return [];
+  }
+}
+
+/**
+ * Delete a template by ID
+ * @param id - Template ID to delete
+ */
+export function deleteTemplate(id: string): void {
+  try {
+    const templates = loadTemplates();
+    const filtered = templates.filter(t => t.id !== id);
+    
+    if (filtered.length === templates.length) {
+      console.warn(`Template not found: ${id}`);
+      return;
+    }
+    
+    localStorage.setItem(TEMPLATES_KEY, JSON.stringify(filtered));
+    console.log(`Template deleted: ${id}`);
+  } catch (e) {
+    console.warn('Failed to delete template:', e);
+  }
+}
+
+/**
+ * Get a single template by ID
+ * @param id - Template ID to retrieve
+ * @returns Template or null if not found
+ */
+export function getTemplate(id: string): SessionTemplate | null {
+  const templates = loadTemplates();
+  return templates.find(t => t.id === id) || null;
+}
+
+/**
+ * Export templates as JSON for backup
+ * @returns JSON string of all templates
+ */
+export function exportTemplates(): string {
+  const templates = loadTemplates();
+  return JSON.stringify(templates, null, 2);
+}
+
+/**
+ * Import templates from JSON backup
+ * @param jsonData - JSON string containing templates
+ * @returns Number of templates imported
+ */
+export function importTemplates(jsonData: string): number {
+  try {
+    const imported = JSON.parse(jsonData);
+    
+    if (!Array.isArray(imported)) {
+      throw new Error('Invalid template data: expected array');
+    }
+    
+    const existing = loadTemplates();
+    const existingIds = new Set(existing.map(t => t.id));
+    
+    // Only import templates that don't already exist
+    const newTemplates = imported.filter((t: any) => {
+      return t.id && t.name && t.category && !existingIds.has(t.id);
+    });
+    
+    if (newTemplates.length === 0) {
+      console.log('No new templates to import');
+      return 0;
+    }
+    
+    const combined = [...existing, ...newTemplates].slice(0, MAX_TEMPLATES);
+    localStorage.setItem(TEMPLATES_KEY, JSON.stringify(combined));
+    
+    console.log(`Imported ${newTemplates.length} templates`);
+    return newTemplates.length;
+  } catch (e) {
+    console.error('Failed to import templates:', e);
+    throw e;
   }
 }

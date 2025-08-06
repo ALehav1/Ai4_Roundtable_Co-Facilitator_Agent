@@ -3,10 +3,12 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { sessionConfig, uiText } from '../config/roundtable-config';
 import { useSpeechTranscription, TranscriptEvent } from '../hooks/useSpeechTranscription';
-import { saveSession, loadSession, clearSession, SessionSnapshot } from '../utils/storage';
+import { saveSession, loadSession, clearSession, SessionSnapshot, SessionTemplate } from '../utils/storage';
 import { sessionPresets, getPresetById, presetToTranscriptEntries, type SessionPreset } from '../config/session-presets';
 import { roundtableQuestions, getCurrentQuestion, getTotalQuestions } from '../config/roundtable-config';
 import { generateSessionPDF, prepareSessionDataForExport } from '../utils/pdfExport';
+import { FEATURES, checkFeature } from '../config/feature-flags';
+import { TemplateModal } from './TemplateModal';
 
 // PHASE 2: Live Transcript Model Implementation
 // Session Lifecycle: intro → discussion → summary
@@ -119,6 +121,10 @@ const RoundtableCanvasV2: React.FC = () => {
 
   // Analytics tab state
   const [activeAnalyticsTab, setActiveAnalyticsTab] = useState<'insights' | 'followup'>('insights');
+
+  // Template management state (Phase 1 Enhancement - Feature Flagged)
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [templateModalMode, setTemplateModalMode] = useState<'save' | 'load' | 'manage'>('save');
 
   // Modular speech transcription hook
   const speechTranscription = useSpeechTranscription();
@@ -846,6 +852,39 @@ const RoundtableCanvasV2: React.FC = () => {
     }
   }, [sessionContext, isExporting]);
 
+  // Template Management Handlers (Phase 1 Enhancement - Feature Flagged)
+  const handleSaveTemplate = useCallback((template: SessionTemplate) => {
+    console.log('💾 Template saved:', template.name);
+    // Template is already saved in the modal component
+    // This handler can be used for additional actions if needed
+  }, []);
+
+  const handleLoadTemplate = useCallback((template: SessionTemplate) => {
+    console.log('📂 Loading template:', template.name);
+    
+    // Reset session with template data
+    setSessionContext(prev => ({
+      ...prev,
+      currentTopic: template.sessionTopic || sessionConfig.title,
+      facilitator: template.facilitatorName || 'Facilitator',
+      liveTranscript: [],
+      aiInsights: [],
+      state: 'idle',
+      currentQuestionIndex: 0,
+      questionStartTime: undefined,
+      agendaProgress: {} // Reset agenda progress as empty object (question IDs will be added as needed)
+    }));
+
+    // If template has questions, we could potentially load them
+    // For now, templates mainly save the session structure
+    console.log('✅ Template loaded successfully');
+  }, []);
+
+  const openTemplateModal = useCallback((mode: 'save' | 'load' | 'manage') => {
+    setTemplateModalMode(mode);
+    setShowTemplateModal(true);
+  }, []);
+
   // Render executive-ready session setup
   const renderIntroState = () => (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -1511,6 +1550,34 @@ const RoundtableCanvasV2: React.FC = () => {
               </svg>
               <span>{isExporting ? 'Exporting...' : '📄 Export PDF'}</span>
             </button>
+
+            {/* Template Management Buttons - Feature Flagged */}
+            {checkFeature('TEMPLATE_CREATION') && (
+              <>
+                <button
+                  onClick={() => openTemplateModal('save')}
+                  disabled={sessionContext.liveTranscript.length === 0}
+                  className="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                  title="Save current session as template"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V2"/>
+                  </svg>
+                  <span>💾 Save Template</span>
+                </button>
+                
+                <button
+                  onClick={() => openTemplateModal('load')}
+                  className="px-3 py-1 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 flex items-center space-x-1"
+                  title="Load a saved template"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                  </svg>
+                  <span>📂 Load Template</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -1834,6 +1901,22 @@ const RoundtableCanvasV2: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Template Modal - Feature Flagged */}
+      {checkFeature('TEMPLATE_CREATION') && showTemplateModal && (
+        <TemplateModal
+          isOpen={showTemplateModal}
+          onClose={() => setShowTemplateModal(false)}
+          mode={templateModalMode}
+          currentSession={{
+            sessionTopic: sessionContext.currentTopic || sessionConfig.title,
+            facilitatorName: sessionContext.facilitator,
+            questions: [] // Templates don't store questions from current session
+          }}
+          onSave={handleSaveTemplate}
+          onLoad={handleLoadTemplate}
+        />
       )}
     </div>
   );
