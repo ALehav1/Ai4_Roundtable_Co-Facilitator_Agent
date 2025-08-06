@@ -124,10 +124,7 @@ const RoundtableCanvasV2: React.FC = () => {
 
   // Template management state (Phase 1 Enhancement - Feature Flagged)
   const [showTemplateModal, setShowTemplateModal] = useState(false);
-  const [templateModalMode, setTemplateModalMode] = useState<'save' | 'load' | 'manage' | 'create'>('save');
-
-  // State for AI panel tabs
-  const [activeAITab, setActiveAITab] = useState<'insights' | 'questions' | 'synthesis'>('insights');
+  const [templateModalMode, setTemplateModalMode] = useState<'save' | 'load' | 'manage'>('save');
 
   // Modular speech transcription hook
   const speechTranscription = useSpeechTranscription();
@@ -643,6 +640,10 @@ const RoundtableCanvasV2: React.FC = () => {
     ]);
   }, [callAIAnalysis]);
   
+  // Enhanced formatting for AI insights content (Priority 4: Helper Functions)
+  // 🚨 SIMPLIFIED FORMATTING ONLY - NO COMPLEX CSS REFERENCES
+  // ✅ REMOVED formatAIInsights - was causing infinite loop with console.log side effects
+
   // Enhanced content validation (Priority 4: Helper Functions)
   const hasTranscriptContent = useCallback((transcriptEntries: any[]) => {
     return transcriptEntries && 
@@ -653,20 +654,65 @@ const RoundtableCanvasV2: React.FC = () => {
       );
   }, []);
 
-  // Helper function to format insight content
-  const formatInsightContent = (content: string) => {
-    // Filter out "no significant content" messages
-    if (content.includes('No significant new content') || 
-        content.includes('Waiting for more discussion')) {
-      return null;
-    }
-    // Check if content contains HTML or unwanted formatting
-    if (content.includes('<div') || content.includes('class=')) {
-      // Strip HTML tags and return clean text
-      return content.replace(/<[^>]*>/g, '').trim();
-    }
-    return content;
-  };
+  // Legacy formatting for AI insights content (keeping for compatibility)
+  const formatInsightContent = useCallback((content: string) => {
+    // Split content into lines and format as structured elements
+    const lines = content.split('\n').filter(line => line.trim());
+    
+    return (
+      <div className="space-y-2">
+        {lines.map((line, index) => {
+          const trimmedLine = line.trim();
+          
+          // Format bullet points with better styling
+          if (trimmedLine.startsWith('-') || trimmedLine.startsWith('•')) {
+            return (
+              <div key={index} className="flex items-start gap-2">
+                <span className="text-blue-500 font-bold mt-1">•</span>
+                <span className="flex-1">{trimmedLine.replace(/^[-•]\s*/, '')}</span>
+              </div>
+            );
+          }
+          
+          // Format numbered items
+          if (/^\d+\./.test(trimmedLine)) {
+            const [, number, text] = trimmedLine.match(/^(\d+\.)\s*(.*)/) || [];
+            return (
+              <div key={index} className="flex items-start gap-2">
+                <span className="text-purple-600 font-semibold mt-1 min-w-[1.5rem]">{number}</span>
+                <span className="flex-1">{text}</span>
+              </div>
+            );
+          }
+          
+          // Format section headers (lines ending with :)
+          if (trimmedLine.endsWith(':')) {
+            return (
+              <div key={index} className="font-semibold text-gray-900 mt-3 mb-1 border-b border-gray-200 pb-1">
+                {trimmedLine.replace(':', '')}
+              </div>
+            );
+          }
+          
+          // Format quotes (lines starting with ")
+          if (trimmedLine.startsWith('"') && trimmedLine.endsWith('"')) {
+            return (
+              <div key={index} className="bg-gray-50 border-l-4 border-gray-300 pl-4 py-2 italic text-gray-700">
+                {trimmedLine}
+              </div>
+            );
+          }
+          
+          // Regular paragraphs
+          return (
+            <p key={index} className="leading-relaxed">
+              {trimmedLine}
+            </p>
+          );
+        })}
+      </div>
+    );
+  }, []);
   
   // Manual transcript entry (fallback)
   const addManualEntry = useCallback(() => {
@@ -834,7 +880,7 @@ const RoundtableCanvasV2: React.FC = () => {
     console.log('✅ Template loaded successfully');
   }, []);
 
-  const openTemplateModal = useCallback((mode: 'save' | 'load' | 'manage' | 'create') => {
+  const openTemplateModal = useCallback((mode: 'save' | 'load' | 'manage') => {
     setTemplateModalMode(mode);
     setShowTemplateModal(true);
   }, []);
@@ -893,56 +939,43 @@ const RoundtableCanvasV2: React.FC = () => {
               </h2>
               
               <div className="space-y-6">
-                {/* Session Template Section - UNIFIED SYSTEM */}
+                {/* Preset Selection */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-3">Session Template</label>
-                  
-                  {/* Template Selection Dropdown */}
-                  <select
-                    value={selectedPresetId}
-                    onChange={(e) => setSelectedPresetId(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors mb-3"
-                    aria-label="Select session template"
-                  >
-                    <option value="blank_template">Start with Blank Session</option>
-                    <optgroup label="Built-in Templates">
-                      {sessionPresets.filter(p => p.category === 'template').map(preset => (
-                        <option key={preset.id} value={preset.id}>{preset.name}</option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Example Sessions">
-                      {sessionPresets.filter(p => p.category === 'example').map(preset => (
-                        <option key={preset.id} value={preset.id}>{preset.name}</option>
-                      ))}
-                    </optgroup>
-                    {/* TODO: Add custom templates here when available */}
-                  </select>
-                  
-                  {/* Action Buttons - Clear and Logical */}
-                  <div className="flex gap-2">
+                  <div className="flex space-x-2">
+                    <select
+                      value={selectedPresetId}
+                      onChange={(e) => setSelectedPresetId(e.target.value)}
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                      aria-label="Select session template"
+                    >
+                      <optgroup label="Templates">
+                        {sessionPresets.filter(p => p.category === 'template').map(preset => (
+                          <option key={preset.id} value={preset.id}>{preset.name}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Examples">
+                        {sessionPresets.filter(p => p.category === 'example').map(preset => (
+                          <option key={preset.id} value={preset.id}>{preset.name}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Demos">
+                        {sessionPresets.filter(p => p.category === 'demo').map(preset => (
+                          <option key={preset.id} value={preset.id}>{preset.name}</option>
+                        ))}
+                      </optgroup>
+                    </select>
                     <button
                       onClick={() => loadPreset(selectedPresetId)}
-                      disabled={!selectedPresetId || selectedPresetId === 'blank_template'}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium flex items-center justify-center gap-2 transition-colors"
-                      title="Load the selected template to start your session"
+                      className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
                     >
-                      <span>📂</span>
-                      <span>Use This Template</span>
-                    </button>
-                    
-                    <button
-                      onClick={() => openTemplateModal('create')}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium flex items-center justify-center gap-2 transition-colors"
-                      title="Create a new template from scratch"
-                    >
-                      <span>➕</span>
-                      <span>Create New</span>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+                      </svg>
+                      <span>Load</span>
                     </button>
                   </div>
-                  
-                  <p className="text-xs text-gray-500 mt-2">
-                    Select a template to quickly set up your session, or create your own
-                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Choose a template to pre-populate your session with sample content</p>
                 </div>
 
                 <div>
@@ -1473,279 +1506,113 @@ const RoundtableCanvasV2: React.FC = () => {
   };
 
   // Render AI Assistance Panel (RIGHT PANE)
-
-  // Render AI Assistance Panel (RIGHT PANE) - TABBED INTERFACE
   const renderAIAssistancePanel = () => {
-    // Filter insights by type for each tab
-    const insights = sessionContext.aiInsights.filter(i => i.type === 'insights' && !i.isLoading);
-    const questions = sessionContext.aiInsights.filter(i => i.type === 'followup' && !i.isLoading);
-    const synthesis = sessionContext.aiInsights.filter(i => i.type === 'synthesis' && !i.isLoading);
-    const isLoading = sessionContext.aiInsights.some(i => i.isLoading);
+    // ✅ GET ONLY THE LATEST NON-LOADING INSIGHT (no function call in render)
+    const latestInsight = sessionContext.aiInsights
+      .filter(insight => !insight.isLoading)
+      .slice(-1)[0];
 
     return (
-      <div className="h-full flex flex-col bg-white">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <span>🧠</span>
-            <span>AI Co-Facilitator</span>
-          </h2>
-          <p className="text-sm text-blue-100 mt-1">
-            Real-time analysis and insights for your session
-          </p>
-        </div>
-        
-        {/* Tab Navigation */}
-        <div className="bg-white border-b border-gray-200">
-          <div className="flex">
+      <div className="h-full overflow-y-auto">
+        {/* AI Panel Header */}
+        <div className="bg-white p-4 border-b border-gray-200 mb-4">
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">🧠 AI Co-Facilitator</h3>
+          <div className="flex gap-2 flex-wrap">
             <button
-              onClick={() => setActiveAITab('insights')}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                activeAITab === 'insights'
-                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-              }`}
+              onClick={() => callAIAnalysis('insights')}
+              disabled={sessionContext.aiInsights.some(insight => insight.isLoading)}
+              className="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              💡 Insights ({insights.length})
+              ⭐ Get Insights
             </button>
             <button
-              onClick={() => setActiveAITab('questions')}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                activeAITab === 'questions'
-                  ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50'
-                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-              }`}
+              onClick={() => callAIAnalysis('followup')}
+              disabled={sessionContext.aiInsights.some(insight => insight.isLoading)}
+              className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              ❓ Questions ({questions.length})
+              ❓ Follow-up Questions
             </button>
             <button
-              onClick={() => setActiveAITab('synthesis')}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                activeAITab === 'synthesis'
-                  ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50'
-                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-              }`}
+              onClick={() => callAIAnalysis('synthesis')}
+              disabled={sessionContext.aiInsights.some(insight => insight.isLoading)}
+              className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              🔄 Synthesis ({synthesis.length})
+              📊 Synthesize
             </button>
+            <button
+              onClick={handleExportPDF}
+              disabled={isExporting || sessionContext.liveTranscript.length === 0}
+              className="px-3 py-1 bg-orange-600 text-white text-sm rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+              title="Export session summary as PDF"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+              <span>{isExporting ? 'Exporting...' : '📄 Export PDF'}</span>
+            </button>
+
+            {/* Template Management Buttons - Feature Flagged */}
+            {checkFeature('TEMPLATE_CREATION') && (
+              <>
+                <button
+                  onClick={() => openTemplateModal('save')}
+                  disabled={sessionContext.liveTranscript.length === 0}
+                  className="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                  title="Save current session as template"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V2"/>
+                  </svg>
+                  <span>💾 Save Template</span>
+                </button>
+                
+                <button
+                  onClick={() => openTemplateModal('load')}
+                  className="px-3 py-1 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 flex items-center space-x-1"
+                  title="Load a saved template"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                  </svg>
+                  <span>📂 Load Template</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-      {/* Primary Analysis Actions - Grouped Together */}
-      <div className="bg-blue-50 p-4 border-b border-blue-100">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">
-          Analysis Tools
-        </h3>
-        <div className="space-y-2">
-          <button
-            onClick={() => callAIAnalysis('insights')}
-            disabled={sessionContext.liveTranscript.length === 0 || sessionContext.aiInsights.some(insight => insight.isLoading)}
-            className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium flex items-center justify-center gap-2 transition-colors"
-            title="Analyze the current discussion and extract key insights"
-          >
-            <span>💡</span>
-            <span>Generate Insights</span>
-          </button>
-          
-          <button
-            onClick={() => callAIAnalysis('followup')}
-            disabled={sessionContext.liveTranscript.length === 0 || sessionContext.aiInsights.some(insight => insight.isLoading)}
-            className="w-full px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium flex items-center justify-center gap-2 transition-colors"
-            title="Get AI-suggested questions to deepen the conversation"
-          >
-            <span>❓</span>
-            <span>Suggest Follow-up Questions</span>
-          </button>
-          
-          <button
-            onClick={() => callAIAnalysis('synthesis')}
-            disabled={sessionContext.aiInsights.length < 2 || sessionContext.aiInsights.some(insight => insight.isLoading)}
-            className="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium flex items-center justify-center gap-2 transition-colors"
-            title="Create a high-level summary of all insights so far"
-          >
-            <span>🔄</span>
-            <span>Synthesize Discussion</span>
-          </button>
-        </div>
-        
-        {/* Helper text */}
-        {sessionContext.liveTranscript.length === 0 && (
-          <p className="text-xs text-gray-500 mt-2 italic">
-            Add transcript entries to enable AI analysis
-          </p>
-        )}
-      </div>
-
-      {/* Session Management - Secondary Actions */}
-      <div className="bg-gray-50 p-4 border-b border-gray-200">
-        <h3 className="text-xs font-semibold text-gray-700 uppercase mb-3">
-          Session Tools
-        </h3>
-        <div className="space-y-2">
-          {/* Only show "Save as Template" during active session */}
-          {checkFeature('TEMPLATE_CREATION') && sessionState === 'discussion' && (
-            <button
-              onClick={() => openTemplateModal('save')}
-              className="w-full px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 font-medium flex items-center justify-center gap-2 transition-colors"
-              title="Save current session setup as a reusable template"
-            >
-              <span>💾</span>
-              <span>Save Current Setup as Template</span>
-            </button>
-          )}
-          
-          {/* Export is always available when there's content */}
-          <button
-            onClick={handleExportPDF}
-            disabled={isExporting || sessionContext.liveTranscript.length === 0}
-            className="w-full px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium flex items-center justify-center gap-2 transition-colors"
-            title="Export complete session as PDF"
-          >
-            <span>📄</span>
-            <span>{isExporting ? 'Exporting...' : 'Export Session PDF'}</span>
-          </button>
-          
-          {/* Manage Templates - Only in intro state */}
-          {checkFeature('TEMPLATE_CREATION') && sessionState === 'intro' && (
-            <button
-              onClick={() => openTemplateModal('manage')}
-              className="w-full px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 font-medium flex items-center justify-center gap-2 transition-colors"
-              title="View and manage all your saved templates"
-            >
-              <span>⚙️</span>
-              <span>Manage My Templates</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Tab Content Display Area - Scrollable */}
-      <div className="flex-1 overflow-y-auto p-4 bg-white">
-        {(() => {
-          // Filter content based on active tab
-          let filteredContent = [];
-          let emptyStateIcon = '🤖';
-          let emptyStateTitle = 'No content yet';
-          let emptyStateMessage = 'Generate content using the buttons above';
-          
-          if (activeAITab === 'insights') {
-            filteredContent = insights;
-            emptyStateIcon = '💡';
-            emptyStateTitle = 'No insights generated yet';
-            emptyStateMessage = 'Click "Generate Insights" to analyze the discussion';
-          } else if (activeAITab === 'questions') {
-            filteredContent = questions;
-            emptyStateIcon = '❓';
-            emptyStateTitle = 'No questions suggested yet';
-            emptyStateMessage = 'Click "Suggest Follow-up Questions" to get AI recommendations';
-          } else if (activeAITab === 'synthesis') {
-            filteredContent = synthesis;
-            emptyStateIcon = '🔄';
-            emptyStateTitle = 'No synthesis created yet';
-            emptyStateMessage = 'Click "Synthesize Discussion" after generating some insights';
-          }
-          
-          // Check if there's loading content for this tab
-          const hasLoadingContent = sessionContext.aiInsights.some(
-            i => i.isLoading && (
-              (activeAITab === 'insights' && i.type === 'insights') ||
-              (activeAITab === 'questions' && i.type === 'followup') ||
-              (activeAITab === 'synthesis' && i.type === 'synthesis')
-            )
-          );
-          
-          if (hasLoadingContent) {
-            return (
-              <div className="flex items-center justify-center h-full">
-                <div className="flex items-center space-x-3 text-gray-600">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  <span className="text-lg">AI is analyzing...</span>
-                </div>
-              </div>
-            );
-          }
-          
-          if (filteredContent.length > 0) {
-            return (
-              <div className="space-y-3">
-                {filteredContent.map((insight) => (
-                  <div 
-                    key={insight.id} 
-                    className={`p-4 rounded-lg border-l-4 ${
-                      insight.isError
-                        ? 'bg-red-50 border-red-500'
-                        : activeAITab === 'insights' 
-                          ? 'bg-blue-50 border-blue-500' 
-                          : activeAITab === 'questions'
-                            ? 'bg-purple-50 border-purple-500'
-                            : 'bg-indigo-50 border-indigo-500'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <span className={`text-xs font-semibold uppercase ${
-                        insight.isError
-                          ? 'text-red-600'
-                          : activeAITab === 'insights' 
-                            ? 'text-blue-600' 
-                            : activeAITab === 'questions'
-                              ? 'text-purple-600'
-                              : 'text-indigo-600'
-                      }`}>
-                        {insight.isError ? '⚠️ Error' :
-                         activeAITab === 'insights' ? '💡 Insight' : 
-                         activeAITab === 'questions' ? '❓ Question Set' :
-                         '🔄 Synthesis'}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {new Date(insight.timestamp).toLocaleTimeString()}
-                      </span>
-                    </div>
-                    
-                    {/* Format and display the content */}
-                    <div className="text-sm text-gray-700 whitespace-pre-line">
-                      {formatInsightContent(insight.content) || insight.content}
-                    </div>
-                    
-                    {/* Show confidence if available */}
-                    {insight.confidence > 0 && (
-                      <div className="mt-2 pt-2 border-t border-gray-200">
-                        <p className="text-xs text-gray-500">
-                          Confidence: {Math.round(insight.confidence * 100)}%
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            );
-          }
-          
-          // Empty state for the specific tab
-          return (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="text-6xl mb-4 opacity-20">{emptyStateIcon}</div>
-              <p className="text-gray-500 font-medium">{emptyStateTitle}</p>
-              <p className="text-sm text-gray-400 mt-2 max-w-xs">
-                {emptyStateMessage}
-              </p>
+        {/* AI Insights Display */}
+        <div className="p-4">
+          {sessionContext.aiInsights.some(insight => insight.isLoading) ? (
+            <div className="flex items-center space-x-2 text-gray-600">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              <span>AI analyzing...</span>
             </div>
-          );
-        })()}
-      </div>
-
-      {/* Status Bar */}
-      <div className="bg-gray-100 border-t border-gray-200 px-4 py-2">
-        <div className="flex justify-between items-center text-xs text-gray-600">
-          <span>
-            {activeAITab === 'insights' && `${insights.length} insights`}
-            {activeAITab === 'questions' && `${questions.length} question sets`}
-            {activeAITab === 'synthesis' && `${synthesis.length} syntheses`}
-          </span>
-          <span>{sessionContext.liveTranscript.length} entries captured</span>
+          ) : latestInsight ? (
+            <div className={`p-4 rounded-lg ${latestInsight.isError ? 'bg-yellow-50 border border-yellow-200' : 'bg-blue-50 border border-blue-200'}`}>
+              <div className="text-sm text-gray-600 mb-2">
+                {latestInsight.isError ? '⚠️ Error' : '🤖'} AI Analysis ({latestInsight.type})
+                {latestInsight.isLegacy && ' - Legacy'}
+                <span className="float-right">{latestInsight.timestamp.toLocaleTimeString()}</span>
+              </div>
+              <div className="text-gray-800 whitespace-pre-line">
+                {/* ✅ DIRECT DISPLAY - NO FUNCTION CALL */}
+                {latestInsight.content}
+              </div>
+              {latestInsight.confidence > 0 && (
+                <div className="text-xs text-gray-500 mt-2">
+                  Confidence: {Math.round(latestInsight.confidence * 100)}%
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-gray-500 italic">
+              Start recording or add manual entries, then use the analysis buttons above
+            </div>
+          )}
         </div>
       </div>
-    </div>
-  );
+    );
   };
 
   // Render summary state

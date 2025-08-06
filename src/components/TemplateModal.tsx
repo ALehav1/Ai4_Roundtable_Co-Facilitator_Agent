@@ -27,7 +27,7 @@ interface TemplateModalProps {
     facilitatorName: string;
     questions: RoundtableQuestion[];
   };
-  mode: 'save' | 'load' | 'manage';
+  mode: 'save' | 'load' | 'manage' | 'create';
 }
 
 export const TemplateModal: React.FC<TemplateModalProps> = ({
@@ -64,7 +64,8 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
       return;
     }
 
-    if (!currentSession) {
+    // For 'save' mode, we need a current session
+    if (mode === 'save' && !currentSession) {
       setError('No active session to save as template');
       return;
     }
@@ -78,14 +79,15 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
         tags: templateTags.split(',').map(t => t.trim()).filter(t => t),
         createdAt: Date.now(),
         updatedAt: Date.now(),
-        questions: currentSession.questions,
-        sessionTopic: currentSession.sessionTopic,
-        facilitatorName: currentSession.facilitatorName
+        // For 'create' mode, use empty defaults; for 'save' mode, use current session
+        questions: mode === 'create' ? [] : currentSession!.questions,
+        sessionTopic: mode === 'create' ? templateName.trim() : currentSession!.sessionTopic,
+        facilitatorName: mode === 'create' ? '' : currentSession!.facilitatorName
       };
 
       saveTemplate(newTemplate);
       setTemplates(loadTemplates());
-      setSuccessMessage(`Template "${templateName}" saved successfully!`);
+      setSuccessMessage(`Template "${templateName}" ${mode === 'create' ? 'created' : 'saved'} successfully!`);
       
       // Clear form
       setTemplateName('');
@@ -151,6 +153,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
         <div className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center">
           <h2 className="text-xl font-semibold">
             {mode === 'save' && 'Save Session as Template'}
+            {mode === 'create' && 'Create New Template'}
             {mode === 'load' && 'Load Template'}
             {mode === 'manage' && 'Manage Templates'}
           </h2>
@@ -179,8 +182,8 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
             </div>
           )}
 
-          {/* Save Template Form */}
-          {mode === 'save' && (
+          {/* Save/Create Template Form */}
+          {(mode === 'save' || mode === 'create') && (
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -236,12 +239,19 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
                 />
               </div>
 
-              {currentSession && (
+              {mode === 'save' && currentSession && (
                 <div className="bg-gray-50 p-4 rounded-md">
                   <h3 className="font-medium text-gray-700 mb-2">Current Session Info</h3>
                   <p className="text-sm text-gray-600">Topic: {currentSession.sessionTopic || 'Not set'}</p>
                   <p className="text-sm text-gray-600">Facilitator: {currentSession.facilitatorName || 'Not set'}</p>
                   <p className="text-sm text-gray-600">Questions: {currentSession.questions.length}</p>
+                </div>
+              )}
+              {mode === 'create' && (
+                <div className="bg-blue-50 p-4 rounded-md">
+                  <p className="text-sm text-blue-700">
+                    <strong>Tip:</strong> Create a template to quickly set up future sessions with predefined questions and settings.
+                  </p>
                 </div>
               )}
             </div>
@@ -321,12 +331,12 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
           >
             Cancel
           </button>
-          {mode === 'save' && (
+          {(mode === 'save' || mode === 'create') && (
             <button
               onClick={handleSaveTemplate}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
             >
-              Save Template
+              {mode === 'save' ? 'Save Template' : 'Create Template'}
             </button>
           )}
           {mode === 'load' && (

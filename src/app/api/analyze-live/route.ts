@@ -99,7 +99,10 @@ Based ONLY on what was actually discussed in the transcript above, provide:
 3. **Participant Insight**: [What insight or perspective was actually shared by participants]
 4. **Discussion Pattern**: [What pattern or dynamic you observe in how the conversation is developing]
 
-IMPORTANT: Only analyze content that was ACTUALLY discussed in the transcript. Quote exactly from the conversation. If the transcript is empty or lacks substantive new content since the last analysis, state "No significant new content to analyze since last insights."
+IMPORTANT: Only analyze content that was ACTUALLY discussed in the transcript. Quote exactly from the conversation. If the transcript is empty or lacks substantive new content since the last analysis, provide encouraging guidance:
+- Suggest a thought-provoking question to continue the discussion
+- Offer a relevant observation about the session topic
+- Recommend a direction to explore based on the session goals
 
 Respond with only plain text. Use the exact numbering shown above.`;
   }

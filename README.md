@@ -6,6 +6,12 @@ A sophisticated AI-powered co-facilitation system designed for strategic roundta
 
 ## 🌟 **What This Platform Does**
 
+### Latest Updates (December 2024)
+- ✅ **Unified Template Management**: Consolidated template/config systems into single, clear UX
+- ✅ **Template Creation Mode**: New ability to create templates from scratch
+- ✅ **Improved AI Panel**: Tabbed interface for insights, questions, and synthesis
+- ✅ **Enhanced Error Handling**: Better user guidance when waiting for AI responses
+
 Transform your strategic facilitation with AI-powered insights:
 
 - **🎤 Intelligent Speech Capture**: Multi-layer speech recognition with automatic fallback (Web Speech API → Whisper → Deepgram)
@@ -14,7 +20,7 @@ Transform your strategic facilitation with AI-powered insights:
 - **💾 Auto-Save & Recovery**: Seamless session persistence with localStorage backup
 - **📄 Professional Export**: Executive-ready PDF summaries and CSV data export
 - **🔒 Enterprise Security**: Rate limiting, secure API key management, and comprehensive error handling
-- **📋 Template System**: Save and load session templates for recurring meetings (feature-flagged)
+- **📋 Unified Template System**: Create, save, load, and manage session templates for recurring meetings (feature-flagged)
 
 ---
 
