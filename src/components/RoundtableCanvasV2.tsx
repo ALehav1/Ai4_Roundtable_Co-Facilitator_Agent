@@ -76,7 +76,9 @@ const TopNavigation = ({
   goToNextQuestion, 
   totalQuestions,
   presentationMode,
-  setPresentationMode 
+  setPresentationMode,
+  showParticipantDetection,
+  setShowParticipantDetection 
 }: {
   sessionContext: SessionContext;
   goToPreviousQuestion: () => void;
@@ -84,6 +86,8 @@ const TopNavigation = ({
   totalQuestions: number;
   presentationMode: boolean;
   setPresentationMode: (mode: boolean) => void;
+  showParticipantDetection: boolean;
+  setShowParticipantDetection: (show: boolean) => void;
 }) => (
   <div className="sticky top-0 z-50 bg-white border-b shadow-sm p-4">
     <div className="flex justify-between items-center max-w-7xl mx-auto">
@@ -117,14 +121,29 @@ const TopNavigation = ({
         </button>
       </div>
       
-      {/* Presentation Mode Toggle */}
-      <button
-        onClick={() => setPresentationMode(!presentationMode)}
-        className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors"
-        title="Toggle Presentation Mode (Cmd+P)"
-      >
-        {presentationMode ? '👁️ Exit Presentation' : '📊 Presentation Mode'}
-      </button>
+      <div className="flex items-center gap-3">
+        {/* Phase 1.3: Participant Detection Toggle */}
+        <button
+          onClick={() => setShowParticipantDetection(!showParticipantDetection)}
+          className={`px-3 py-2 rounded-lg font-medium transition-colors ${
+            showParticipantDetection 
+              ? 'bg-blue-100 text-blue-700 border border-blue-300'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+          title="Show/Hide Advanced Speaker Detection"
+        >
+          {showParticipantDetection ? '🎯 Hide Detection' : '🎯 Show Detection'}
+        </button>
+        
+        {/* Presentation Mode Toggle */}
+        <button
+          onClick={() => setPresentationMode(!presentationMode)}
+          className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors"
+          title="Toggle Presentation Mode (Cmd+P)"
+        >
+          {presentationMode ? '👁️ Exit Presentation' : '📊 Presentation Mode'}
+        </button>
+      </div>
     </div>
   </div>
 );
@@ -171,6 +190,9 @@ const RoundtableCanvasV2: React.FC = () => {
   
   // Presentation Mode State (Phase 1.1 - Critical UI Fix)
   const [presentationMode, setPresentationMode] = useState(false);
+  
+  // Participant Detection UI Toggle (Phase 1.3 - Critical UX Fix)
+  const [showParticipantDetection, setShowParticipantDetection] = useState(false); // HIDDEN BY DEFAULT per executive UX guide
   const [participantCounter, setParticipantCounter] = useState(1);
   
   // Speaker Attribution UI State
@@ -451,11 +473,18 @@ This session follows the Assistance → Automation → Amplification progression
     }
   }, [sessionContext.currentQuestionIndex, callAIAnalysis, sessionContext.liveTranscript.length]);
 
-  // Keyboard shortcuts for speaker switching
+  // Keyboard shortcuts for speaker switching and presentation mode
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       // Only work when not typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      
+      // Phase 1.2: Cmd+P for presentation mode toggle
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'p' || e.key === 'P')) {
+        e.preventDefault(); // Prevent browser print dialog
+        setPresentationMode(prev => !prev);
+        return;
+      }
       
       if (e.key === 'f' || e.key === 'F') {
         setSpeakerMode('facilitator');
@@ -471,7 +500,7 @@ This session follows the Assistance → Automation → Amplification progression
     
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [currentSpeaker, participantCounter]);
+  }, [currentSpeaker, participantCounter, setPresentationMode]);
 
   const goToNextQuestion = useCallback(() => {
     const totalQuestions = getTotalQuestions();
@@ -1080,11 +1109,13 @@ This session follows the Assistance → Automation → Amplification progression
                 </div>
               </div>
               
-              {/* Speaker Indicator */}
-              <SpeakerIndicator 
-                currentSpeaker={currentSpeaker} 
-                isVisible={sessionContext.liveTranscript.length > 0 || isRecording} 
-              />
+              {/* Speaker Indicator - Phase 1.3: Hidden by default for executive UX */}
+              {showParticipantDetection && (
+                <SpeakerIndicator 
+                  currentSpeaker={currentSpeaker} 
+                  isVisible={sessionContext.liveTranscript.length > 0 || isRecording} 
+                />
+              )}
 
               {/* Phase navigation */}
               <div className="flex justify-between items-center">
@@ -1403,6 +1434,8 @@ This session follows the Assistance → Automation → Amplification progression
         totalQuestions={AI_TRANSFORMATION_QUESTIONS.length}
         presentationMode={presentationMode}
         setPresentationMode={setPresentationMode}
+        showParticipantDetection={showParticipantDetection}
+        setShowParticipantDetection={setShowParticipantDetection}
       />
       
       {/* Enhanced Recording Indicator */}
