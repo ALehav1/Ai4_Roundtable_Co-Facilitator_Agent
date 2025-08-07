@@ -10,7 +10,7 @@
  */
 
 import RoundtableCanvasV2 from '@/components/RoundtableCanvasV2';
-import { sessionConfig, uiText } from '@/config/roundtable-config';
+import { sessionConfig, uiText } from '@/config/ai-transformation-config';
 
 // CRITICAL: Force dynamic rendering to fix Vercel deployment pipeline
 // These exports prevent Next.js 14 from caching this route as static

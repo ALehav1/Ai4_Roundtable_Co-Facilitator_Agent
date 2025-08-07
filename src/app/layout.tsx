@@ -12,7 +12,7 @@
 
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import { sessionConfig } from '@/config/roundtable-config';
+import { sessionConfig } from '@/config/ai-transformation-config';
 
 // Viewport configuration (required separate export in Next.js 13+)
 export const viewport: Viewport = {

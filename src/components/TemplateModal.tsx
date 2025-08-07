@@ -15,7 +15,7 @@ import {
   deleteTemplate,
   getTemplate 
 } from '../utils/storage';
-import { RoundtableQuestion } from '../config/roundtable-config';
+import { RoundtableQuestion } from '../config/ai-transformation-config';
 
 interface TemplateModalProps {
   isOpen: boolean;

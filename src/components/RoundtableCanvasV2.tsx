@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { sessionConfig, uiText, roundtableQuestions, getCurrentQuestion, getTotalQuestions } from '../config/roundtable-config';
+import { sessionConfig, uiText, AI_TRANSFORMATION_QUESTIONS, getCurrentQuestion, getTotalQuestions } from '../config/ai-transformation-config';
 import { useSpeechTranscription, TranscriptEvent } from '../hooks/useSpeechTranscription';
 import { saveSession, loadSession, SessionSnapshot, SessionTemplate } from '../utils/storage';
 import { sessionPresets, getPresetById, presetToTranscriptEntries } from '../config/session-presets';
@@ -48,7 +48,7 @@ interface SessionContext {
 
 const RoundtableCanvasV2: React.FC = () => {
   // Core State
-  const [sessionState, setSessionState] = useState<SessionState>('intro');
+  const [sessionState, setSessionState] = useState<SessionState>('discussion');
   const [sessionContext, setSessionContext] = useState<SessionContext>({
     state: 'intro',
     startTime: new Date(),
@@ -67,9 +67,13 @@ const RoundtableCanvasV2: React.FC = () => {
   });
 
   // UI State
-  const [showFacilitatorPanel, setShowFacilitatorPanel] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [currentSpeaker, setCurrentSpeaker] = useState<string>('Facilitator');
+  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [manualText, setManualText] = useState('');
+  const [currentSpeaker, setCurrentSpeaker] = useState('Facilitator');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showFacilitatorPanel, setShowFacilitatorPanel] = useState(true);
   const [interimTranscript, setInterimTranscript] = useState<string>('');
   const [showManualModal, setShowManualModal] = useState(false);
   const [manualEntryText, setManualEntryText] = useState('');
@@ -326,54 +330,195 @@ const RoundtableCanvasV2: React.FC = () => {
     
     return (
       <div className="h-screen flex flex-col">
-        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-6">
-          <h2 className="text-2xl font-bold mb-2">
-            Phase {sessionContext.currentQuestionIndex + 1}: {currentQuestion?.title || 'Loading...'}
-          </h2>
-          <p className="text-indigo-100">{currentQuestion?.description || ''}</p>
-        </div>
-        
-        <div className="flex-1 flex">
-          <div className="flex-1 p-6 bg-gray-50">
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="mb-4 flex gap-3">
+        {/* Clean header with session title and facilitator toggle */}
+        <div className="bg-white shadow-sm border-b sticky top-0 z-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-3">
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900">
+                  {sessionConfig.title || "When AI Becomes How the Enterprise Works"}
+                </h1>
+                <p className="text-sm text-gray-600">
+                  {sessionConfig.description || "Executive roundtable on AI transformation"}
+                </p>
+              </div>
+              <div className="flex items-center gap-4">
+                {/* Show current phase name, not "Question 3 of 5" */}
+                <div className="text-sm text-gray-600 font-medium">
+                  {AI_TRANSFORMATION_QUESTIONS[sessionContext.currentQuestionIndex]?.title || "Phase 1"}
+                </div>
                 <button
-                  onClick={toggleRecording}
-                  className={`px-4 py-2 rounded-lg font-medium ${
-                    isRecording ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'
-                  }`}
+                  onClick={() => setShowFacilitatorPanel(!showFacilitatorPanel)}
+                  className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
-                  {isRecording ? 'Stop Recording' : 'Start Recording'}
-                </button>
-                
-                <button
-                  onClick={() => setShowManualModal(true)}
-                  className="px-4 py-2 bg-gray-600 text-white rounded-lg"
-                >
-                  Add Manual Entry
-                </button>
-                
-                <button
-                  onClick={endSession}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg"
-                >
-                  End Session
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  {showFacilitatorPanel ? 'Hide' : 'Show'} Facilitator Guide
                 </button>
               </div>
-              
-              <div ref={transcriptRef} className="max-h-96 overflow-y-auto border rounded-lg p-4 bg-gray-50">
+            </div>
+          </div>
+        </div>
+
+        {/* Main content area with flex layout */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Main content area - what audience sees */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-4xl mx-auto p-6">
+              {/* Phase header with timing */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {currentQuestion?.title || "Loading..."}
+                  </h2>
+                  {currentQuestion?.timeLimit && (
+                    <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                      {currentQuestion.timeLimit} minutes
+                    </span>
+                  )}
+                </div>
+                <p className="text-gray-600">{currentQuestion?.description || ''}</p>
+              </div>
+
+              {/* Display facilitator content properly */}
+              {currentQuestion?.facilitatorGuidance && (
+                <div className="space-y-4 mb-6">
+                  {/* Opening line - prominent for audience */}
+                  {currentQuestion.facilitatorGuidance.openingLine && (
+                    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                      <p className="text-lg italic text-blue-900">
+                        "{currentQuestion.facilitatorGuidance.openingLine}"
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Setup line (for Phase 2) */}
+                  {currentQuestion.facilitatorGuidance.setupLine && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <p className="text-gray-700">
+                        {currentQuestion.facilitatorGuidance.setupLine}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Key prompt/question */}
+                  {currentQuestion.facilitatorGuidance.keyPrompt && (
+                    <div className="bg-white rounded-lg shadow-sm border p-6">
+                      <h3 className="font-semibold text-gray-900 mb-2">Key Question:</h3>
+                      <p className="text-lg text-gray-800">
+                        {currentQuestion.facilitatorGuidance.keyPrompt}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Framework display (for Phase 2) */}
+                  {currentQuestion.facilitatorGuidance.framework && (
+                    <div className="bg-white rounded-lg shadow-sm border p-6">
+                      <h3 className="font-semibold text-lg text-gray-900 mb-4">
+                        {currentQuestion.facilitatorGuidance.framework.title}
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {currentQuestion.facilitatorGuidance.framework.stages?.map((stage, idx) => (
+                          <div key={idx} className="border rounded-lg p-4 bg-gray-50">
+                            <h4 className="font-semibold text-gray-900 mb-1">{stage.name}</h4>
+                            <p className="text-sm text-gray-600 mb-2">{stage.definition}</p>
+                            <p className="text-xs text-red-600 font-medium">
+                              Limitation: {stage.limitation}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* High-leverage systems (for Phase 3) */}
+                  {currentQuestion.facilitatorGuidance.keyFramework && (
+                    <div className="bg-white rounded-lg shadow-sm border p-6">
+                      <h3 className="font-semibold text-lg text-gray-900 mb-4">
+                        {currentQuestion.facilitatorGuidance.keyFramework.title}
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {currentQuestion.facilitatorGuidance.keyFramework.systems?.map((system, idx) => (
+                          <div key={idx} className="border-l-4 border-blue-500 pl-4 py-2">
+                            <h4 className="font-semibold text-gray-900">{system.name}</h4>
+                            <p className="text-sm text-gray-600">{system.rationale}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Example (SalesRecon for Phase 2) */}
+                  {currentQuestion.facilitatorGuidance.exampleToShare && (
+                    <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                      <h4 className="font-semibold text-green-900 mb-2">
+                        Example: {currentQuestion.facilitatorGuidance.exampleToShare.name}
+                      </h4>
+                      <ul className="list-disc list-inside text-sm text-green-800 space-y-1">
+                        {currentQuestion.facilitatorGuidance.exampleToShare.points?.map((point, idx) => (
+                          <li key={idx}>{point}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Key message */}
+                  {currentQuestion.facilitatorGuidance.keyMessage && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <p className="text-yellow-900 font-medium">
+                        {currentQuestion.facilitatorGuidance.keyMessage}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Discussion prompts */}
+                  {currentQuestion.facilitatorGuidance.discussionPrompts && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h4 className="font-semibold text-gray-900 mb-2">Discussion Points:</h4>
+                      <ul className="space-y-2">
+                        {currentQuestion.facilitatorGuidance.discussionPrompts.map((prompt, idx) => (
+                          <li key={idx} className="flex items-start">
+                            <span className="text-blue-500 mr-2">•</span>
+                            <span className="text-gray-700">{prompt}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Facilitator prompts */}
+                  {(currentQuestion.facilitatorGuidance.facilitatorPrompt || 
+                    currentQuestion.facilitatorGuidance.facilitatorPrompts) && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h4 className="font-semibold text-gray-900 mb-2">Questions for the Group:</h4>
+                      {currentQuestion.facilitatorGuidance.facilitatorPrompt && (
+                        <p className="text-gray-700">• {currentQuestion.facilitatorGuidance.facilitatorPrompt}</p>
+                      )}
+                      {currentQuestion.facilitatorGuidance.facilitatorPrompts?.map((prompt, idx) => (
+                        <p key={idx} className="text-gray-700">• {prompt}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Transcript section - keep existing transcript display code */}
+              <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+                <h3 className="font-semibold text-gray-900 mb-4">Discussion Transcript</h3>
                 {sessionContext.liveTranscript.length === 0 ? (
                   <p className="text-gray-500 italic text-center py-8">
-                    No conversation captured yet.
+                    No responses captured yet. Click "Start Recording" or "Add Manual Entry" to begin.
                   </p>
                 ) : (
-                  <div className="space-y-3">
-                    {sessionContext.liveTranscript.map((entry) => (
-                      <div key={entry.id} className="bg-white p-3 rounded border">
-                        <p className="text-gray-800">{entry.text}</p>
-                        <p className="text-xs text-gray-500 mt-1">
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {sessionContext.liveTranscript.map((entry, index) => (
+                      <div key={entry.id || index} className="border-l-4 border-gray-200 pl-4 py-2">
+                        <div className="font-medium text-gray-900">{entry.speaker || 'Speaker'}</div>
+                        <div className="text-gray-700 mt-1">{entry.text}</div>
+                        <div className="text-xs text-gray-500 mt-1">
                           {new Date(entry.timestamp).toLocaleTimeString()}
-                        </p>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -385,68 +530,240 @@ const RoundtableCanvasV2: React.FC = () => {
                   </div>
                 )}
               </div>
-            </div>
-            
-            <div className="mt-4 flex justify-between">
-              <button
-                onClick={goToPreviousQuestion}
-                disabled={sessionContext.currentQuestionIndex === 0}
-                className="px-4 py-2 bg-gray-500 text-white rounded-lg disabled:bg-gray-300"
-              >
-                Previous
-              </button>
-              
-              <span className="text-sm text-gray-600">
-                Phase {sessionContext.currentQuestionIndex + 1} of {totalQuestions}
-              </span>
-              
-              <button
-                onClick={goToNextQuestion}
-                disabled={sessionContext.currentQuestionIndex >= totalQuestions - 1}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg disabled:bg-gray-300"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-          
-          <div className="w-96 bg-white border-l p-4">
-            <h3 className="text-lg font-semibold mb-4">AI Analysis</h3>
-            
-            <div className="space-y-3 mb-4">
-              <button
-                onClick={() => callAIAnalysis('insights')}
-                disabled={sessionContext.liveTranscript.length === 0}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg disabled:bg-gray-300"
-              >
-                Generate Insights
-              </button>
-              
-              <button
-                onClick={handleExportPDF}
-                disabled={isExporting || sessionContext.liveTranscript.length === 0}
-                className="w-full px-4 py-2 bg-green-600 text-white rounded-lg disabled:bg-gray-300"
-              >
-                {isExporting ? 'Exporting...' : 'Export PDF'}
-              </button>
-            </div>
-            
-            <div className="border-t pt-4">
-              {sessionContext.aiInsights.length === 0 ? (
-                <p className="text-center text-gray-500">
-                  No insights yet
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {sessionContext.aiInsights.map((insight) => (
-                    <div key={insight.id} className="bg-gray-50 p-3 rounded">
-                      <p className="text-sm">{insight.content}</p>
-                    </div>
-                  ))}
+
+              {/* Action buttons - keep existing buttons */}
+              <div className="flex flex-wrap gap-3 mb-6">
+                <button
+                  onClick={() => setIsRecording(!isRecording)}
+                  className={`inline-flex items-center px-4 py-2 border rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    isRecording
+                      ? 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500'
+                      : 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500'
+                  }`}
+                >
+                  {isRecording ? (
+                    <>
+                      <svg className="w-4 h-4 mr-2 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
+                      </svg>
+                      Stop Recording
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                      </svg>
+                      Start Recording
+                    </>
+                  )}
+                </button>
+                
+                <button
+                  onClick={() => setShowManualModal(true)}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Add Manual Entry
+                </button>
+              </div>
+
+              {/* Phase navigation */}
+              <div className="flex justify-between items-center">
+                <button
+                  onClick={() => setSessionContext(prev => ({
+                    ...prev,
+                    currentQuestionIndex: Math.max(0, prev.currentQuestionIndex - 1)
+                  }))}
+                  disabled={sessionContext.currentQuestionIndex === 0}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Previous Phase
+                </button>
+                
+                <div className="text-sm text-gray-600">
+                  Phase {sessionContext.currentQuestionIndex + 1} of {AI_TRANSFORMATION_QUESTIONS.length}
                 </div>
-              )}
+                
+                <button
+                  onClick={() => {
+                    if (sessionContext.currentQuestionIndex < AI_TRANSFORMATION_QUESTIONS.length - 1) {
+                      setSessionContext(prev => ({
+                        ...prev,
+                        currentQuestionIndex: prev.currentQuestionIndex + 1
+                      }));
+                    } else {
+                      setSessionState('summary');
+                    }
+                  }}
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  {sessionContext.currentQuestionIndex < AI_TRANSFORMATION_QUESTIONS.length - 1 ? (
+                    <>
+                      Next Phase
+                      <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </>
+                  ) : (
+                    <>
+                      Complete Session
+                      <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
+
+          {/* Collapsible facilitator panel */}
+          {showFacilitatorPanel && (
+            <div className="w-96 bg-gray-50 border-l overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Facilitator Guide</h3>
+                  <button
+                    onClick={() => setShowFacilitatorPanel(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {currentQuestion?.facilitatorGuidance && (
+                  <div className="space-y-4">
+                    {/* Objective */}
+                    {currentQuestion.facilitatorGuidance.objective && (
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-1">Objective</h4>
+                        <p className="text-sm text-gray-600">
+                          {currentQuestion.facilitatorGuidance.objective}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* What to listen for */}
+                    {currentQuestion.facilitatorGuidance.whatToListenFor && (
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-1">What to Listen For</h4>
+                        <ul className="text-sm text-gray-600 space-y-1">
+                          {currentQuestion.facilitatorGuidance.whatToListenFor.map((item, idx) => (
+                            <li key={idx} className="flex items-start">
+                              <span className="text-blue-500 mr-2">•</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Facilitation tips */}
+                    {currentQuestion.facilitatorGuidance.facilitationTips && (
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-1">Facilitation Tips</h4>
+                        <ul className="text-sm text-gray-600 space-y-1">
+                          {currentQuestion.facilitatorGuidance.facilitationTips.map((tip, idx) => (
+                            <li key={idx} className="flex items-start">
+                              <span className="text-green-500 mr-2">✓</span>
+                              <span>{tip}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Presentation notes */}
+                    {currentQuestion.facilitatorGuidance.presentationNotes && (
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-1">Presentation Notes</h4>
+                        <ul className="text-sm text-gray-600 space-y-1">
+                          {currentQuestion.facilitatorGuidance.presentationNotes.map((note, idx) => (
+                            <li key={idx} className="flex items-start">
+                              <span className="text-yellow-500 mr-2">★</span>
+                              <span>{note}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Transition line */}
+                    {currentQuestion.facilitatorGuidance.transitionLine && (
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-1">Transition to Next</h4>
+                        <p className="text-sm text-gray-600 italic">
+                          "{currentQuestion.facilitatorGuidance.transitionLine}"
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Closing message (for Phase 5) */}
+                    {currentQuestion.facilitatorGuidance.closingMessage && (
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-1">Closing Message</h4>
+                        <p className="text-sm text-gray-600">
+                          {currentQuestion.facilitatorGuidance.closingMessage}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* AI Analysis Tools */}
+                <div className="mt-6 pt-6 border-t">
+                  <h4 className="font-medium text-gray-900 mb-3">AI Analysis Tools</h4>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => callAIAnalysis('insights')}
+                      disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
+                      className="w-full inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                    >
+                      Generate Strategic Insights
+                    </button>
+                    
+                    <button
+                      onClick={() => callAIAnalysis('followup')}
+                      disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
+                      className="w-full inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                    >
+                      Suggest Follow-up Questions
+                    </button>
+                    
+                    <button
+                      onClick={() => callAIAnalysis('synthesis')}
+                      disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
+                      className="w-full inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                    >
+                      Synthesize Discussion
+                    </button>
+                  </div>
+
+                  {/* AI Insights Display */}
+                  {sessionContext.aiInsights.length > 0 && (
+                    <div className="mt-4 space-y-3">
+                      <h4 className="font-medium text-gray-900">Recent Insights</h4>
+                      {sessionContext.aiInsights.slice(-3).map((insight, idx) => (
+                        <div key={insight.id || idx} className="bg-white rounded-lg p-3 text-sm">
+                          <div className="font-medium text-gray-700 mb-1">
+                            {insight.type?.charAt(0).toUpperCase() + insight.type?.slice(1) || 'Insight'}
+                          </div>
+                          <div className="text-gray-600">{insight.content}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
