@@ -131,7 +131,7 @@ const TopNavigation = ({
               ? 'bg-blue-100 text-blue-700 border border-blue-300'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}
-          title="Show/Hide Advanced Speaker Detection"
+          title="Toggle speaker detection controls"
         >
           {showParticipantDetection ? '🎯 Hide Detection' : '🎯 Show Detection'}
         </button>
@@ -729,7 +729,7 @@ This session follows the Assistance → Automation → Amplification progression
                   value={selectedPresetId}
                   onChange={(e) => setSelectedPresetId(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  title="Select a session template to load predefined content and structure"
+                  title="Choose a session template"
                   aria-label="Session template selector"
                 >
                   <option value="blank_template">Start with Blank Session</option>
@@ -758,7 +758,7 @@ This session follows the Assistance → Automation → Amplification progression
                     currentTopic: e.target.value
                   }))}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter session topic"
+                  placeholder="What's the focus of today's discussion?"
                 />
               </div>
 
@@ -771,7 +771,7 @@ This session follows the Assistance → Automation → Amplification progression
                   value={currentSpeaker}
                   onChange={(e) => setCurrentSpeaker(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Your name"
+                  placeholder="Facilitator name"
                 />
               </div>
 
@@ -1117,7 +1117,7 @@ This session follows the Assistance → Automation → Amplification progression
                     className={`recording-button ${
                       isRecording ? 'recording-button--active' : 'recording-button--inactive'
                     }`}
-                    title={isRecording ? 'Stop smart recording and speaker detection' : 'Start smart recording with automatic speaker detection'}
+                    title={isRecording ? 'Stop recording' : 'Start voice recording with smart speaker detection'}
                   >
                     {isRecording ? (
                       <>
@@ -1137,7 +1137,7 @@ This session follows the Assistance → Automation → Amplification progression
                   <button
                     onClick={() => setShowManualModal(true)}
                     className="btn btn--secondary"
-                    title="Add manual transcript entry"
+                    title="Add discussion point manually"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -1149,7 +1149,7 @@ This session follows the Assistance → Automation → Amplification progression
                     onClick={runSpeakerAttribution}
                     disabled={sessionContext.liveTranscript.length < 3}
                     className="btn btn--secondary"
-                    title="Use AI to identify speakers based on their introductions and speech patterns"
+                    title="Use AI to identify and organize speakers"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -1332,7 +1332,7 @@ This session follows the Assistance → Automation → Amplification progression
                         onClick={() => callAIAnalysis('insights')}
                         disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
                         className="insight-button"
-                        title="Generate strategic insights from the current discussion"
+                        title="Generate strategic insights from discussion"
                         aria-label="Generate AI strategic insights"
                       >
                         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1345,7 +1345,7 @@ This session follows the Assistance → Automation → Amplification progression
                         onClick={() => callAIAnalysis('followup')}
                         disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
                         className="insight-button secondary"
-                        title="Get AI-suggested follow-up questions"
+                        title="Get suggested follow-up questions"
                         aria-label="Generate AI follow-up questions"
                       >
                         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1358,7 +1358,7 @@ This session follows the Assistance → Automation → Amplification progression
                         onClick={() => callAIAnalysis('synthesis')}
                         disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
                         className="insight-button secondary"
-                        title="Synthesize the discussion themes and outcomes"
+                        title="Synthesize key themes and outcomes"
                         aria-label="Generate AI discussion synthesis"
                       >
                         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1505,7 +1505,7 @@ This session follows the Assistance → Automation → Amplification progression
               value={manualEntryText}
               onChange={(e) => setManualEntryText(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md h-24"
-              placeholder="Enter text..."
+              placeholder="What was discussed? (e.g., 'We agreed that AI should focus on decision support rather than replacement')"
             />
             
             <div className="flex space-x-3 mt-4">
