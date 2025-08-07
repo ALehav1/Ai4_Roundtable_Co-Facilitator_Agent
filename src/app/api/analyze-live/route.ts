@@ -49,30 +49,31 @@ const LiveAnalyzeResponseSchema = z.object({
 
 type LiveAnalyzeResponse = z.infer<typeof LiveAnalyzeResponseSchema>;
 
-// Rate limiting (same as existing endpoint)
+// Rate limiting (align with strict endpoint; increment only on success)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
-function checkRateLimit(clientId: string): boolean {
+function checkRateLimit(clientId: string = 'anonymous'): boolean {
   const now = Date.now();
   const hourInMs = 60 * 60 * 1000;
-  const maxRequests = 50; // Increased for live usage
-  
+  const maxRequests = 50; // live usage
+
   const clientData = rateLimitStore.get(clientId);
-  
+
   if (!clientData || now > clientData.resetTime) {
-    rateLimitStore.set(clientId, {
-      count: 1,
-      resetTime: now + hourInMs
-    });
+    // Start a new window without incrementing
+    rateLimitStore.set(clientId, { count: 0, resetTime: now + hourInMs });
     return true;
   }
-  
-  if (clientData.count >= maxRequests) {
-    return false;
+
+  return clientData.count < maxRequests;
+}
+
+function incrementRateLimit(clientId: string = 'anonymous') {
+  const clientData = rateLimitStore.get(clientId);
+  if (clientData) {
+    clientData.count += 1;
+    rateLimitStore.set(clientId, clientData);
   }
-  
-  clientData.count++;
-  return true;
 }
 
 /**
@@ -334,6 +335,9 @@ export async function POST(request: NextRequest) {
       responseLength: aiResponse.length,
       tokensUsed: completion.usage?.total_tokens || 0
     });
+
+    // Increment rate limit only after successful AI response
+    incrementRateLimit(clientId);
 
     return NextResponse.json(response);
 

@@ -252,6 +252,8 @@ export async function POST(req: NextRequest) {
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError);
       // Fallback response if JSON parsing fails
+      // Still count this as a successful API call for rate limiting purposes
+      incrementRateLimit(clientId);
       return NextResponse.json({
         result: result,
         type: analysisType,

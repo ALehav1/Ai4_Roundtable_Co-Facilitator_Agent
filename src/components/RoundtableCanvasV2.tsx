@@ -12,6 +12,7 @@ import FacilitatorPanel from './FacilitatorPanel';
 // Centralized types and constants
 import { SessionState, TranscriptEntry, SessionContext } from '@/types/session';
 import { FACILITATOR_PATTERNS, MIN_WORDS_FOR_INSIGHTS } from '@/constants/speech';
+import { useToast } from '@/components/ToastProvider';
 
 // Types now imported from centralized files
 // SessionState, TranscriptEntry, SessionContext imported from @/types/session
@@ -149,6 +150,7 @@ const TopNavigation = ({
 );
 
 const RoundtableCanvasV2: React.FC = () => {
+  const { showToast } = useToast();
   // Core State
   const [sessionState, setSessionState] = useState<SessionState>('discussion');
   const [sessionContext, setSessionContext] = useState<SessionContext>({
@@ -398,7 +400,16 @@ This session follows the Assistance → Automation → Amplification progression
           }));
         }
       } else {
-        // Handle API errors gracefully
+        // Handle API errors gracefully + visible toast
+        showToast({
+          type: response.status === 429 ? 'warning' : 'error',
+          title: response.status === 429 ? 'Rate limit reached' : 'AI analysis unavailable',
+          message: response.status === 429
+            ? 'Too many requests. Please wait a minute and try again.'
+            : 'The AI analysis service is temporarily unavailable. Please try again shortly.',
+          action: { label: 'Retry', onClick: () => callAIAnalysis(analysisType) }
+        });
+
         const errorInsight = {
           id: `insight_${Date.now()}`,
           type: 'error',
@@ -406,7 +417,7 @@ This session follows the Assistance → Automation → Amplification progression
           timestamp: new Date(),
           confidence: 1.0
         };
-        
+
         setSessionContext(prev => ({
           ...prev,
           aiInsights: [...prev.aiInsights, errorInsight]
@@ -414,7 +425,14 @@ This session follows the Assistance → Automation → Amplification progression
       }
     } catch (error) {
       console.error('AI Analysis Error:', error);
-      
+      // Visible network error toast
+      showToast({
+        type: 'error',
+        title: 'Network error',
+        message: 'Unable to contact the AI service. Please check your connection and try again.',
+        action: { label: 'Retry', onClick: () => callAIAnalysis(analysisType) }
+      });
+
       // User-friendly error handling
       const technicalErrorInsight = {
         id: `insight_${Date.now()}`,
@@ -429,7 +447,7 @@ This session follows the Assistance → Automation → Amplification progression
         aiInsights: [...prev.aiInsights, technicalErrorInsight]
       }));
     }
-  }, [sessionContext.liveTranscript, sessionContext.currentTopic, sessionContext.currentQuestionIndex, sessionContext.questionStartTime, sessionContext.aiInsights]);
+  }, [sessionContext.liveTranscript, sessionContext.currentTopic, sessionContext.currentQuestionIndex, sessionContext.questionStartTime, sessionContext.aiInsights, showToast]);
 
   // Smart Insight Triggering System - positioned after callAIAnalysis declaration
   useEffect(() => {
@@ -530,13 +548,25 @@ This session follows the Assistance → Automation → Amplification progression
       setIsExporting(true);
       const exportData = prepareSessionDataForExport(sessionContext);
       await generateSessionPDF(exportData);
+      // Toast: success export
+      showToast({
+        type: 'success',
+        title: 'Export ready',
+        message: 'Your session PDF has been generated.'
+      });
     } catch (error) {
       console.error('PDF export failed:', error);
-      alert('PDF export failed. Please try again.');
+      // Toast: export failed
+      showToast({
+        type: 'error',
+        title: 'Export failed',
+        message: 'PDF export failed. Please try again.',
+        action: { label: 'Retry', onClick: () => handleExportPDF() }
+      });
     } finally {
       setIsExporting(false);
     }
-  }, [sessionContext, isExporting]);
+  }, [sessionContext, isExporting, showToast]);
 
   const toggleRecording = useCallback(() => {
     if (speechTranscription.isListening) {
@@ -577,19 +607,39 @@ This session follows the Assistance → Automation → Amplification progression
         })
       });
 
+      if (!response.ok) {
+        // Toast: API error
+        showToast({
+          type: response.status === 429 ? 'warning' : 'error',
+          title: response.status === 429 ? 'Rate limit reached' : 'Speaker identification failed',
+          message: response.status === 429
+            ? 'Too many requests. Please wait a minute and try again.'
+            : 'Unable to identify speakers. Please try again shortly.'
+        });
+        return;
+      }
+
       const data = await response.json();
       if (data.success) {
         setAttributionResults(data);
         setShowSpeakerAttribution(true);
       } else {
         console.error('Speaker attribution failed:', data.error);
-        alert('Speaker identification failed. Please try again.');
+        showToast({
+          type: 'error',
+          title: 'Speaker identification failed',
+          message: data.error || 'Please try again.'
+        });
       }
     } catch (error) {
       console.error('Failed to run speaker attribution:', error);
-      alert('Unable to identify speakers. Please check your connection and try again.');
+      showToast({
+        type: 'error',
+        title: 'Network error',
+        message: 'Unable to identify speakers. Please check your connection and try again.'
+      });
     }
-  }, [sessionContext.liveTranscript]);
+  }, [sessionContext.liveTranscript, showToast]);
 
   // Smart Speaker Detection Function
   const FACILITATOR_PATTERNS = [

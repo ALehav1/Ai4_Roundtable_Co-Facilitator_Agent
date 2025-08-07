@@ -13,6 +13,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { sessionConfig } from '@/config/ai-transformation-config';
+import { ToastProvider } from '@/components/ToastProvider';
 
 // Viewport configuration (required separate export in Next.js 13+)
 export const viewport: Viewport = {
@@ -84,7 +85,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
           Main application content
           The children prop contains the page content (page.tsx)
         */}
-        {children}
+        <ToastProvider>
+          {children}
+        </ToastProvider>
         
         {/* 
           Global JavaScript that might be needed
