@@ -23,7 +23,7 @@ import { unstable_noStore as noStore } from 'next/cache';
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
 /**
- * Check if a client has exceeded rate limits
+ * Check if a client has exceeded rate limits (Phase 2.1 - Fixed persistent increment bug)
  * @param clientId - Unique identifier for the client
  * @returns true if request is allowed, false if rate limited
  */
@@ -35,20 +35,28 @@ function checkRateLimit(clientId: string = 'default'): boolean {
   const clientData = rateLimitStore.get(clientId);
   
   if (!clientData || now > clientData.resetTime) {
+    // Initialize new window but DON'T increment yet
     rateLimitStore.set(clientId, {
-      count: 1,
+      count: 0,
       resetTime: now + hourInMs
     });
     return true;
   }
   
-  if (clientData.count >= limit) {
-    return false;
+  // Check limit without incrementing
+  return clientData.count < limit;
+}
+
+/**
+ * Increment rate limit counter after successful API call (Phase 2.1 - Bug fix)
+ * @param clientId - Unique identifier for the client
+ */
+function incrementRateLimit(clientId: string = 'default'): void {
+  const clientData = rateLimitStore.get(clientId);
+  if (clientData) {
+    clientData.count++;
+    rateLimitStore.set(clientId, clientData);
   }
-  
-  clientData.count++;
-  rateLimitStore.set(clientId, clientData);
-  return true;
 }
 
 /**
@@ -237,10 +245,15 @@ export async function POST(req: NextRequest) {
         timestamp: Date.now()
       };
       
+      // Phase 2.1: Increment rate limit ONLY after successful API call
+      incrementRateLimit(clientId);
+      
       return NextResponse.json(parsed);
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError);
       // Fallback response if JSON parsing fails
+      // Still count this as a successful API call for rate limiting purposes
+      incrementRateLimit(clientId);
       return NextResponse.json({
         result: result,
         type: analysisType,

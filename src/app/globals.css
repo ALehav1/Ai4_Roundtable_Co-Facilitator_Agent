@@ -805,6 +805,22 @@
   }
 }
 
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Animation utility classes */
+.animate-slideIn {
+  animation: slideIn 0.3s ease-out;
+}
+
 /* Print styles for exported content */
 @media print {
   .no-print {

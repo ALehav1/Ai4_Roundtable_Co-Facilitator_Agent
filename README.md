@@ -15,6 +15,8 @@ A sophisticated AI-powered co-facilitation system designed for strategic roundta
 - ✅ **Template Creation Mode**: New ability to create templates from scratch
 - ✅ **Improved AI Panel**: Tabbed interface for insights, questions, and synthesis
 - ✅ **Enhanced Error Handling**: Better user guidance when waiting for AI responses
+- 🛎️ **Executive-Friendly Error Toasts**: Visible, accessible toast notifications for API and export errors (global `ToastProvider` + `useToast` hook)
+- 🧯 **Fixed API Rate Limiting**: Corrected persistent increment bug; requests only count after a successful AI call (both `/api/analyze` and `/api/analyze-live`)
 
 Transform your strategic facilitation with AI-powered insights:
 
@@ -723,13 +725,33 @@ For questions, issues, or feature requests:
 - **✅ Specialized prompts**: Custom AI prompts for phase transition analysis and readiness assessment
 - **✅ Frontend integration**: Complete TypeScript interface updates and UI support
 - **✅ Legacy compatibility**: Automatic mapping to compatible types for older API endpoints
-
 ### **🛡️ Robust Error Handling**
 
 - **✅ Graceful degradation**: All AI analysis failures now display user-friendly error messages
 - **✅ No unhandled promises**: Complete error catching prevents console warnings and crashes
 - **✅ Dual API fallback**: Primary endpoint failure automatically falls back to legacy API
 - **✅ User feedback**: Clear error states with actionable guidance for users
+
+#### ⏱️ Rate Limiting & Error Toasts
+
+- Increment-on-success only: Both `/api/analyze-live` and `/api/analyze` increment the hourly counter only on successful (2xx) responses. Failures (4xx/5xx/network) do not count against the limit.
+- Configurable limit: Controlled via `sessionConfig.rateLimitPerHour` in `src/config/roundtable-config.ts` (default: 100/hour).
+- User experience:
+  - 429 (Rate Limit): Warning toast “Rate limit reached”. A Retry action is offered; wait briefly before retrying.
+  - Other failures: Error toast with a “Retry” action that replays the last analysis or export attempt.
+- Developer usage: The global `ToastProvider` exposes `useToast().showToast` with an optional `action` for one-click recovery.
+
+```ts
+import { useToast } from '@/components/ToastProvider';
+
+const { showToast } = useToast();
+showToast({
+  type: 'error',
+  title: 'Export failed',
+  message: 'PDF export failed. Please try again.',
+  action: { label: 'Retry', onClick: () => handleExportPDF() }
+});
+```
 
 ### **🏧 Technical Architecture**
 
@@ -1135,7 +1157,8 @@ ai-roundtable/
 │   │   └── page.tsx                  # Main application entry point
 │   ├── components/
 │   │   ├── RoundtableCanvasV2.tsx    # 🎯 Main UI component (current version)
-│   │   └── SessionSummary.tsx        # PDF export and session summary display
+│   │   ├── SessionSummary.tsx        # PDF export and session summary display
+│   │   └── ToastProvider.tsx         # Global toast notifications (provider + hook)
 │   ├── config/
 │   │   └── roundtable-config.ts      # ⭐ MAIN CONFIGURATION FILE
 │   ├── hooks/

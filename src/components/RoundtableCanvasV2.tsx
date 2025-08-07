@@ -9,44 +9,148 @@ import { generateSessionPDF, prepareSessionDataForExport } from '../utils/pdfExp
 import { checkFeature } from '../config/feature-flags';
 import { TemplateModal } from './TemplateModal';
 import FacilitatorPanel from './FacilitatorPanel';
+// Centralized types and constants
+import { SessionState, TranscriptEntry, SessionContext } from '@/types/session';
+import { FACILITATOR_PATTERNS, MIN_WORDS_FOR_INSIGHTS } from '@/constants/speech';
+import { useToast } from '@/components/ToastProvider';
 
-// Types
-type SessionState = 'idle' | 'intro' | 'discussion' | 'summary' | 'completed';
+// Types now imported from centralized files
+// SessionState, TranscriptEntry, SessionContext imported from @/types/session
+// FACILITATOR_PATTERNS, MIN_WORDS_FOR_INSIGHTS imported from @/constants/speech
 
-interface TranscriptEntry {
-  id: string;
-  timestamp: Date;
-  speaker?: string;
-  text: string;
-  confidence?: number;
-  isAutoDetected: boolean;
-}
+// Enhanced Recording Indicator Component
+const RecordingIndicator = ({ isRecording, currentSpeaker }: { 
+  isRecording: boolean; 
+  currentSpeaker: string;
+}) => {
+  if (!isRecording) return null;
+  
+  return (
+    <div className="fixed top-20 right-4 z-50 animate-slideIn">
+      <div className="bg-red-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3">
+        {/* Pulse animation */}
+        <div className="relative flex items-center justify-center">
+          <div className="absolute w-3 h-3 bg-white rounded-full animate-ping" />
+          <div className="relative w-3 h-3 bg-white rounded-full animate-pulse" />
+        </div>
+        
+        {/* Status text */}
+        <div className="flex flex-col">
+          <span className="font-medium">Recording Active</span>
+          <span className="text-xs opacity-90">
+            Detecting: {currentSpeaker}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
-interface SessionContext {
-  facilitator: string;
-  topic: string;
-  state: SessionState;
-  startTime: Date;
-  currentTopic?: string;
-  duration?: number;
-  liveTranscript: TranscriptEntry[];
-  keyThemes: string[];
-  aiInsights: any[];
-  followupQuestions: string[];
-  crossReferences: string[];
-  sessionSummary: string;
-  currentQuestionIndex: number;
-  questionStartTime?: Date;
-  agendaProgress: {
-    [questionId: string]: {
-      completed: boolean;
-      timeSpent: number;
-      insights: number;
-    };
-  };
-}
+// Simplified Speaker Indicator Component
+const SpeakerIndicator = ({ currentSpeaker, isVisible }: {
+  currentSpeaker: string;
+  isVisible: boolean;
+}) => {
+  if (!isVisible) return null;
+  
+  const isFacilitator = currentSpeaker === 'Facilitator';
+  
+  return (
+    <div className="flex items-center gap-2 text-sm text-gray-600">
+      <div className={`w-2 h-2 rounded-full ${
+        isFacilitator ? 'bg-blue-500' : 'bg-green-500'
+      }`} />
+      <span className="font-medium">
+        Current Speaker: {currentSpeaker}
+      </span>
+      <span className="text-xs opacity-75">
+        (Auto-detected)
+      </span>
+    </div>
+  );
+};
+
+// Enhanced TopNavigation Component for better UX
+const TopNavigation = ({ 
+  sessionContext, 
+  goToPreviousQuestion, 
+  goToNextQuestion, 
+  totalQuestions,
+  presentationMode,
+  setPresentationMode,
+  showParticipantDetection,
+  setShowParticipantDetection 
+}: {
+  sessionContext: SessionContext;
+  goToPreviousQuestion: () => void;
+  goToNextQuestion: () => void;
+  totalQuestions: number;
+  presentationMode: boolean;
+  setPresentationMode: (mode: boolean) => void;
+  showParticipantDetection: boolean;
+  setShowParticipantDetection: (show: boolean) => void;
+}) => (
+  <div className="sticky top-0 z-50 bg-white border-b shadow-sm p-4">
+    <div className="flex justify-between items-center max-w-7xl mx-auto">
+      <div className="flex items-center gap-4">
+        <button
+          onClick={goToPreviousQuestion}
+          disabled={sessionContext.currentQuestionIndex === 0}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            sessionContext.currentQuestionIndex === 0
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          ← Previous
+        </button>
+        
+        <span className="text-sm text-gray-600">
+          Phase {sessionContext.currentQuestionIndex + 1} of {totalQuestions}
+        </span>
+        
+        <button
+          onClick={goToNextQuestion}
+          disabled={sessionContext.currentQuestionIndex >= totalQuestions - 1}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            sessionContext.currentQuestionIndex >= totalQuestions - 1
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+          }`}
+        >
+          Next Phase →
+        </button>
+      </div>
+      
+      <div className="flex items-center gap-3">
+        {/* Phase 1.3: Participant Detection Toggle */}
+        <button
+          onClick={() => setShowParticipantDetection(!showParticipantDetection)}
+          className={`px-3 py-2 rounded-lg font-medium transition-colors ${
+            showParticipantDetection 
+              ? 'bg-blue-100 text-blue-700 border border-blue-300'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+          title="Toggle speaker detection controls"
+        >
+          {showParticipantDetection ? '🎯 Hide Detection' : '🎯 Show Detection'}
+        </button>
+        
+        {/* Presentation Mode Toggle */}
+        <button
+          onClick={() => setPresentationMode(!presentationMode)}
+          className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors"
+          title="Toggle Presentation Mode (Cmd+P)"
+        >
+          {presentationMode ? '👁️ Exit Presentation' : '📊 Presentation Mode'}
+        </button>
+      </div>
+    </div>
+  </div>
+);
 
 const RoundtableCanvasV2: React.FC = () => {
+  const { showToast } = useToast();
   // Core State
   const [sessionState, setSessionState] = useState<SessionState>('discussion');
   const [sessionContext, setSessionContext] = useState<SessionContext>({
@@ -85,6 +189,12 @@ const RoundtableCanvasV2: React.FC = () => {
   
   // Enhanced Speaker Mode State
   const [speakerMode, setSpeakerMode] = useState<'facilitator' | 'participant'>('facilitator');
+  
+  // Presentation Mode State (Phase 1.1 - Critical UI Fix)
+  const [presentationMode, setPresentationMode] = useState(false);
+  
+  // Participant Detection UI Toggle (Phase 1.3 - Critical UX Fix)
+  const [showParticipantDetection, setShowParticipantDetection] = useState(false); // HIDDEN BY DEFAULT per executive UX guide
   const [participantCounter, setParticipantCounter] = useState(1);
   
   // Speaker Attribution UI State
@@ -290,7 +400,16 @@ This session follows the Assistance → Automation → Amplification progression
           }));
         }
       } else {
-        // Handle API errors gracefully
+        // Handle API errors gracefully + visible toast
+        showToast({
+          type: response.status === 429 ? 'warning' : 'error',
+          title: response.status === 429 ? 'Rate limit reached' : 'AI analysis unavailable',
+          message: response.status === 429
+            ? 'Too many requests. Please wait a minute and try again.'
+            : 'The AI analysis service is temporarily unavailable. Please try again shortly.',
+          action: { label: 'Retry', onClick: () => callAIAnalysis(analysisType) }
+        });
+
         const errorInsight = {
           id: `insight_${Date.now()}`,
           type: 'error',
@@ -298,7 +417,7 @@ This session follows the Assistance → Automation → Amplification progression
           timestamp: new Date(),
           confidence: 1.0
         };
-        
+
         setSessionContext(prev => ({
           ...prev,
           aiInsights: [...prev.aiInsights, errorInsight]
@@ -306,7 +425,14 @@ This session follows the Assistance → Automation → Amplification progression
       }
     } catch (error) {
       console.error('AI Analysis Error:', error);
-      
+      // Visible network error toast
+      showToast({
+        type: 'error',
+        title: 'Network error',
+        message: 'Unable to contact the AI service. Please check your connection and try again.',
+        action: { label: 'Retry', onClick: () => callAIAnalysis(analysisType) }
+      });
+
       // User-friendly error handling
       const technicalErrorInsight = {
         id: `insight_${Date.now()}`,
@@ -321,7 +447,7 @@ This session follows the Assistance → Automation → Amplification progression
         aiInsights: [...prev.aiInsights, technicalErrorInsight]
       }));
     }
-  }, [sessionContext.liveTranscript, sessionContext.currentTopic, sessionContext.currentQuestionIndex, sessionContext.questionStartTime, sessionContext.aiInsights]);
+  }, [sessionContext.liveTranscript, sessionContext.currentTopic, sessionContext.currentQuestionIndex, sessionContext.questionStartTime, sessionContext.aiInsights, showToast]);
 
   // Smart Insight Triggering System - positioned after callAIAnalysis declaration
   useEffect(() => {
@@ -365,11 +491,18 @@ This session follows the Assistance → Automation → Amplification progression
     }
   }, [sessionContext.currentQuestionIndex, callAIAnalysis, sessionContext.liveTranscript.length]);
 
-  // Keyboard shortcuts for speaker switching
+  // Keyboard shortcuts for speaker switching and presentation mode
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       // Only work when not typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      
+      // Phase 1.2: Cmd+P for presentation mode toggle
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'p' || e.key === 'P')) {
+        e.preventDefault(); // Prevent browser print dialog
+        setPresentationMode(prev => !prev);
+        return;
+      }
       
       if (e.key === 'f' || e.key === 'F') {
         setSpeakerMode('facilitator');
@@ -385,7 +518,7 @@ This session follows the Assistance → Automation → Amplification progression
     
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [currentSpeaker, participantCounter]);
+  }, [currentSpeaker, participantCounter, setPresentationMode]);
 
   const goToNextQuestion = useCallback(() => {
     const totalQuestions = getTotalQuestions();
@@ -415,13 +548,25 @@ This session follows the Assistance → Automation → Amplification progression
       setIsExporting(true);
       const exportData = prepareSessionDataForExport(sessionContext);
       await generateSessionPDF(exportData);
+      // Toast: success export
+      showToast({
+        type: 'success',
+        title: 'Export ready',
+        message: 'Your session PDF has been generated.'
+      });
     } catch (error) {
       console.error('PDF export failed:', error);
-      alert('PDF export failed. Please try again.');
+      // Toast: export failed
+      showToast({
+        type: 'error',
+        title: 'Export failed',
+        message: 'PDF export failed. Please try again.',
+        action: { label: 'Retry', onClick: () => handleExportPDF() }
+      });
     } finally {
       setIsExporting(false);
     }
-  }, [sessionContext, isExporting]);
+  }, [sessionContext, isExporting, showToast]);
 
   const toggleRecording = useCallback(() => {
     if (speechTranscription.isListening) {
@@ -462,19 +607,39 @@ This session follows the Assistance → Automation → Amplification progression
         })
       });
 
+      if (!response.ok) {
+        // Toast: API error
+        showToast({
+          type: response.status === 429 ? 'warning' : 'error',
+          title: response.status === 429 ? 'Rate limit reached' : 'Speaker identification failed',
+          message: response.status === 429
+            ? 'Too many requests. Please wait a minute and try again.'
+            : 'Unable to identify speakers. Please try again shortly.'
+        });
+        return;
+      }
+
       const data = await response.json();
       if (data.success) {
         setAttributionResults(data);
         setShowSpeakerAttribution(true);
       } else {
         console.error('Speaker attribution failed:', data.error);
-        alert('Speaker identification failed. Please try again.');
+        showToast({
+          type: 'error',
+          title: 'Speaker identification failed',
+          message: data.error || 'Please try again.'
+        });
       }
     } catch (error) {
       console.error('Failed to run speaker attribution:', error);
-      alert('Unable to identify speakers. Please check your connection and try again.');
+      showToast({
+        type: 'error',
+        title: 'Network error',
+        message: 'Unable to identify speakers. Please check your connection and try again.'
+      });
     }
-  }, [sessionContext.liveTranscript]);
+  }, [sessionContext.liveTranscript, showToast]);
 
   // Smart Speaker Detection Function
   const FACILITATOR_PATTERNS = [
@@ -564,7 +729,7 @@ This session follows the Assistance → Automation → Amplification progression
                   value={selectedPresetId}
                   onChange={(e) => setSelectedPresetId(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  title="Select a session template to load predefined content and structure"
+                  title="Choose a session template"
                   aria-label="Session template selector"
                 >
                   <option value="blank_template">Start with Blank Session</option>
@@ -593,7 +758,7 @@ This session follows the Assistance → Automation → Amplification progression
                     currentTopic: e.target.value
                   }))}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter session topic"
+                  placeholder="What's the focus of today's discussion?"
                 />
               </div>
 
@@ -606,7 +771,7 @@ This session follows the Assistance → Automation → Amplification progression
                   value={currentSpeaker}
                   onChange={(e) => setCurrentSpeaker(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Your name"
+                  placeholder="Facilitator name"
                 />
               </div>
 
@@ -944,17 +1109,15 @@ This session follows the Assistance → Automation → Amplification progression
                         setIsRecording(false);
                         speechTranscription.stop();
                         setInterimTranscript('');
-                        console.log('🛑 Recording stopped - Smart detection halted');
                       } else {
                         setIsRecording(true);
                         speechTranscription.start();
-                        console.log('🎙️ Smart Recording started - Speaker detection active');
                       }
                     }}
                     className={`recording-button ${
                       isRecording ? 'recording-button--active' : 'recording-button--inactive'
                     }`}
-                    title={isRecording ? 'Stop smart recording and speaker detection' : 'Start smart recording with automatic speaker detection'}
+                    title={isRecording ? 'Stop recording' : 'Start voice recording with smart speaker detection'}
                   >
                     {isRecording ? (
                       <>
@@ -974,7 +1137,7 @@ This session follows the Assistance → Automation → Amplification progression
                   <button
                     onClick={() => setShowManualModal(true)}
                     className="btn btn--secondary"
-                    title="Add manual transcript entry"
+                    title="Add discussion point manually"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -986,7 +1149,7 @@ This session follows the Assistance → Automation → Amplification progression
                     onClick={runSpeakerAttribution}
                     disabled={sessionContext.liveTranscript.length < 3}
                     className="btn btn--secondary"
-                    title="Use AI to identify speakers based on their introductions and speech patterns"
+                    title="Use AI to identify and organize speakers"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -995,6 +1158,14 @@ This session follows the Assistance → Automation → Amplification progression
                   </button>
                 </div>
               </div>
+              
+              {/* Speaker Indicator - Phase 1.3: Hidden by default for executive UX */}
+              {showParticipantDetection && (
+                <SpeakerIndicator 
+                  currentSpeaker={currentSpeaker} 
+                  isVisible={sessionContext.liveTranscript.length > 0 || isRecording} 
+                />
+              )}
 
               {/* Phase navigation */}
               <div className="flex justify-between items-center">
@@ -1161,7 +1332,7 @@ This session follows the Assistance → Automation → Amplification progression
                         onClick={() => callAIAnalysis('insights')}
                         disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
                         className="insight-button"
-                        title="Generate strategic insights from the current discussion"
+                        title="Generate strategic insights from discussion"
                         aria-label="Generate AI strategic insights"
                       >
                         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1174,7 +1345,7 @@ This session follows the Assistance → Automation → Amplification progression
                         onClick={() => callAIAnalysis('followup')}
                         disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
                         className="insight-button secondary"
-                        title="Get AI-suggested follow-up questions"
+                        title="Get suggested follow-up questions"
                         aria-label="Generate AI follow-up questions"
                       >
                         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1187,7 +1358,7 @@ This session follows the Assistance → Automation → Amplification progression
                         onClick={() => callAIAnalysis('synthesis')}
                         disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
                         className="insight-button secondary"
-                        title="Synthesize the discussion themes and outcomes"
+                        title="Synthesize key themes and outcomes"
                         aria-label="Generate AI discussion synthesis"
                       >
                         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1305,6 +1476,21 @@ This session follows the Assistance → Automation → Amplification progression
   // Main Render
   return (
     <>
+      {/* Phase 1.1: Top Navigation for Critical UX Fix */}
+      <TopNavigation 
+        sessionContext={sessionContext}
+        goToPreviousQuestion={goToPreviousQuestion}
+        goToNextQuestion={goToNextQuestion}
+        totalQuestions={AI_TRANSFORMATION_QUESTIONS.length}
+        presentationMode={presentationMode}
+        setPresentationMode={setPresentationMode}
+        showParticipantDetection={showParticipantDetection}
+        setShowParticipantDetection={setShowParticipantDetection}
+      />
+      
+      {/* Enhanced Recording Indicator */}
+      <RecordingIndicator isRecording={isRecording} currentSpeaker={currentSpeaker} />
+      
       {sessionState === 'intro' && renderIntroState()}
       {sessionState === 'discussion' && renderDiscussionState()}
       {sessionState === 'summary' && renderSummaryState()}
@@ -1319,7 +1505,7 @@ This session follows the Assistance → Automation → Amplification progression
               value={manualEntryText}
               onChange={(e) => setManualEntryText(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md h-24"
-              placeholder="Enter text..."
+              placeholder="What was discussed? (e.g., 'We agreed that AI should focus on decision support rather than replacement')"
             />
             
             <div className="flex space-x-3 mt-4">
