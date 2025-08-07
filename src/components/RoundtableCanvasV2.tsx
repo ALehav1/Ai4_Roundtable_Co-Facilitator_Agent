@@ -9,42 +9,13 @@ import { generateSessionPDF, prepareSessionDataForExport } from '../utils/pdfExp
 import { checkFeature } from '../config/feature-flags';
 import { TemplateModal } from './TemplateModal';
 import FacilitatorPanel from './FacilitatorPanel';
+// Centralized types and constants
+import { SessionState, TranscriptEntry, SessionContext } from '@/types/session';
+import { FACILITATOR_PATTERNS, MIN_WORDS_FOR_INSIGHTS } from '@/constants/speech';
 
-// Types
-type SessionState = 'idle' | 'intro' | 'discussion' | 'summary' | 'completed';
-
-interface TranscriptEntry {
-  id: string;
-  timestamp: Date;
-  speaker?: string;
-  text: string;
-  confidence?: number;
-  isAutoDetected: boolean;
-}
-
-interface SessionContext {
-  facilitator: string;
-  topic: string;
-  state: SessionState;
-  startTime: Date;
-  currentTopic?: string;
-  duration?: number;
-  liveTranscript: TranscriptEntry[];
-  keyThemes: string[];
-  aiInsights: any[];
-  followupQuestions: string[];
-  crossReferences: string[];
-  sessionSummary: string;
-  currentQuestionIndex: number;
-  questionStartTime?: Date;
-  agendaProgress: {
-    [questionId: string]: {
-      completed: boolean;
-      timeSpent: number;
-      insights: number;
-    };
-  };
-}
+// Types now imported from centralized files
+// SessionState, TranscriptEntry, SessionContext imported from @/types/session
+// FACILITATOR_PATTERNS, MIN_WORDS_FOR_INSIGHTS imported from @/constants/speech
 
 const RoundtableCanvasV2: React.FC = () => {
   // Core State

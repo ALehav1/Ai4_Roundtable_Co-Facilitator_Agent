@@ -11,13 +11,18 @@ export interface TranscriptEntry {
 }
 
 export interface SessionContext {
+  facilitator: string;
+  topic: string;
   state: SessionState;
   startTime: Date;
-  participantCount: number;
   currentTopic?: string;
   duration?: number;
   liveTranscript: TranscriptEntry[];
-  aiInsights: any[]; // Define proper type later
+  keyThemes: string[];
+  aiInsights: any[];
+  followupQuestions: string[];
+  crossReferences: string[];
+  sessionSummary: string;
   currentQuestionIndex: number;
   questionStartTime?: Date;
   agendaProgress: {
