@@ -493,6 +493,15 @@ export interface SessionTemplate {
   aiConfig?: any;
   sessionTopic?: string;
   facilitatorName?: string;
+  facilitatorGuidance?: {
+    framework?: {
+      assistance?: string;
+      automation?: string;
+      amplification?: string;
+    };
+    keyMessages?: string[];
+    exampleUseCases?: string[];
+  };
 }
 
 const TEMPLATES_KEY = 'ai-roundtable-templates';
