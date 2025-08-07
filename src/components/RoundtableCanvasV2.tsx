@@ -201,6 +201,19 @@ const RoundtableCanvasV2: React.FC = () => {
   const [showSpeakerAttribution, setShowSpeakerAttribution] = useState(false);
   const [attributionResults, setAttributionResults] = useState<any>(null);
 
+  // Keyboard Shortcut for Presentation Mode (Cmd+P)
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'p') {
+        e.preventDefault();
+        setPresentationMode(prev => !prev);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
+
   // Refs and Hooks
   const speechTranscription = useSpeechTranscription();
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -1327,44 +1340,95 @@ This session follows the Assistance → Automation → Amplification progression
                       AI Co-Facilitator
                     </h2>
                     
-                    <div className="insight-controls">
+                    {/* Executive AI Co-Facilitator Grid (2x2 Layout) */}
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      {/* Strategic Insights */}
                       <button
                         onClick={() => callAIAnalysis('insights')}
                         disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
-                        className="insight-button"
-                        title="Generate strategic insights from discussion"
+                        className="group relative bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-lg p-4 text-left transition-all duration-200 hover:from-purple-100 hover:to-purple-200 hover:border-purple-300 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                        title="Generate strategic insights from current discussion"
                         aria-label="Generate AI strategic insights"
                       >
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                        </svg>
-                        {isAnalyzing ? 'Analyzing...' : 'Generate Insights'}
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center mb-1">
+                              <svg className="w-5 h-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                              </svg>
+                              <span className="font-semibold text-purple-900">
+                                {isAnalyzing ? 'Analyzing...' : 'Strategic Insights'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-purple-700">AI-powered analysis of discussion themes</p>
+                          </div>
+                          {isAnalyzing && (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                          )}
+                        </div>
                       </button>
-                      
+
+                      {/* Follow-up Questions */}
                       <button
                         onClick={() => callAIAnalysis('followup')}
                         disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
-                        className="insight-button secondary"
-                        title="Get suggested follow-up questions"
+                        className="group relative bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4 text-left transition-all duration-200 hover:from-blue-100 hover:to-blue-200 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        title="Get AI-suggested follow-up questions"
                         aria-label="Generate AI follow-up questions"
                       >
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Follow-ups
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center mb-1">
+                              <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span className="font-semibold text-blue-900">Follow-up Questions</span>
+                            </div>
+                            <p className="text-sm text-blue-700">Suggested questions to deepen discussion</p>
+                          </div>
+                        </div>
                       </button>
-                      
+
+                      {/* Discussion Synthesis */}
                       <button
                         onClick={() => callAIAnalysis('synthesis')}
                         disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
-                        className="insight-button secondary"
+                        className="group relative bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-lg p-4 text-left transition-all duration-200 hover:from-green-100 hover:to-green-200 hover:border-green-300 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                         title="Synthesize key themes and outcomes"
                         aria-label="Generate AI discussion synthesis"
                       >
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                        Synthesize
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center mb-1">
+                              <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                              </svg>
+                              <span className="font-semibold text-green-900">Synthesize Discussion</span>
+                            </div>
+                            <p className="text-sm text-green-700">Key themes and strategic outcomes</p>
+                          </div>
+                        </div>
+                      </button>
+
+                      {/* Executive Summary */}
+                      <button
+                        onClick={() => callAIAnalysis('executive')}
+                        disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
+                        className="group relative bg-gradient-to-r from-amber-50 to-amber-100 border border-amber-200 rounded-lg p-4 text-left transition-all duration-200 hover:from-amber-100 hover:to-amber-200 hover:border-amber-300 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+                        title="Generate executive summary and action items"
+                        aria-label="Generate executive summary"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center mb-1">
+                              <svg className="w-5 h-5 mr-2 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              <span className="font-semibold text-amber-900">Executive Summary</span>
+                            </div>
+                            <p className="text-sm text-amber-700">High-level summary and action items</p>
+                          </div>
+                        </div>
                       </button>
                     </div>
                   </div>
