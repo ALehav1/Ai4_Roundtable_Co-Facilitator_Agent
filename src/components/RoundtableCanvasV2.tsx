@@ -17,6 +17,58 @@ import { FACILITATOR_PATTERNS, MIN_WORDS_FOR_INSIGHTS } from '@/constants/speech
 // SessionState, TranscriptEntry, SessionContext imported from @/types/session
 // FACILITATOR_PATTERNS, MIN_WORDS_FOR_INSIGHTS imported from @/constants/speech
 
+// Enhanced Recording Indicator Component
+const RecordingIndicator = ({ isRecording, currentSpeaker }: { 
+  isRecording: boolean; 
+  currentSpeaker: string;
+}) => {
+  if (!isRecording) return null;
+  
+  return (
+    <div className="fixed top-20 right-4 z-50 animate-slideIn">
+      <div className="bg-red-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3">
+        {/* Pulse animation */}
+        <div className="relative flex items-center justify-center">
+          <div className="absolute w-3 h-3 bg-white rounded-full animate-ping" />
+          <div className="relative w-3 h-3 bg-white rounded-full animate-pulse" />
+        </div>
+        
+        {/* Status text */}
+        <div className="flex flex-col">
+          <span className="font-medium">Recording Active</span>
+          <span className="text-xs opacity-90">
+            Detecting: {currentSpeaker}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Simplified Speaker Indicator Component
+const SpeakerIndicator = ({ currentSpeaker, isVisible }: {
+  currentSpeaker: string;
+  isVisible: boolean;
+}) => {
+  if (!isVisible) return null;
+  
+  const isFacilitator = currentSpeaker === 'Facilitator';
+  
+  return (
+    <div className="flex items-center gap-2 text-sm text-gray-600">
+      <div className={`w-2 h-2 rounded-full ${
+        isFacilitator ? 'bg-blue-500' : 'bg-green-500'
+      }`} />
+      <span className="font-medium">
+        Current Speaker: {currentSpeaker}
+      </span>
+      <span className="text-xs opacity-75">
+        (Auto-detected)
+      </span>
+    </div>
+  );
+};
+
 const RoundtableCanvasV2: React.FC = () => {
   // Core State
   const [sessionState, setSessionState] = useState<SessionState>('discussion');
@@ -966,6 +1018,12 @@ This session follows the Assistance → Automation → Amplification progression
                   </button>
                 </div>
               </div>
+              
+              {/* Speaker Indicator */}
+              <SpeakerIndicator 
+                currentSpeaker={currentSpeaker} 
+                isVisible={sessionContext.liveTranscript.length > 0 || isRecording} 
+              />
 
               {/* Phase navigation */}
               <div className="flex justify-between items-center">
@@ -1276,6 +1334,9 @@ This session follows the Assistance → Automation → Amplification progression
   // Main Render
   return (
     <>
+      {/* Enhanced Recording Indicator */}
+      <RecordingIndicator isRecording={isRecording} currentSpeaker={currentSpeaker} />
+      
       {sessionState === 'intro' && renderIntroState()}
       {sessionState === 'discussion' && renderDiscussionState()}
       {sessionState === 'summary' && renderSummaryState()}
