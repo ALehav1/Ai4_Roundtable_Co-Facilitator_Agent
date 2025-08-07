@@ -1,19 +1,379 @@
 /**
- * Global CSS Styles - AI Roundtable Application
+ * AI Roundtable Co-Facilitator - Complete Design System
  * 
- * This file contains:
- * - Tailwind CSS imports and base styles
- * - Custom CSS for AI thinking animations
- * - Utility classes for the roundtable interface
- * - Responsive design adjustments
- * 
- * The styles support both light mode (primary) and provide
- * a foundation for potential dark mode in the future.
+ * A comprehensive design system implementing:
+ * - Professional design tokens and color system
+ * - Invisible complexity, visible results philosophy
+ * - Facilitator-first workflow with zero friction recording
+ * - Context-aware intelligence with visual clarity
+ * - Mobile responsive and accessibility compliant
  */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* =================================================================== */
+/* TRANSCRIPT DISPLAY SYSTEM */
+/* =================================================================== */
+
+@layer components {
+  /* Transcript Container */
+  .transcript-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  
+  .transcript-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-4);
+  }
+  
+  /* Transcript Timeline */
+  .transcript-entry {
+    display: flex;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .timeline-dot {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+  
+  .timeline-dot.facilitator {
+    background: var(--primary-blue);
+    color: white;
+  }
+  
+  .timeline-dot.participant {
+    background: var(--primary-green);
+    color: white;
+  }
+  
+  .timeline-dot:hover {
+    transform: scale(1.1);
+  }
+  
+  .timeline-line {
+    width: 2px;
+    flex: 1;
+    background: var(--gray-200);
+    margin-top: var(--space-2);
+    min-height: 1rem;
+  }
+  
+  .entry-content {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .entry-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+  }
+  
+  .speaker-name {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--space-1);
+  }
+  
+  .speaker-name.facilitator {
+    background: var(--primary-blue);
+    color: white;
+  }
+  
+  .speaker-name.participant {
+    background: var(--primary-green);
+    color: white;
+  }
+  
+  .timestamp {
+    font-size: var(--text-xs);
+    color: var(--gray-500);
+  }
+  
+  .entry-text {
+    color: var(--gray-900);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    margin: 0;
+  }
+}
+
+/* =================================================================== */
+/* DESIGN SYSTEM FOUNDATION */
+/* =================================================================== */
+
+:root {
+  /* Primary Colors - Professional & Semantic */
+  --primary-blue: #2563eb;      /* Facilitator/System actions */
+  --primary-green: #16a34a;     /* Participant/Success states */
+  --primary-purple: #9333ea;    /* AI insights */
+  --danger-red: #dc2626;        /* Recording/Alerts */
+  
+  /* Neutral Palette - Clean & Professional */
+  --gray-50: #f9fafb;           /* Backgrounds */
+  --gray-100: #f3f4f6;          /* Subtle backgrounds */
+  --gray-200: #e5e7eb;          /* Borders */
+  --gray-600: #4b5563;          /* Secondary text */
+  --gray-900: #111827;          /* Primary text */
+  
+  /* Spacing System - Consistent & Scalable */
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  
+  /* Typography - Readable & Hierarchical */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  
+  /* Shadows & Effects - Subtle & Professional */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  --radius: 0.5rem;
+}
+
+/* =================================================================== */
+/* LAYOUT ARCHITECTURE */
+/* =================================================================== */
+
+@layer components {
+  /* App Layout Structure */
+  .app-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--gray-50);
+    font-family: var(--font-sans);
+  }
+  
+  .main-content {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    padding-top: 4rem; /* Header height */
+  }
+  
+  /* Header - Minimal & Informative */
+  .header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4rem;
+    background: white;
+    border-bottom: 1px solid var(--gray-200);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    padding: 0 var(--space-6);
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+  
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+  }
+  
+  .app-title {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--gray-900);
+    margin: 0;
+  }
+  
+  .session-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  
+  .phase-badge {
+    background: var(--primary-blue);
+    color: white;
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+  
+  .participant-count {
+    color: var(--gray-600);
+    font-size: var(--text-sm);
+  }
+  
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  
+  /* Facilitation Workspace - Left Column */
+  .facilitation-workspace {
+    flex: 1.5;
+    display: flex;
+    flex-direction: column;
+    background: white;
+    border-right: 1px solid var(--gray-200);
+  }
+  
+  .phase-content {
+    padding: var(--space-6);
+    border-bottom: 1px solid var(--gray-200);
+  }
+  
+  .phase-title {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--gray-900);
+    margin: 0 0 var(--space-3) 0;
+  }
+  
+  .phase-description {
+    color: var(--gray-600);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    margin: 0 0 var(--space-4) 0;
+  }
+  
+  .key-question {
+    margin-top: var(--space-4);
+    padding: var(--space-4);
+    background: var(--gray-50);
+    border-left: 4px solid var(--primary-blue);
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+  
+  .question-label {
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--primary-blue);
+    margin-bottom: var(--space-2);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .question-text {
+    font-size: var(--text-lg);
+    font-weight: 500;
+    color: var(--gray-900);
+    margin: 0;
+    line-height: 1.5;
+  }
+}
+
+/* =================================================================== */
+/* SMART SPEAKER DETECTION UI */
+/* =================================================================== */
+
+@layer components {
+  /* Smart Detection Status Bar */
+  .detection-status {
+    padding: var(--space-3) var(--space-4);
+    background: linear-gradient(to right, var(--gray-50), transparent);
+    border-bottom: 1px solid var(--gray-100);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .status-content {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  
+  .status-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--gray-700);
+  }
+  
+  .current-speaker {
+    font-size: var(--text-sm);
+    color: var(--gray-500);
+  }
+  
+  /* Recording Indicator */
+  .recording-indicator {
+    position: fixed;
+    top: 5rem;
+    right: 2rem;
+    background: var(--danger-red);
+    color: white;
+    padding: var(--space-3) var(--space-6);
+    border-radius: 2rem;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    box-shadow: var(--shadow-lg);
+    z-index: 50;
+  }
+  
+  .recording-pulse {
+    position: relative;
+  }
+  
+  .pulse-dot {
+    width: 0.75rem;
+    height: 0.75rem;
+    background: white;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  
+  .recording-text {
+    font-weight: 600;
+    font-size: var(--text-sm);
+  }
+  
+  .detection-hint {
+    font-size: var(--text-xs);
+    opacity: 0.9;
+  }
+}
 
 /* Base styles and CSS custom properties */
 @layer base {
@@ -23,6 +383,7 @@
   
   body {
     font-feature-settings: 'rlig' 1, 'calt' 1;
+    font-family: var(--font-sans);
   }
   
   /* Custom scrollbar for better UX */

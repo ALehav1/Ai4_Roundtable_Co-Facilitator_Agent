@@ -1,0 +1,326 @@
+/* =================================================================== */
+/* TRANSCRIPT DISPLAY SYSTEM */
+/* =================================================================== */
+
+@layer components {
+  /* Transcript Container */
+  .transcript-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  
+  .transcript-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-4);
+  }
+  
+  /* Transcript Timeline */
+  .transcript-entry {
+    display: flex;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .timeline-dot {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+  
+  .timeline-dot.facilitator {
+    background: var(--primary-blue);
+    color: white;
+  }
+  
+  .timeline-dot.participant {
+    background: var(--primary-green);
+    color: white;
+  }
+  
+  .timeline-dot:hover {
+    transform: scale(1.1);
+  }
+  
+  .timeline-line {
+    width: 2px;
+    flex: 1;
+    background: var(--gray-200);
+    margin-top: var(--space-2);
+    min-height: 1rem;
+  }
+  
+  .entry-content {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .entry-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+  }
+  
+  .speaker-name {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--space-1);
+  }
+  
+  .speaker-name.facilitator {
+    background: var(--primary-blue);
+    color: white;
+  }
+  
+  .speaker-name.participant {
+    background: var(--primary-green);
+    color: white;
+  }
+  
+  .timestamp {
+    font-size: var(--text-xs);
+    color: var(--gray-500);
+  }
+  
+  .entry-text {
+    color: var(--gray-900);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    margin: 0;
+  }
+}
+
+/* =================================================================== */
+/* AI CO-FACILITATOR PANEL */
+/* =================================================================== */
+
+@layer components {
+  /* AI Panel - Right Column */
+  .ai-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--gray-50);
+    max-height: 100%;
+  }
+  
+  .ai-header {
+    padding: var(--space-6);
+    border-bottom: 1px solid var(--gray-200);
+    background: white;
+  }
+  
+  .ai-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-lg);
+    font-weight: 700;
+    color: var(--gray-900);
+    margin: 0 0 var(--space-4) 0;
+  }
+  
+  .insight-controls {
+    display: flex;
+    gap: var(--space-2);
+  }
+  
+  .insight-button {
+    padding: var(--space-2) var(--space-3);
+    background: var(--primary-purple);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .insight-button:hover {
+    background: #7c2d92;
+    transform: translateY(-1px);
+  }
+  
+  .insight-button:disabled {
+    background: var(--gray-300);
+    color: var(--gray-500);
+    cursor: not-allowed;
+    transform: none;
+  }
+  
+  .insight-button.secondary {
+    background: var(--primary-blue);
+  }
+  
+  .insight-button.secondary:hover {
+    background: #1d4ed8;
+  }
+  
+  /* AI Insights Display */
+  .insights-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-4);
+  }
+  
+  .insight-card {
+    background: white;
+    padding: var(--space-4);
+    margin-bottom: var(--space-3);
+    border-radius: var(--radius);
+    border-left: 4px solid;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s;
+  }
+  
+  .insight-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+  }
+  
+  .insight-card.purple { border-left-color: var(--primary-purple); }
+  .insight-card.blue { border-left-color: var(--primary-blue); }
+  .insight-card.green { border-left-color: var(--primary-green); }
+  .insight-card.info { border-left-color: var(--gray-400); }
+  
+  .insight-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+  
+  .insight-icon {
+    font-size: var(--text-base);
+  }
+  
+  .insight-label {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--gray-700);
+  }
+  
+  .insight-time {
+    margin-left: auto;
+    font-size: var(--text-xs);
+    color: var(--gray-500);
+  }
+  
+  .insight-content {
+    color: var(--gray-900);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    margin-bottom: var(--space-3);
+  }
+  
+  .insight-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .action-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    background: var(--gray-100);
+    border: none;
+    border-radius: var(--space-1);
+    font-size: var(--text-xs);
+    color: var(--gray-600);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .action-btn:hover {
+    background: var(--gray-200);
+  }
+  
+  .confidence {
+    font-size: var(--text-xs);
+    color: var(--gray-500);
+  }
+}
+
+/* =================================================================== */
+/* ANIMATIONS & EFFECTS */
+/* =================================================================== */
+
+@keyframes fadeIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(0.5rem); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* =================================================================== */
+/* MOBILE RESPONSIVE */
+/* =================================================================== */
+
+@media (max-width: 768px) {
+  .main-content {
+    flex-direction: column;
+  }
+  
+  .ai-panel {
+    position: sticky;
+    bottom: 0;
+    max-height: 50vh;
+    border-top: 2px solid var(--gray-200);
+    border-right: none;
+  }
+  
+  .recording-indicator {
+    top: auto;
+    bottom: 1rem;
+    right: 1rem;
+  }
+  
+  .facilitation-workspace {
+    flex: none;
+    height: 50vh;
+  }
+  
+  .transcript-container {
+    padding: var(--space-2);
+  }
+  
+  .phase-content {
+    padding: var(--space-4);
+  }
+  
+  .ai-header {
+    padding: var(--space-4);
+  }
+  
+  .insights-container {
+    padding: var(--space-2);
+  }
+}
