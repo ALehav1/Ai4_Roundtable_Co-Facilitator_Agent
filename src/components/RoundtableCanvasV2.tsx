@@ -967,11 +967,9 @@ This session follows the Assistance → Automation → Amplification progression
                         setIsRecording(false);
                         speechTranscription.stop();
                         setInterimTranscript('');
-                        console.log('🛑 Recording stopped - Smart detection halted');
                       } else {
                         setIsRecording(true);
                         speechTranscription.start();
-                        console.log('🎙️ Smart Recording started - Speaker detection active');
                       }
                     }}
                     className={`recording-button ${
