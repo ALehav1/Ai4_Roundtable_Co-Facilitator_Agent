@@ -69,6 +69,66 @@ const SpeakerIndicator = ({ currentSpeaker, isVisible }: {
   );
 };
 
+// Enhanced TopNavigation Component for better UX
+const TopNavigation = ({ 
+  sessionContext, 
+  goToPreviousQuestion, 
+  goToNextQuestion, 
+  totalQuestions,
+  presentationMode,
+  setPresentationMode 
+}: {
+  sessionContext: SessionContext;
+  goToPreviousQuestion: () => void;
+  goToNextQuestion: () => void;
+  totalQuestions: number;
+  presentationMode: boolean;
+  setPresentationMode: (mode: boolean) => void;
+}) => (
+  <div className="sticky top-0 z-50 bg-white border-b shadow-sm p-4">
+    <div className="flex justify-between items-center max-w-7xl mx-auto">
+      <div className="flex items-center gap-4">
+        <button
+          onClick={goToPreviousQuestion}
+          disabled={sessionContext.currentQuestionIndex === 0}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            sessionContext.currentQuestionIndex === 0
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          ← Previous
+        </button>
+        
+        <span className="text-sm text-gray-600">
+          Phase {sessionContext.currentQuestionIndex + 1} of {totalQuestions}
+        </span>
+        
+        <button
+          onClick={goToNextQuestion}
+          disabled={sessionContext.currentQuestionIndex >= totalQuestions - 1}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            sessionContext.currentQuestionIndex >= totalQuestions - 1
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+          }`}
+        >
+          Next Phase →
+        </button>
+      </div>
+      
+      {/* Presentation Mode Toggle */}
+      <button
+        onClick={() => setPresentationMode(!presentationMode)}
+        className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors"
+        title="Toggle Presentation Mode (Cmd+P)"
+      >
+        {presentationMode ? '👁️ Exit Presentation' : '📊 Presentation Mode'}
+      </button>
+    </div>
+  </div>
+);
+
 const RoundtableCanvasV2: React.FC = () => {
   // Core State
   const [sessionState, setSessionState] = useState<SessionState>('discussion');
@@ -108,6 +168,9 @@ const RoundtableCanvasV2: React.FC = () => {
   
   // Enhanced Speaker Mode State
   const [speakerMode, setSpeakerMode] = useState<'facilitator' | 'participant'>('facilitator');
+  
+  // Presentation Mode State (Phase 1.1 - Critical UI Fix)
+  const [presentationMode, setPresentationMode] = useState(false);
   const [participantCounter, setParticipantCounter] = useState(1);
   
   // Speaker Attribution UI State
@@ -1332,6 +1395,16 @@ This session follows the Assistance → Automation → Amplification progression
   // Main Render
   return (
     <>
+      {/* Phase 1.1: Top Navigation for Critical UX Fix */}
+      <TopNavigation 
+        sessionContext={sessionContext}
+        goToPreviousQuestion={goToPreviousQuestion}
+        goToNextQuestion={goToNextQuestion}
+        totalQuestions={AI_TRANSFORMATION_QUESTIONS.length}
+        presentationMode={presentationMode}
+        setPresentationMode={setPresentationMode}
+      />
+      
       {/* Enhanced Recording Indicator */}
       <RecordingIndicator isRecording={isRecording} currentSpeaker={currentSpeaker} />
       
