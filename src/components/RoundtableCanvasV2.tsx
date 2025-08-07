@@ -1101,76 +1101,78 @@ This session follows the Assistance → Automation → Amplification progression
                 )}
               </div>
               
-              {/* Smart Detection Status Bar */}
-              <div className="smart-detection-status">
-                <div className="detection-info">
-                  <div className="detection-mode">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
-                    <span>Smart Detection: {isRecording ? 'Active' : 'Standby'}</span>
+              {/* Smart Detection Status Bar - Hidden by default for executive UX */}
+              {showParticipantDetection && (
+                <div className="smart-detection-status">
+                  <div className="detection-info">
+                    <div className="detection-mode">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                      <span>Smart Detection: {isRecording ? 'Active' : 'Standby'}</span>
+                    </div>
+                    <div className="current-speaker">
+                      Current: <span className="speaker-name">{currentSpeaker || 'Waiting...'}</span>
+                    </div>
                   </div>
-                  <div className="current-speaker">
-                    Current: <span className="speaker-name">{currentSpeaker || 'Waiting...'}</span>
+                  
+                  <div className="recording-controls">
+                    <button
+                      onClick={() => {
+                        if (isRecording) {
+                          setIsRecording(false);
+                          speechTranscription.stop();
+                          setInterimTranscript('');
+                        } else {
+                          setIsRecording(true);
+                          speechTranscription.start();
+                        }
+                      }}
+                      className={`recording-button ${
+                        isRecording ? 'recording-button--active' : 'recording-button--inactive'
+                      }`}
+                      title={isRecording ? 'Stop recording' : 'Start voice recording with smart speaker detection'}
+                    >
+                      {isRecording ? (
+                        <>
+                          <div className="recording-indicator animate-pulse" />
+                          Stop Recording
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                          </svg>
+                          Start Smart Recording
+                        </>
+                      )}
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowManualModal(true)}
+                      className="btn btn--secondary"
+                      title="Add discussion point manually"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Manual Entry
+                    </button>
+                    
+                    <button
+                      onClick={runSpeakerAttribution}
+                      disabled={sessionContext.liveTranscript.length < 3}
+                      className="btn btn--secondary"
+                      title="Use AI to identify and organize speakers"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                      AI Speaker ID
+                    </button>
                   </div>
                 </div>
-                
-                <div className="recording-controls">
-                  <button
-                    onClick={() => {
-                      if (isRecording) {
-                        setIsRecording(false);
-                        speechTranscription.stop();
-                        setInterimTranscript('');
-                      } else {
-                        setIsRecording(true);
-                        speechTranscription.start();
-                      }
-                    }}
-                    className={`recording-button ${
-                      isRecording ? 'recording-button--active' : 'recording-button--inactive'
-                    }`}
-                    title={isRecording ? 'Stop recording' : 'Start voice recording with smart speaker detection'}
-                  >
-                    {isRecording ? (
-                      <>
-                        <div className="recording-indicator animate-pulse" />
-                        Stop Recording
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                        </svg>
-                        Start Smart Recording
-                      </>
-                    )}
-                  </button>
-                  
-                  <button
-                    onClick={() => setShowManualModal(true)}
-                    className="btn btn--secondary"
-                    title="Add discussion point manually"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    Manual Entry
-                  </button>
-                  
-                  <button
-                    onClick={runSpeakerAttribution}
-                    disabled={sessionContext.liveTranscript.length < 3}
-                    className="btn btn--secondary"
-                    title="Use AI to identify and organize speakers"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
-                    AI Speaker ID
-                  </button>
-                </div>
-              </div>
+              )}
               
               {/* Speaker Indicator - Phase 1.3: Hidden by default for executive UX */}
               {showParticipantDetection && (
