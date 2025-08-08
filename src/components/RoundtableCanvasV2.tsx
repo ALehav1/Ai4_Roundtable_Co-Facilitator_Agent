@@ -365,20 +365,64 @@ const RoundtableCanvasV2: React.FC = () => {
     };
   }, [sessionContext.liveTranscript, sessionContext.currentQuestionIndex, sessionContext.currentTopic, sessionContext.aiInsights, sessionContext.startTime]);
 
-  // Filter insights based on active tab
+  // Progressive Tab System Configuration
+  type TabType = 'insights' | 'synthesis' | 'advanced';
+  type AnalysisType = 'strategic' | 'followup' | 'synthesis' | 'executive';
+
+  interface TabConfig {
+    id: TabType;
+    label: string;
+    icon: string;
+    analysisTypes: string[];  // Map which analysis types belong to each tab
+  }
+
+  const TAB_CONFIGURATION: TabConfig[] = [
+    {
+      id: 'insights',
+      label: 'Insights',
+      icon: '💡',
+      analysisTypes: ['insights', 'insight', 'followup'] // Combines Strategic + Follow-up
+    },
+    {
+      id: 'synthesis', 
+      label: 'Synthesis',
+      icon: '🔄',
+      analysisTypes: ['synthesis', 'executive'] // Combines Synthesis + Executive
+    }
+  ];
+
+  const ADVANCED_TAB: TabConfig = {
+    id: 'advanced',
+    label: 'Advanced',
+    icon: '🚀',
+    analysisTypes: [] // Custom filtering logic
+  };
+
+  // Progressive disclosure state
+  const [showAdvancedTab, setShowAdvancedTab] = useState(false);
+
+  // Show advanced tab after 3+ analyses
+  useEffect(() => {
+    const analysisCount = sessionContext.aiInsights?.length || 0;
+    if (analysisCount >= 3 && !showAdvancedTab) {
+      setShowAdvancedTab(true);
+    }
+  }, [sessionContext.aiInsights, showAdvancedTab]);
+
+  // Get current tab configuration
+  const availableTabs = showAdvancedTab 
+    ? [...TAB_CONFIGURATION, ADVANCED_TAB]
+    : TAB_CONFIGURATION;
+
+  // Filter insights based on active tab with new progressive system
   const getFilteredInsights = () => {
+    if (!sessionContext.aiInsights) return [];
+    
+    const activeConfig = availableTabs.find(tab => tab.id === activeAITab);
+    if (!activeConfig) return sessionContext.aiInsights;
+    
     return sessionContext.aiInsights.filter(insight => {
-      if (activeAITab === 'insights') {
-        return insight.type === 'insight' || insight.type === 'insights' || insight.type === 'followup';
-      } else if (activeAITab === 'synthesis') {
-        return insight.type === 'synthesis';
-      } else if (activeAITab === 'followup') {
-        return insight.type === 'followup';
-      } else if (activeAITab === 'executive') {
-        return insight.type === 'executive';
-      }
-      // activeAITab === 'all' or any other value, show all insights
-      return true;
+      return activeConfig.analysisTypes.includes(insight.type || 'insight');
     });
   };
 
@@ -1622,178 +1666,135 @@ This session follows the Assistance → Automation → Amplification progression
                       AI Co-Facilitator
                     </h2>
                     
-                    {/* Executive AI Co-Facilitator Grid (2x2 Layout) */}
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                      {/* Strategic Insights */}
+                    {/* Progressive Tab Navigation - Clean and Accessible */}
+                    <nav 
+                      className="flex gap-2 mb-6 border-b border-gray-200 pb-4"
+                      role="tablist"
+                      aria-label="AI Analysis Navigation"
+                    >
+                      {availableTabs.map((tab) => {
+                        const isActive = activeAITab === tab.id;
+                        return (
+                          <button
+                            key={tab.id}
+                            onClick={() => setActiveAITab(tab.id as any)}
+                            className={`
+                              px-4 py-2 rounded-lg font-medium transition-all duration-200
+                              flex items-center gap-2 relative
+                              ${
+                                isActive 
+                                  ? 'bg-blue-500 text-white shadow-md transform scale-105' 
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
+                              }
+                              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                            `}
+                            role="tab"
+                            aria-selected={isActive.toString()}
+                            aria-controls={`${tab.label.toLowerCase()}-panel`}
+                          >
+                            <span className="text-lg" aria-hidden="true">{tab.icon}</span>
+                            <span>{tab.label}</span>
+                            {tab.id === 'advanced' && showAdvancedTab && (
+                              <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </nav>
+                    
+                    {/* Quick Action Button */}
+                    <div className="mb-4">
                       <button
                         onClick={() => {
-                          setActiveAITab('insights');
-                          callAIAnalysis('insights');
+                          const currentTab = availableTabs.find(t => t.id === activeAITab);
+                          if (currentTab?.id === 'insights') {
+                            callAIAnalysis('insights');
+                          } else if (currentTab?.id === 'synthesis') {
+                            callAIAnalysis('synthesis');
+                          } else {
+                            callAIAnalysis('insights'); // Default fallback
+                          }
                         }}
                         disabled={isAnalyzing}
-                        className={`p-4 border rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed group ${
-                          activeAITab === 'insights'
-                            ? 'bg-gradient-to-br from-purple-100 to-purple-200 border-purple-300 shadow-md ring-2 ring-purple-200'
-                            : 'bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 border-purple-200'
-                        }`}
+                        className="w-full py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 
+                                   transition-colors duration-200 font-medium shadow-sm
+                                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                                   disabled:opacity-50 disabled:cursor-not-allowed"
+                        aria-label={`Generate new ${availableTabs.find(t => t.id === activeAITab)?.label || 'analysis'}`}
                       >
-                        <div className="flex items-center gap-2 mb-2">
-                          <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                          </svg>
-                          <h3 className="font-semibold text-purple-800">Strategic Insights</h3>
-                          {activeAITab === 'insights' && (
-                            <div className="w-2 h-2 bg-purple-600 rounded-full animate-pulse"></div>
-                          )}
-                        </div>
-                        <p className="text-sm text-purple-600 group-hover:text-purple-700">
-                          AI-powered analysis of discussion themes
-                        </p>
-                      </button>
-
-                      {/* Follow-up Questions */}
-                      <button
-                        onClick={() => {
-                          setActiveAITab('followup');
-                          callAIAnalysis('followup');
-                        }}
-                        disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
-                        className={`p-4 border rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed group ${
-                          activeAITab === 'followup'
-                            ? 'bg-gradient-to-br from-blue-100 to-blue-200 border-blue-300 shadow-md ring-2 ring-blue-200'
-                            : 'bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 border-blue-200'
-                        }`}
-                        title="Get AI-suggested follow-up questions"
-                        aria-label="Generate AI follow-up questions"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div className="flex items-center mb-1">
-                              <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              <span className="font-semibold text-blue-900">Follow-up Questions</span>
-                              {activeAITab === 'followup' && (
-                                <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse ml-2"></div>
-                              )}
-                            </div>
-                            <p className="text-sm text-blue-700">Suggested questions to deepen discussion</p>
-                          </div>
-                        </div>
-                      </button>
-
-                      {/* Discussion Synthesis */}
-                      <button
-                        onClick={() => {
-                          setActiveAITab('synthesis');
-                          callAIAnalysis('synthesis');
-                        }}
-                        disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
-                        className={`p-4 border rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed group ${
-                          activeAITab === 'synthesis'
-                            ? 'bg-gradient-to-br from-green-100 to-green-200 border-green-300 shadow-md ring-2 ring-green-200'
-                            : 'bg-gradient-to-br from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 border-green-200'
-                        }`}
-                        title="Synthesize key themes and outcomes"
-                        aria-label="Generate AI discussion synthesis"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div className="flex items-center mb-1">
-                              <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                              </svg>
-                              <span className="font-semibold text-green-900">Synthesize Discussion</span>
-                              {activeAITab === 'synthesis' && (
-                                <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse ml-2"></div>
-                              )}
-                            </div>
-                            <p className="text-sm text-green-700">Key themes and strategic outcomes</p>
-                          </div>
-                        </div>
-                      </button>
-
-                      {/* Executive Summary */}
-                      <button
-                        onClick={() => {
-                          setActiveAITab('executive');
-                          callAIAnalysis('executive');
-                        }}
-                        disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
-                        className={`p-4 border rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed group ${
-                          activeAITab === 'executive'
-                            ? 'bg-gradient-to-br from-amber-100 to-amber-200 border-amber-300 shadow-md ring-2 ring-amber-200'
-                            : 'bg-gradient-to-br from-amber-50 to-amber-100 hover:from-amber-100 hover:to-amber-200 border-amber-200'
-                        }`}
-                        title="Generate executive summary and action items"
-                        aria-label="Generate executive summary"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div className="flex items-center mb-1">
-                              <svg className="w-5 h-5 mr-2 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                              </svg>
-                              <span className="font-semibold text-amber-900">Executive Summary</span>
-                              {activeAITab === 'executive' && (
-                                <div className="w-2 h-2 bg-amber-600 rounded-full animate-pulse ml-2"></div>
-                              )}
-                            </div>
-                            <p className="text-sm text-amber-700">High-level summary and action items</p>
-                          </div>
-                        </div>
+                        {isAnalyzing ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Generating...
+                          </span>
+                        ) : (
+                          `Generate New ${availableTabs.find(t => t.id === activeAITab)?.label || 'Analysis'}`
+                        )}
                       </button>
                     </div>
                   </div>
 
-                  {/* AI Insights Container - Filtered by Analysis Button Clicks */}
-                  <div className="insights-container">
-                    {sessionContext.aiInsights.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-8 text-center">
-                        <svg className="w-12 h-12 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                        </svg>
-                        <p className="text-gray-500 font-medium mb-2">AI Co-Facilitator Ready</p>
-                        <p className="text-gray-400 text-sm max-w-xs">
-                          Start the discussion to receive AI-powered insights, follow-up questions, and synthesis.
-                        </p>
-                      </div>
-                    ) : (
-                      <div>
-                        <div className="space-y-3">
-                        {getFilteredInsights().slice(-3).map((insight, idx) => {
-                          const insightType = insight.type || 'info';
-                          const colorClass = insightType === 'insights' ? 'purple' : insightType === 'followup' ? 'blue' : insightType === 'synthesis' ? 'green' : 'info';
-                          
-                          return (
-                            <div key={insight.id || idx} className={`insight-card ${colorClass}`}>
-                              <div className="insight-header">
-                                <span className="insight-icon">
-                                  {insightType === 'insights' && '💡'}
-                                  {insightType === 'followup' && '❓'}
-                                  {insightType === 'synthesis' && '📊'}
-                                  {!['insights', 'followup', 'synthesis'].includes(insightType) && '🤖'}
-                                </span>
-                                <span className="insight-label">
-                                  {insight.type?.charAt(0).toUpperCase() + insight.type?.slice(1) || 'AI Insight'}
-                                </span>
-                                <span className="insight-time text-xs text-gray-400">
-                                  {new Date(insight.timestamp || Date.now()).toLocaleTimeString('en-US', {
-                                    hour: 'numeric',
-                                    minute: '2-digit',
-                                    hour12: true
-                                  })}
-                                </span>
-                              </div>
-                              <div className="insight-content text-gray-700 leading-relaxed">
-                                {insight.content}
-                              </div>
+                  {/* AI Insights Container - Modern Component-Based Rendering */}
+                  <div className="tab-content">
+                    {(() => {
+                      const filteredInsights = getFilteredInsights();
+                      
+                      if (filteredInsights.length === 0) {
+                        // Empty State Component
+                        return (
+                          <div className="text-center py-12">
+                            <div className="text-4xl mb-4">
+                              {activeAITab === 'insights' ? '💭' : 
+                               activeAITab === 'synthesis' ? '🔄' :
+                               activeAITab === 'followup' ? '❓' : 
+                               activeAITab === 'executive' ? '📋' : '🤖'}
                             </div>
-                          );
-                        })}
-                      </div>
-                      </div>
-                    )}
+                            <p className="text-gray-500">
+                              No {activeAITab === 'all' ? 'insights' : activeAITab} available yet. Start your session to see AI-generated content here.
+                            </p>
+                          </div>
+                        );
+                      }
+                      
+                      // Show latest 3 insights with modern card design
+                      return (
+                        <div className="space-y-4">
+                          {filteredInsights.slice(-3).map((insight, idx) => {
+                            // Modern Insight Card Component
+                            const getInsightIcon = (type: string) => {
+                              switch (type) {
+                                case 'synthesis': return '🔄';
+                                case 'followup': return '❓';
+                                case 'executive': return '📋';
+                                case 'insight':
+                                case 'insights':
+                                default: return '💡';
+                              }
+                            };
+                            
+                            return (
+                              <div key={insight.id || idx} className="bg-gray-50 rounded-md p-4 hover:bg-gray-100 transition-colors">
+                                <div className="flex items-start gap-3">
+                                  <span className="text-2xl">
+                                    {getInsightIcon(insight.type || 'insight')}
+                                  </span>
+                                  <div className="flex-1">
+                                    <p className="text-gray-800">{insight.content}</p>
+                                    <span className="text-xs text-gray-500 mt-2 block">
+                                      {new Date(insight.timestamp || Date.now()).toLocaleTimeString('en-US', {
+                                        hour: 'numeric',
+                                        minute: '2-digit',
+                                        hour12: true
+                                      })}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
