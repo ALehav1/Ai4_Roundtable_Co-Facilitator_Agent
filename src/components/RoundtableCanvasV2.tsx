@@ -14,35 +14,26 @@ import TemplateSelector from './TemplateSelector';
 import { SessionState, TranscriptEntry, SessionContext } from '@/types/session';
 import { FACILITATOR_PATTERNS, MIN_WORDS_FOR_INSIGHTS } from '@/constants/speech';
 import { useToast } from '@/components/ToastProvider';
+import { DebugPanel } from '@/components/DebugPanel';
 
 // Types now imported from centralized files
 // SessionState, TranscriptEntry, SessionContext imported from @/types/session
 // FACILITATOR_PATTERNS, MIN_WORDS_FOR_INSIGHTS imported from @/constants/speech
 
+// Temporary Speaker Detection Tester Component
+
+
 // Enhanced Recording Indicator Component
-const RecordingIndicator = ({ isRecording, currentSpeaker }: { 
-  isRecording: boolean; 
-  currentSpeaker: string;
-}) => {
+const RecordingIndicator = ({ isRecording }: { isRecording: boolean }) => {
   if (!isRecording) return null;
   
   return (
-    <div className="fixed top-20 right-4 z-50 animate-slideIn">
-      <div className="bg-red-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3">
-        {/* Pulse animation */}
-        <div className="relative flex items-center justify-center">
-          <div className="absolute w-3 h-3 bg-white rounded-full animate-ping" />
-          <div className="relative w-3 h-3 bg-white rounded-full animate-pulse" />
-        </div>
-        
-        {/* Status text */}
-        <div className="flex flex-col">
-          <span className="font-medium">Recording Active</span>
-          <span className="text-xs opacity-90">
-            Detecting: {currentSpeaker}
-          </span>
-        </div>
+    <div className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-red-500 text-white px-3 py-1.5 rounded-full text-sm shadow-lg">
+      <div className="relative">
+        <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+        <div className="absolute inset-0 w-2 h-2 bg-white rounded-full animate-ping" />
       </div>
+      <span className="font-medium">Recording</span>
     </div>
   );
 };
@@ -756,14 +747,18 @@ This session follows the Assistance → Automation → Amplification progression
   // Process manual entry submission
   const submitManualEntry = useCallback(() => {
     if (entryMode === 'single' && manualEntryText.trim()) {
-      const speakerName = manualSpeakerName === 'Custom' 
-        ? customSpeakerName || 'Unknown Speaker'
-        : manualSpeakerName;
+      // Auto-detect speaker type based on content
+      const detectedSpeaker = detectSpeaker(manualEntryText.trim());
+      
+      // Use manual override if explicitly set to Custom with a name
+      const speakerName = manualSpeakerName === 'Custom' && customSpeakerName.trim()
+        ? customSpeakerName.trim()
+        : detectedSpeaker;
       
       addTranscriptEntry({
         speaker: speakerName,
         text: manualEntryText.trim(),
-        isAutoDetected: false,
+        isAutoDetected: manualSpeakerName !== 'Custom' || !customSpeakerName.trim(),
         confidence: 1.0 // Manual entries have full confidence
       });
       
@@ -780,10 +775,14 @@ This session follows the Assistance → Automation → Amplification progression
         const match = line.match(/^([^:]+):\s*(.+)$/);
         if (match) {
           const [, speaker, text] = match;
+          // Use auto-detection for bulk entries too, but allow manual speaker override
+          const detectedSpeaker = detectSpeaker(text.trim());
+          const finalSpeaker = speaker.trim().toLowerCase() === 'auto' ? detectedSpeaker : speaker.trim();
+          
           addTranscriptEntry({
-            speaker: speaker.trim(),
+            speaker: finalSpeaker,
             text: text.trim(),
-            isAutoDetected: false,
+            isAutoDetected: speaker.trim().toLowerCase() === 'auto',
             confidence: 1.0
           });
           entriesAdded++;
@@ -871,67 +870,126 @@ This session follows the Assistance → Automation → Amplification progression
     }
   }, [sessionContext.liveTranscript, showToast]);
 
-  // Smart Speaker Detection Function
-  const FACILITATOR_PATTERNS = [
-    // Questions
-    "what do you think",
-    "how does that",
-    "can you tell us",
-    "would you share",
-    "what's your experience",
-    
-    // Transitions
-    "let's move on",
-    "our next question",
-    "moving to",
-    "let's explore",
-    "next topic",
-    
-    // Acknowledgments
-    "thank you for sharing",
-    "i appreciate that",
-    "great point",
-    "interesting perspective",
-    "thanks for that",
-    
-    // Time management
-    "we have about",
-    "few more minutes",
-    "time for one more",
-    "let's spend",
-    
-    // Session management
-    "welcome everyone",
-    "before we close",
-    "to summarize",
-    "let me ask",
-    
-    // Clarifications
-    "just to clarify",
-    "what i'm hearing",
-    "to build on that",
-    "following up on"
-  ];
+  // Session-level speaker continuity tracking
+  const [lastSpeakerDetection, setLastSpeakerDetection] = useState<{
+    speaker: string;
+    timestamp: number;
+    confidence: 'high' | 'medium' | 'low';
+  } | null>(null);
 
+  const CONTINUITY_WINDOW_MS = 30000; // 30 seconds for speaker continuity
+
+  // Smart Speaker Detection Function using imported patterns + context-sensitive logic + proximity
   const detectSpeaker = useCallback((text: string): string => {
     const lowerText = text.toLowerCase();
+    const now = Date.now();
     
-    // Check if text matches facilitator patterns
+    // 1. Check generic facilitator patterns first
     const matchesFacilitatorPattern = FACILITATOR_PATTERNS.some(pattern => 
       lowerText.includes(pattern.toLowerCase())
     );
     
-    // Additional heuristics for facilitator detection
+    // 2. Context-sensitive facilitator detection for Ari from Moody's
+    
+    // Self-introduction patterns (facilitator introducing themselves)
+    const isSelfIntroduction = /\b(my name is|i'm|i am).*(ari|ari lehavi)\b/i.test(text) ||
+                              /\b(ari|ari lehavi).*(here|facilitator|leading|moderating)\b/i.test(text);
+    
+    // Organization context (facilitator referencing their org, not participants asking about it)
+    const isOrgReference = /\b(at moody's|from moody's|we at moody's)\b/i.test(text) &&
+                          !/\b(how do you|how does|what does).*(moody's|you)\b/i.test(text); // Exclude participant questions
+    
+    // Topic introduction (facilitator introducing agenda items or guide questions)
+    const isTopicIntroduction = /\b(let's talk about|our next topic|turning to|moving to).*(ai|artificial intelligence|transformation|automation)\b/i.test(text) ||
+                               /\b(today we'll|we're going to|our agenda|our focus)\b/i.test(text);
+    
+    // Facilitator guide questions (from your session framework)
+    const isFacilitatorGuideQuestion = /\b(what does your org look like|what scares you most|what's one takeaway|how does that connect|can you say more)\b/i.test(text) ||
+                                      /\b(fast forward.*years|the darker version|what needs to be true)\b/i.test(text);
+    
+    // Advanced context patterns for company/org references
+    
+    // PARTICIPANT indicators (first-hand experience, speaking about their own org)
+    const isParticipantFirstHand = /\b(the way we do it at|at our company|our experience at|we handle it by|at \w+, we)\b/i.test(text) ||
+                                  /\b(in our organization|our approach at|we've found that|our team at)\b/i.test(text);
+    
+    // PARTICIPANT self-introductions (any name/org other than Ari/Ari Lehavi/Moody's)
+    const isParticipantSelfIntro = /\b(my name is|i'm|i am)\s+(?!ari\b|ari\s+lehavi\b)\w+/i.test(text) ||
+                                  /\b(from|at|with)\s+(?!moody'?s\b)\w+[\s\w]*(?:company|corp|inc|llc|ltd|organization|org|group|team)\b/i.test(text) ||
+                                  /\b(i work at|i'm with|i'm from)\s+(?!moody'?s\b)\w+/i.test(text);
+    
+    // FACILITATOR indicators (asking about others' experiences)
+    const isFacilitatorAskingAboutOthers = /\b(how does \w+ do it|how do you at \w+|what's your experience at|how does your company)\b/i.test(text) ||
+                                          /\b(how do they handle it at|what's the approach at \w+|how does \w+ think about)\b/i.test(text);
+    
+    // 3. Additional heuristics for facilitator detection
     const isQuestion = text.trim().endsWith('?') && text.length < 200; // Short questions often from facilitator
     const hasTransitionWords = /^(so|now|okay|alright|great|well|let's)/i.test(text);
     const hasSummaryLanguage = /summariz|wrap up|key takeaway|moving forward/i.test(text);
     
-    if (matchesFacilitatorPattern || (isQuestion && hasTransitionWords) || hasSummaryLanguage) {
-      return 'Facilitator';
+    // 4. Check for continuity breaks (questions that break speaker flow)
+    
+    // Facilitator asking audience questions (breaks facilitator continuity)
+    const isFacilitatorAskingAudience = /\b(what do you think|what's your view|how do you see|tell me|share with us|thoughts on)\b/i.test(text) ||
+                                       /\b(any questions|what questions|does anyone)\b/i.test(text);
+    
+    // Speaker asking facilitator for clarification (breaks participant continuity) 
+    const isAskingFacilitatorClarification = /\b(ari|ari lehavi|moody's).*(what|how|why|can you|could you)\b/i.test(text) ||
+                                            /\b(can you clarify|what did you mean|how do you|what's your take)\b/i.test(text);
+    
+    // 5. Apply proximity/continuity logic
+    const isWithinContinuityWindow = lastSpeakerDetection && (now - lastSpeakerDetection.timestamp) < CONTINUITY_WINDOW_MS;
+    
+    // Strong participant indicators (override other patterns and continuity)
+    if (isParticipantFirstHand || isParticipantSelfIntro) {
+      const result = 'Participant';
+      setLastSpeakerDetection({ speaker: result, timestamp: now, confidence: 'high' });
+      return result;
     }
     
-    // Default to participant
-    return 'Participant';
+    // Strong facilitator indicators
+    const isFacilitator = matchesFacilitatorPattern || 
+                         isSelfIntroduction || 
+                         isOrgReference || 
+                         isTopicIntroduction || 
+                         isFacilitatorGuideQuestion ||
+                         isFacilitatorAskingAboutOthers ||
+                         (isQuestion && hasTransitionWords) || 
+                         hasSummaryLanguage;
+    
+    if (isFacilitator) {
+      const result = 'Facilitator';
+      setLastSpeakerDetection({ speaker: result, timestamp: now, confidence: 'high' });
+      return result;
+    }
+    
+    // 6. Apply continuity logic if no strong indicators
+    if (isWithinContinuityWindow && lastSpeakerDetection) {
+      // Check for continuity breaks
+      if (lastSpeakerDetection.speaker === 'Facilitator' && isFacilitatorAskingAudience) {
+        // Facilitator asking audience breaks facilitator continuity
+        const result = 'Facilitator'; // Still facilitator, but reset continuity
+        setLastSpeakerDetection({ speaker: result, timestamp: now, confidence: 'medium' });
+        return result;
+      }
+      
+      if (lastSpeakerDetection.speaker === 'Participant' && isAskingFacilitatorClarification) {
+        // Participant asking facilitator breaks participant continuity
+        const result = 'Participant'; // Still participant, but reset continuity  
+        setLastSpeakerDetection({ speaker: result, timestamp: now, confidence: 'medium' });
+        return result;
+      }
+      
+      // No continuity break - continue with last speaker
+      if (!isFacilitatorAskingAudience && !isAskingFacilitatorClarification) {
+        return lastSpeakerDetection.speaker;
+      }
+    }
+    
+    // 7. Default fallback
+    const result = 'Participant';
+    setLastSpeakerDetection({ speaker: result, timestamp: now, confidence: 'low' });
+    return result;
   }, []);
 
   // Template Selection Handler
@@ -1307,17 +1365,18 @@ This session follows the Assistance → Automation → Amplification progression
                           const isLast = index === sessionContext.liveTranscript.length - 1;
                           const speakerType = (entry.speaker === 'Facilitator') ? 'facilitator' : 'participant';
                           
+                          // DEBUG: Log what's actually in entry.speaker
+                          console.log(` Entry ${index}: speaker="${entry.speaker}", text="${entry.text?.substring(0, 30)}..."`);
+                          
                           return (
                             <div key={entry.id || index} className="transcript-entry">
                               {/* Timeline Visual */}
                               <div className="timeline">
                                 <div className={`timeline-dot ${speakerType}`}>
                                   {speakerType === 'facilitator' ? (
-                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                                    </svg>
+                                    <span className="text-xs font-bold text-white bg-blue-500 rounded-full w-6 h-6 flex items-center justify-center ring-2 ring-blue-200">F</span>
                                   ) : (
-                                    <span className="text-xs font-bold">P</span>
+                                    <span className="text-xs font-bold text-white bg-green-500 rounded-full w-6 h-6 flex items-center justify-center ring-2 ring-green-200">P</span>
                                   )}
                                 </div>
                                 {!isLast && <div className="timeline-line" />}
@@ -1657,7 +1716,7 @@ This session follows the Assistance → Automation → Amplification progression
                 )}
 
                 {/* AI Co-Facilitator Panel */}
-                <div className="ai-panel mt-6 pt-6 border-t">
+                <div className="ai-panel mt-6 pt-6 border-t p-6 bg-white rounded-lg shadow-sm">
                   <div className="ai-header">
                     <h2 className="ai-title">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1689,7 +1748,7 @@ This session follows the Assistance → Automation → Amplification progression
                               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
                             `}
                             role="tab"
-                            aria-selected={isActive.toString()}
+                            aria-selected={isActive}
                             aria-controls={`${tab.label.toLowerCase()}-panel`}
                           >
                             <span className="text-lg" aria-hidden="true">{tab.icon}</span>
@@ -1735,7 +1794,7 @@ This session follows the Assistance → Automation → Amplification progression
                   </div>
 
                   {/* AI Insights Container - Modern Component-Based Rendering */}
-                  <div className="tab-content">
+                  <div className="tab-content p-4 bg-gray-50 rounded-lg transition-opacity duration-300">
                     {(() => {
                       const filteredInsights = getFilteredInsights();
                       
@@ -1773,7 +1832,7 @@ This session follows the Assistance → Automation → Amplification progression
                             };
                             
                             return (
-                              <div key={insight.id || idx} className="bg-gray-50 rounded-md p-4 hover:bg-gray-100 transition-colors">
+                              <div key={insight.id || idx} className="bg-white rounded-lg p-5 shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-200 transition-all duration-200">
                                 <div className="flex items-start gap-3">
                                   <span className="text-2xl">
                                     {getInsightIcon(insight.type || 'insight')}
@@ -1991,7 +2050,7 @@ This session follows the Assistance → Automation → Amplification progression
       />
       
       {/* Enhanced Recording Indicator */}
-      <RecordingIndicator isRecording={isRecording} currentSpeaker={currentSpeaker} />
+      <RecordingIndicator isRecording={isRecording} />
       
       {sessionState === 'intro' && renderIntroState()}
       {sessionState === 'discussion' && renderDiscussionState()}
@@ -2208,6 +2267,10 @@ This session follows the Assistance → Automation → Amplification progression
         onTemplateSelect={handleTemplateSelection}
         onClose={() => setShowTemplateSelector(false)}
       />
+
+      {/* Temporary Speaker Detection Tester */}
+
+
     </>
   );
 };
