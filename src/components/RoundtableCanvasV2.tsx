@@ -269,6 +269,28 @@ const RoundtableCanvasV2: React.FC = () => {
     speechTranscription.onError((error: string) => {
       console.error('Speech Recognition Error:', error);
       setIsRecording(false);
+      
+      // Show user-friendly error toast
+      const errorMessages: Record<string, string> = {
+        'not-allowed': 'Microphone access denied. Please allow microphone permissions in your browser.',
+        'audio-capture': 'No microphone detected. Please check your audio devices and try again.',
+        'no-speech': 'No speech detected. Please speak clearly into your microphone.',
+        'network': 'Speech recognition requires HTTPS. Please use the deployed version for speech features.',
+        'service-not-allowed': 'Speech recognition service unavailable. Please try manual entry instead.',
+      };
+      
+      const userMessage = errorMessages[error] || `Speech recognition error: ${error}. Please try manual entry.`;
+      
+      showToast({
+        type: 'error',
+        title: 'Speech Recognition Error',
+        message: userMessage,
+        durationMs: 6000,
+        action: {
+          label: 'Try Manual Entry',
+          onClick: () => setShowManualModal(true)
+        }
+      });
     });
   }, [speechTranscription]);
 
