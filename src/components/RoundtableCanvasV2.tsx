@@ -199,7 +199,7 @@ const RoundtableCanvasV2: React.FC = () => {
   const [bulkTranscriptText, setBulkTranscriptText] = useState('');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('blank_template');
   const [isExporting, setIsExporting] = useState(false);
-  const [activeAITab, setActiveAITab] = useState<'insights' | 'questions' | 'synthesis'>('insights');
+  const [activeAITab, setActiveAITab] = useState<'all' | 'insights' | 'followup' | 'synthesis' | 'executive'>('all');
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [templateModalMode, setTemplateModalMode] = useState<'save' | 'load' | 'manage' | 'create'>('save');
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
@@ -320,6 +320,33 @@ const RoundtableCanvasV2: React.FC = () => {
       startTime: new Date(),
     }));
   }, []);
+
+  // BUILD AI CONTEXT - Must be defined before callAIAnalysis uses it
+  const buildAIContext = useCallback(() => {
+    const currentQuestion = getCurrentQuestion(sessionContext.currentQuestionIndex);
+    const questionProgress = `Question ${sessionContext.currentQuestionIndex + 1} of ${getTotalQuestions()}`;
+    
+    // Get previous insights for this question (if any)
+    const previousInsights = sessionContext.aiInsights
+      .filter(output => output.questionId === currentQuestion?.id)
+      .map(output => `[${output.type}]: ${output.content}`)
+      .join('\n');
+    
+    // Get transcript text
+    const transcript = sessionContext.liveTranscript
+      .map(entry => `${entry.speaker}: ${entry.text}`)
+      .join('\n');
+    
+    return {
+      sessionTopic: sessionContext.currentTopic || 'General Discussion',
+      currentQuestion: currentQuestion?.title || 'Open Discussion',
+      questionContext: currentQuestion?.description || '',
+      questionProgress,
+      facilitatorPrompt: currentQuestion?.facilitatorGuidance?.keyPrompt || '',
+      previousInsights: previousInsights || 'None',
+      transcript
+    };
+  }, [sessionContext.liveTranscript, sessionContext.currentQuestionIndex, sessionContext.currentTopic, sessionContext.aiInsights]);
 
   const endSession = useCallback(async () => {
     setSessionState('summary');
@@ -513,32 +540,7 @@ This session follows the Assistance → Automation → Amplification progression
     }
   }, [sessionContext.liveTranscript, sessionContext.currentTopic, sessionContext.currentQuestionIndex, sessionContext.aiInsights, showToast]);
 
-  // ADD THIS FUNCTION - builds rich context for AI analysis
-  const buildAIContext = useCallback(() => {
-    const currentQuestion = getCurrentQuestion(sessionContext.currentQuestionIndex);
-    const questionProgress = `Question ${sessionContext.currentQuestionIndex + 1} of ${getTotalQuestions()}`;
-    
-    // Get previous insights for this question (if any)
-    const previousInsights = sessionContext.aiInsights
-      .filter(output => output.questionId === currentQuestion?.id)
-      .map(output => `[${output.type}]: ${output.content}`)
-      .join('\n');
-    
-    // Get transcript text
-    const transcript = sessionContext.liveTranscript
-      .map(entry => `${entry.speaker}: ${entry.text}`)
-      .join('\n');
-    
-    return {
-      sessionTopic: sessionContext.currentTopic || 'General Discussion',
-      currentQuestion: currentQuestion?.title || 'Open Discussion',
-      questionContext: currentQuestion?.description || '',
-      questionProgress,
-      facilitatorPrompt: currentQuestion?.facilitatorGuidance?.keyPrompt || '',
-      previousInsights: previousInsights || 'None',
-      transcript
-    };
-  }, [sessionContext.liveTranscript, sessionContext.currentQuestionIndex, sessionContext.currentTopic, sessionContext.aiInsights]);
+
 
   // Smart Insight Triggering System - positioned after callAIAnalysis declaration
   useEffect(() => {
@@ -1561,7 +1563,10 @@ This session follows the Assistance → Automation → Amplification progression
                     <div className="grid grid-cols-2 gap-3 mb-4">
                       {/* Strategic Insights */}
                       <button
-                        onClick={() => callAIAnalysis('insights')}
+                        onClick={() => {
+                          setActiveAITab('insights');
+                          callAIAnalysis('insights');
+                        }}
                         disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
                         className="group relative bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-lg p-4 text-left transition-all duration-200 hover:from-purple-100 hover:to-purple-200 hover:border-purple-300 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
                         title="Generate strategic insights from current discussion"
@@ -1587,7 +1592,10 @@ This session follows the Assistance → Automation → Amplification progression
 
                       {/* Follow-up Questions */}
                       <button
-                        onClick={() => callAIAnalysis('followup')}
+                        onClick={() => {
+                          setActiveAITab('followup');
+                          callAIAnalysis('followup');
+                        }}
                         disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
                         className="group relative bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4 text-left transition-all duration-200 hover:from-blue-100 hover:to-blue-200 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                         title="Get AI-suggested follow-up questions"
@@ -1608,7 +1616,10 @@ This session follows the Assistance → Automation → Amplification progression
 
                       {/* Discussion Synthesis */}
                       <button
-                        onClick={() => callAIAnalysis('synthesis')}
+                        onClick={() => {
+                          setActiveAITab('synthesis');
+                          callAIAnalysis('synthesis');
+                        }}
                         disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
                         className="group relative bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-lg p-4 text-left transition-all duration-200 hover:from-green-100 hover:to-green-200 hover:border-green-300 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                         title="Synthesize key themes and outcomes"
@@ -1629,7 +1640,10 @@ This session follows the Assistance → Automation → Amplification progression
 
                       {/* Executive Summary */}
                       <button
-                        onClick={() => callAIAnalysis('executive')}
+                        onClick={() => {
+                          setActiveAITab('executive');
+                          callAIAnalysis('executive');
+                        }}
                         disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
                         className="group relative bg-gradient-to-r from-amber-50 to-amber-100 border border-amber-200 rounded-lg p-4 text-left transition-all duration-200 hover:from-amber-100 hover:to-amber-200 hover:border-amber-300 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
                         title="Generate executive summary and action items"
