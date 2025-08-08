@@ -193,6 +193,10 @@ const RoundtableCanvasV2: React.FC = () => {
   const [interimTranscript, setInterimTranscript] = useState<string>('');
   const [showManualModal, setShowManualModal] = useState(false);
   const [manualEntryText, setManualEntryText] = useState('');
+  const [entryMode, setEntryMode] = useState<'single' | 'bulk'>('single');
+  const [manualSpeakerName, setManualSpeakerName] = useState('Speaker');
+  const [customSpeakerName, setCustomSpeakerName] = useState('');
+  const [bulkTranscriptText, setBulkTranscriptText] = useState('');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('blank_template');
   const [isExporting, setIsExporting] = useState(false);
   const [activeAITab, setActiveAITab] = useState<'insights' | 'questions' | 'synthesis'>('insights');
@@ -616,6 +620,60 @@ This session follows the Assistance → Automation → Amplification progression
     }
   }, [sessionContext, isExporting, showToast]);
 
+  // Manual entry modal handler
+  const addManualEntry = useCallback(() => {
+    setShowManualModal(true);
+    setEntryMode('single'); // Default to single entry mode
+    setManualEntryText(''); // Clear any previous text
+    setManualSpeakerName('Speaker'); // Reset to default speaker
+    console.log('📝 Opening manual entry modal');
+  }, []);
+
+  // Process manual entry submission
+  const submitManualEntry = useCallback(() => {
+    if (entryMode === 'single' && manualEntryText.trim()) {
+      const speakerName = manualSpeakerName === 'Custom' 
+        ? customSpeakerName || 'Unknown Speaker'
+        : manualSpeakerName;
+      
+      addTranscriptEntry({
+        speaker: speakerName,
+        text: manualEntryText.trim(),
+        isAutoDetected: false,
+        confidence: 1.0 // Manual entries have full confidence
+      });
+      
+      // Clear form and close modal
+      setManualEntryText('');
+      setShowManualModal(false);
+      console.log('✅ Manual entry added');
+    } else if (entryMode === 'bulk' && bulkTranscriptText.trim()) {
+      // Process bulk transcript
+      const lines = bulkTranscriptText.split('\n').filter(line => line.trim());
+      let entriesAdded = 0;
+      
+      lines.forEach(line => {
+        const match = line.match(/^([^:]+):\s*(.+)$/);
+        if (match) {
+          const [, speaker, text] = match;
+          addTranscriptEntry({
+            speaker: speaker.trim(),
+            text: text.trim(),
+            isAutoDetected: false,
+            confidence: 1.0
+          });
+          entriesAdded++;
+        }
+      });
+      
+      // Clear form and close modal
+      setBulkTranscriptText('');
+      setShowManualModal(false);
+      console.log(`✅ Added ${entriesAdded} entries from bulk paste`);
+    }
+  }, [entryMode, manualEntryText, manualSpeakerName, customSpeakerName, 
+      bulkTranscriptText, addTranscriptEntry]);
+
   const toggleRecording = useCallback(() => {
     if (speechTranscription.isListening) {
       speechTranscription.stop();
@@ -735,27 +793,22 @@ This session follows the Assistance → Automation → Amplification progression
     const lowerText = text.toLowerCase();
     
     // Check if text matches facilitator patterns
-    const matchesPattern = FACILITATOR_PATTERNS.some(pattern => 
-      lowerText.includes(pattern)
+    const matchesFacilitatorPattern = FACILITATOR_PATTERNS.some(pattern => 
+      lowerText.includes(pattern.toLowerCase())
     );
     
-    // Additional heuristics
+    // Additional heuristics for facilitator detection
     const isQuestion = text.trim().endsWith('?') && text.length < 200; // Short questions often from facilitator
-    const hasTransitionWords = /^(so|now|okay|alright|great)/i.test(text);
+    const hasTransitionWords = /^(so|now|okay|alright|great|well|let's)/i.test(text);
+    const hasSummaryLanguage = /summariz|wrap up|key takeaway|moving forward/i.test(text);
     
-    if (matchesPattern || (isQuestion && hasTransitionWords)) {
+    if (matchesFacilitatorPattern || (isQuestion && hasTransitionWords) || hasSummaryLanguage) {
       return 'Facilitator';
     }
     
-    // Default to participant with incrementing numbers
-    if (currentSpeaker === 'Facilitator' || currentSpeaker === 'Participant') {
-      const newParticipantName = `Participant ${participantCounter}`;
-      setParticipantCounter(prev => prev + 1);
-      return newParticipantName;
-    }
-    
-    return currentSpeaker;
-  }, [currentSpeaker, participantCounter]);
+    // Default to participant
+    return 'Participant';
+  }, []);
 
   // Template Selection Handler
   const handleTemplateSelection = useCallback((templateSessionContext: any) => {
@@ -1068,9 +1121,9 @@ This session follows the Assistance → Automation → Amplification progression
                       </div>
                     ) : (
                       <div className="space-y-0">
-                        {sessionContext.liveTranscript.map((entry, index) => {
+                         {sessionContext.liveTranscript.map((entry, index) => {
                           const isLast = index === sessionContext.liveTranscript.length - 1;
-                          const speakerType = (entry.speaker === 'Facilitator' || entry.speaker === currentSpeaker) ? 'facilitator' : 'participant';
+                          const speakerType = (entry.speaker === 'Facilitator') ? 'facilitator' : 'participant';
                           
                           return (
                             <div key={entry.id || index} className="transcript-entry">
@@ -1082,9 +1135,7 @@ This session follows the Assistance → Automation → Amplification progression
                                       <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                                     </svg>
                                   ) : (
-                                    <span className="text-xs font-bold">
-                                      {entry.speaker?.charAt(0) || 'P'}
-                                    </span>
+                                    <span className="text-xs font-bold">P</span>
                                   )}
                                 </div>
                                 {!isLast && <div className="timeline-line" />}
@@ -1094,7 +1145,7 @@ This session follows the Assistance → Automation → Amplification progression
                               <div className="entry-content">
                                 <div className="entry-header">
                                   <span className={`speaker-name ${speakerType}`}>
-                                    {entry.speaker || 'Unknown Speaker'}
+                                    {entry.speaker || 'Participant'}
                                   </span>
                                   <span className="timestamp">
                                     {new Date(entry.timestamp).toLocaleTimeString('en-US', {
@@ -1105,6 +1156,20 @@ This session follows the Assistance → Automation → Amplification progression
                                   </span>
                                 </div>
                                 <p className="entry-text">{entry.text}</p>
+                                
+                                {/* Auto-detection indicators */}
+                                <div className="flex gap-3 mt-1">
+                                  {entry.isAutoDetected && (
+                                    <span className="text-xs text-gray-400">
+                                      🎤 Auto-detected
+                                    </span>
+                                  )}
+                                  {entry.confidence && entry.confidence < 0.8 && (
+                                    <span className="text-xs text-orange-500">
+                                      ⚠️ Low confidence
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           );
@@ -1119,6 +1184,70 @@ This session follows the Assistance → Automation → Amplification progression
                     <p className="text-gray-700 italic">{interimTranscript}</p>
                   </div>
                 )}
+              </div>
+
+              {/* Session Controls */}
+              <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-semibold text-gray-900">Session Controls</h3>
+                </div>
+                
+                <div className="flex space-x-3">
+                  {/* Recording Control Button */}
+                  <button
+                    onClick={async () => {
+                      if (isRecording) {
+                        setIsRecording(false);
+                        await speechTranscription.stop();
+                        console.log('🛑 Stopped recording');
+                      } else {
+                        try {
+                          setIsRecording(true);
+                          await speechTranscription.start();
+                          console.log('🎤 Started recording');
+                        } catch (error) {
+                          console.error('Failed to start recording:', error);
+                          setIsRecording(false);
+                          // Could add toast notification here
+                          alert('Recording failed. Please check microphone permissions.');
+                        }
+                      }
+                    }}
+                    className={`px-4 py-2 rounded flex items-center gap-2 font-medium transition-colors ${
+                      isRecording 
+                        ? 'bg-red-600 text-white hover:bg-red-700 animate-pulse' 
+                        : 'bg-green-600 text-white hover:bg-green-700'
+                    }`}
+                    title={isRecording ? 'Stop recording' : 'Start recording'}
+                  >
+                    {isRecording ? (
+                      <>
+                        <span className="w-3 h-3 bg-white rounded-full animate-ping"></span>
+                        🛑 Stop Recording
+                      </>
+                    ) : (
+                      <>
+                        🎤 Start Recording
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => setShowManualModal(true)}
+                    className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 font-medium"
+                  >
+                    ➕ Manual Entry
+                  </button>
+                  
+                  <button
+                    onClick={() => setSessionState('summary')}
+                    disabled={true}
+                    className="px-4 py-2 bg-gray-400 text-gray-600 rounded cursor-not-allowed font-medium"
+                    title="Session end flow needs UX redesign - temporarily disabled"
+                  >
+                    ⏹️ End Session (Disabled)
+                  </button>
+                </div>
               </div>
 
               {/* Simplified Speaker Indicator - Read Only During Recording */}
@@ -1548,17 +1677,138 @@ This session follows the Assistance → Automation → Amplification progression
               </div>
             </div>
           )}
-        </main>
-      </div>
-    );
-  };
+         </main>
 
-  const renderSummaryState = () => (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg shadow-lg p-8 max-w-2xl w-full">
-        <h2 className="text-3xl font-bold mb-6 text-center">Session Summary</h2>
-        
-        <div className="grid grid-cols-2 gap-4 mb-6">
+         {/* Manual Entry Modal */}
+         {showManualModal && (
+           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+             <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+               <div className="flex justify-between items-center mb-4">
+                 <h3 className="text-xl font-bold">Add Manual Entry</h3>
+                 <button
+                   onClick={() => setShowManualModal(false)}
+                   className="text-gray-500 hover:text-gray-700 text-2xl"
+                   aria-label="Close modal"
+                 >
+                   ×
+                 </button>
+               </div>
+               
+               {/* Entry Mode Tabs */}
+               <div className="border-b mb-4">
+                 <button
+                   onClick={() => setEntryMode('single')}
+                   className={`px-4 py-2 font-medium ${
+                     entryMode === 'single'
+                       ? 'border-b-2 border-blue-500 text-blue-600'
+                       : 'text-gray-500 hover:text-gray-700'
+                   }`}
+                 >
+                   ✏️ Single Entry
+                 </button>
+                 <button
+                   onClick={() => setEntryMode('bulk')}
+                   className={`px-4 py-2 font-medium ml-4 ${
+                     entryMode === 'bulk'
+                       ? 'border-b-2 border-blue-500 text-blue-600'
+                       : 'text-gray-500 hover:text-gray-700'
+                   }`}
+                 >
+                   📋 Bulk Copy-Paste
+                 </button>
+               </div>
+               
+               {/* Single Entry Mode */}
+               {entryMode === 'single' && (
+                 <div className="space-y-4">
+                   <div>
+                     <label className="block text-sm font-medium mb-2">Speaker</label>
+                     <select
+                       value={manualSpeakerName}
+                       onChange={(e) => setManualSpeakerName(e.target.value)}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                     >
+                       <option value="Facilitator">Facilitator</option>
+                       <option value="Speaker">Speaker</option>
+                       <option value="Custom">Custom Name...</option>
+                     </select>
+                     {manualSpeakerName === 'Custom' && (
+                       <input
+                         type="text"
+                         value={customSpeakerName}
+                         onChange={(e) => setCustomSpeakerName(e.target.value)}
+                         className="w-full px-3 py-2 border border-gray-300 rounded-md mt-2"
+                         placeholder="Enter speaker name"
+                         autoFocus
+                       />
+                     )}
+                   </div>
+                   <div>
+                     <label className="block text-sm font-medium mb-2">Entry Text</label>
+                     <textarea
+                       value={manualEntryText}
+                       onChange={(e) => setManualEntryText(e.target.value)}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-md h-32 resize-none"
+                       placeholder="Enter the transcript text..."
+                       autoFocus={manualSpeakerName !== 'Custom'}
+                     />
+                   </div>
+                 </div>
+               )}
+               
+               {/* Bulk Entry Mode */}
+               {entryMode === 'bulk' && (
+                 <div className="space-y-4">
+                   <div className="bg-blue-50 p-3 rounded">
+                     <p className="text-sm text-blue-800">
+                       Paste transcript in format: <code>Speaker Name: Text content</code>
+                     </p>
+                     <p className="text-xs text-blue-600 mt-1">
+                       Each speaker entry should be on a new line
+                     </p>
+                   </div>
+                   <textarea
+                     value={bulkTranscriptText}
+                     onChange={(e) => setBulkTranscriptText(e.target.value)}
+                     className="w-full px-3 py-2 border border-gray-300 rounded-md h-64 resize-none font-mono text-sm"
+                     placeholder="John: I think we should focus on AI training first.&#10;Sarah: Good point. What about data preparation?&#10;John: That's essential too..."
+                     autoFocus
+                   />
+                 </div>
+               )}
+               
+               {/* Modal Actions */}
+               <div className="flex justify-end gap-3 mt-6">
+                 <button
+                   onClick={() => setShowManualModal(false)}
+                   className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                 >
+                   Cancel
+                 </button>
+                 <button
+                   onClick={submitManualEntry}
+                   disabled={
+                     (entryMode === 'single' && !manualEntryText.trim()) ||
+                     (entryMode === 'bulk' && !bulkTranscriptText.trim())
+                   }
+                   className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                 >
+                   Add Entry
+                 </button>
+               </div>
+             </div>
+           </div>
+         )}
+       </div>
+     );
+   };
+
+   const renderSummaryState = () => (
+     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+       <div className="bg-white rounded-lg shadow-lg p-8 max-w-2xl w-full">
+         <h2 className="text-3xl font-bold mb-6 text-center">Session Summary</h2>
+         
+         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="bg-blue-50 p-4 rounded">
             <h3 className="font-semibold text-blue-800">Duration</h3>
             <p className="text-2xl text-blue-600">
