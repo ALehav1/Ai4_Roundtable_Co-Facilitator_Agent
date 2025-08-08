@@ -27,7 +27,7 @@ export const fetchCache = 'force-no-store';
 const LiveAnalyzeRequestSchema = z.object({
   sessionTopic: z.string().min(1),
   liveTranscript: z.string().default('No conversation content captured yet.'),
-  analysisType: z.enum(['insights', 'synthesis', 'followup', 'cross_reference', 'facilitation', 'transition']), // ✅ ADD 'transition'
+  analysisType: z.enum(['insights', 'synthesis', 'followup', 'cross_reference', 'facilitation', 'transition', 'executive']), // ✅ ADD 'executive'
   sessionDuration: z.number().optional(),
   clientId: z.string().optional().default('anonymous')
 });
@@ -77,110 +77,136 @@ function incrementRateLimit(clientId: string = 'anonymous') {
 }
 
 /**
- * Build strict JSON prompts for live analysis
- * Focus on factual analysis without fabrication
+ * Build EXECUTIVE-FOCUSED prompts for live analysis
+ * Enhanced for C-suite and strategic discussions
  */
 function buildLiveAnalysisPrompt(
   analysisType: string,
   transcript: string,
   currentQuestion: any
 ): string {
-  // 🚨 ULTRA CLEAN PROMPTS - NO MENTION OF FORMATTING
+  // Executive-focused prompts with strategic language
   
   if (analysisType === 'insights') {
-    return `PHASE-SPECIFIC INSIGHTS - Analyze only the NEW content in this transcript since the last insight generation:
+    return `STRATEGIC INSIGHTS - Executive Analysis of Discussion Content:
 
-TRANSCRIPT:
+EXECUTIVE TRANSCRIPT:
 ${transcript}
 
-Based ONLY on what was actually discussed in the transcript above, provide:
+Based ONLY on actual discussion content, provide strategic analysis:
 
-1. **New Theme Identified**: [What new theme or topic emerged in this portion]
-2. **Key Quote or Statement**: [Most important direct quote from the actual conversation]
-3. **Participant Insight**: [What insight or perspective was actually shared by participants]
-4. **Discussion Pattern**: [What pattern or dynamic you observe in how the conversation is developing]
+1. **Business Value Identified**: [Strategic patterns or competitive advantages emerging from discussion]
+2. **Critical Quote or Decision Point**: [Most important statement affecting business strategy or operations]
+3. **Executive Insight**: [Key strategic perspective shared that impacts organizational direction]
+4. **Strategic Momentum**: [How the discussion is advancing toward actionable business decisions]
 
-IMPORTANT: Only analyze content that was ACTUALLY discussed in the transcript. Quote exactly from the conversation. If the transcript is empty or lacks substantive new content since the last analysis, provide encouraging guidance:
-- Suggest a thought-provoking question to continue the discussion
-- Offer a relevant observation about the session topic
-- Recommend a direction to explore based on the session goals
+EXECUTIVE GUIDANCE: Reference only actual transcript content. If limited content available, provide strategic direction:
+- Suggest high-impact questions to drive decision-making
+- Identify strategic opportunities based on session objectives
+- Recommend focus areas that maximize competitive advantage
 
-Respond with only plain text. Use the exact numbering shown above.`;
+Deliver concise executive briefing format with numbered points as shown.`;
   }
   
   if (analysisType === 'followup') {
-    return `Generate 4 strategic follow-up questions based on this transcript:
+    return `EXECUTIVE FOLLOW-UP QUESTIONS - Strategic Discussion Advancement:
 
-TRANSCRIPT:
+EXECUTIVE TRANSCRIPT:
 ${transcript}
 
-RESPONSE FORMAT:
-1. [question]
-2. [question]
-3. [question]
-4. [question]
+Generate 4 strategic questions that drive business decisions and competitive advantage:
 
-Respond with only plain text questions.`;
+1. [Strategic question focusing on ROI or competitive positioning]
+2. [Decision-focused question requiring C-level input]
+3. [Risk/opportunity question with business impact implications]
+4. [Implementation question with ownership and timeline considerations]
+
+Frame questions for executive decision-making with clear business implications.`;
   }
   
   if (analysisType === 'cross_reference') {
-    return `Identify connections in this business discussion:
+    return `STRATEGIC CONNECTIONS - Executive Pattern Analysis:
 
-TRANSCRIPT:
+EXECUTIVE TRANSCRIPT:
 ${transcript}
 
-Provide 4 numbered connection points about themes, patterns, and strategic implications.`;
+Identify 4 strategic connections with business impact:
+
+1. [Strategic theme connection with competitive implications]
+2. [Decision pattern with organizational impact]
+3. [Resource allocation connection affecting ROI]
+4. [Risk/opportunity intersection requiring executive attention]
+
+Focus on connections that inform strategic decision-making and business value creation.`;
   }
   
   if (analysisType === 'synthesis') {
-    return `CUMULATIVE DISCUSSION SYNTHESIS - Analyze the actual conversation below and summarize the key takeaways that were ACTUALLY discussed:
+    return `EXECUTIVE SUMMARY - Strategic Discussion Synthesis:
 
-TRANSCRIPT:
+EXECUTIVE TRANSCRIPT:
 ${transcript}
 
-Based ONLY on what was actually said in this conversation, provide:
+Based ONLY on actual executive discussion, provide strategic summary:
 
-1. **Main Topic Discussed**: [What topic was actually covered]
-2. **Key Points Made**: [Actual points raised by participants]
-3. **Decisions or Conclusions**: [Any decisions, agreements, or conclusions reached]
-4. **Action Items or Next Steps**: [Any specific next steps mentioned]
+1. **Strategic Objective Addressed**: [Primary business challenge or opportunity discussed]
+2. **Key Decisions or Positions**: [Strategic decisions, agreements, or positions taken by leadership]
+3. **Business Impact Identified**: [Quantifiable impacts on revenue, efficiency, or competitive position]
+4. **Executive Actions Required**: [Specific next steps with C-level ownership and timelines]
 
-IMPORTANT: Only summarize content that was ACTUALLY discussed in the transcript. Do not add generic advice or recommendations not mentioned by participants. If the transcript is empty or lacks substantive content, state that clearly.
+CRITICAL: Reference only actual discussion content. Maintain executive briefing standards with clear business implications. If insufficient content, state assessment honestly.
 
-Respond with only plain text. Use the exact numbering shown above.`;
+Deliver in executive briefing format using numbered structure shown.`;
   }
   
-  if (analysisType === 'transition') { // ✅ ADD TRANSITION CASE
-    return `Analyze the discussion transition and provide guidance for moving to the next phase:
+  if (analysisType === 'transition') {
+    return `STRATEGIC PHASE TRANSITION - Executive Session Advancement:
 
-TRANSCRIPT:
+EXECUTIVE TRANSCRIPT:
 ${transcript}
 
-RESPONSE FORMAT:
-1. Summary: [what was accomplished in this phase]
-2. Key insights: [insights to carry forward]
-3. Readiness assessment: [assessment for next phase]
-4. Suggested transition: [transition points or questions]
+Provide transition guidance for executive session progression:
 
-Respond with only plain text. Use the exact numbering shown above.`;
+1. **Strategic Accomplishments**: [Business value and decisions achieved in current phase]
+2. **Critical Insights for Leadership**: [Key strategic insights to advance to next discussion phase]
+3. **Executive Readiness Assessment**: [Leadership alignment and preparation for next strategic focus]
+4. **Recommended Strategic Pivot**: [High-impact transition approach to maximize executive engagement]
+
+Frame guidance for C-level strategic session management with clear business focus.`;
   }
   
-  if (analysisType === 'facilitation') { // ✅ ADD FACILITATION CASE
-    return `As an expert facilitator, analyze this business discussion and provide facilitation guidance:
+  if (analysisType === 'facilitation') {
+    return `EXECUTIVE FACILITATION GUIDANCE - Strategic Session Management:
 
-TRANSCRIPT:
+EXECUTIVE TRANSCRIPT:
 ${transcript}
 
-RESPONSE FORMAT:
-1. Group dynamics: [what you observe about participation and engagement]
-2. Content insights: [key themes and strategic points emerging]
-3. Process observation: [how the discussion is flowing, any challenges]
-4. Facilitation suggestion: [specific guidance for steering the conversation]
+Provide facilitation guidance for executive strategic session:
 
-Respond with only plain text. Use the exact numbering shown above.`;
+1. **Leadership Engagement Dynamics**: [C-level participation patterns and strategic alignment]
+2. **Strategic Content Emergence**: [Business-critical themes and competitive insights developing]
+3. **Decision Process Flow**: [How strategic decisions are progressing, barriers to resolution]
+4. **Executive Facilitation Strategy**: [Specific approach to maximize strategic outcomes and decision velocity]
+
+Focus on facilitating high-impact strategic discussions with measurable business outcomes.`;
   }
   
-  return 'Invalid analysis type';
+  if (analysisType === 'executive') {
+    return `EXECUTIVE BRIEFING - Strategic Session Analysis:
+
+EXECUTIVE TRANSCRIPT:
+${transcript}
+
+Provide C-suite briefing on strategic discussion:
+
+1. **Strategic Summary**: [High-level business implications and key strategic insights]
+2. **Decision Requirements**: [Critical decisions requiring C-level approval with business justification]
+3. **Resource Implications**: [Investment needs, ROI projections, and competitive advantage potential]
+4. **Immediate Executive Actions**: [Urgent actions for C-level leaders with clear ownership and timelines]
+
+Deliver in executive briefing format suitable for board presentation and strategic planning.`;
+  }
+  
+  return 'Executive analysis type not recognized. Please specify: insights, synthesis, followup, cross_reference, facilitation, transition, or executive.';
 }
 
 // POST /api/analyze-live

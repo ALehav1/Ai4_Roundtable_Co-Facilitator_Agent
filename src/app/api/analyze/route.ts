@@ -60,8 +60,8 @@ function incrementRateLimit(clientId: string = 'default'): void {
 }
 
 /**
- * Build STRICT prompt that prevents hallucination
- * The prompt explicitly instructs the AI to only reference actual transcript content
+ * Build EXECUTIVE-FOCUSED prompt that prevents hallucination
+ * Enhanced for C-suite and strategic discussions
  * Incorporates the Three-Shift Framework: Assistance → Automation → Amplification
  */
 function buildStrictPrompt(
@@ -69,25 +69,26 @@ function buildStrictPrompt(
   context: string, 
   transcript: string
 ): string {
-  // Base instruction that prevents hallucination
+  // Executive-focused base instruction that prevents hallucination
   const baseInstruction = `
-CRITICAL RULES:
-1. You MUST ONLY reference content that appears in the TRANSCRIPT below
-2. If the transcript is empty or minimal, acknowledge this honestly
-3. NEVER invent participants, quotes, or details not in the transcript
-4. Output MUST be valid JSON
-5. Be specific when referencing the transcript - quote or paraphrase actual content
+EXECUTIVE ANALYSIS PROTOCOL:
+1. You are a senior strategic advisor analyzing C-level discussions
+2. ONLY reference content from the TRANSCRIPT below - no fabrication
+3. Frame insights in terms of business value, ROI, and strategic impact
+4. Identify concrete decisions needed and ownership requirements
+5. Output valid JSON with executive-appropriate language
+6. If transcript is limited, provide honest assessment of discussion maturity
 
-FRAMEWORK CONTEXT:
-Analyze through the lens of the Three-Shift Framework:
-- ASSISTANCE: AI as reactive helper, tools & copilots (limitation: shallow, no memory)
-- AUTOMATION: AI handles full workflows, agents (limitation: efficient but brittle)
-- AMPLIFICATION: AI that evolves, builds memory, creates compound intelligence
+STRATEGIC FRAMEWORK:
+Analyze through the Three-Shift Transformation Model:
+- ASSISTANCE STAGE: AI tools augment individual productivity (Current ROI: 10-30%)
+- AUTOMATION STAGE: AI agents handle complete workflows (Potential ROI: 40-70%)
+- AMPLIFICATION STAGE: AI creates compound organizational intelligence (Target ROI: 100%+)
 
-Context: "${context}"
+Executive Context: "${context}"
 
-TRANSCRIPT:
-${transcript || "[No transcript content yet]"}
+DISCUSSION TRANSCRIPT:
+${transcript || "[Executive discussion not yet initiated]"}
 
 `;
 
@@ -95,39 +96,48 @@ ${transcript || "[No transcript content yet]"}
   switch (analysisType) {
     case 'insights':
       return baseInstruction + `
-Based ONLY on the transcript above, provide insights in this exact JSON format:
+Provide STRATEGIC INSIGHTS based solely on transcript content in this JSON format:
 {
-  "insights": "Key patterns or themes from actual content (or 'No content to analyze yet' if empty)",
-  "confidence": 0.0 to 1.0 based on amount of content,
+  "insights": "Strategic patterns and business implications from discussion (or 'Executive discussion requires more content for analysis' if minimal)",
+  "confidence": 0.0 to 1.0 based on discussion depth,
   "type": "insights",
-  "evidence": ["Quote or reference 1 from transcript", "Quote or reference 2"] or [],
-  "frameworkAlignment": "Which shift (Assistance/Automation/Amplification) does the discussion align with?",
-  "transformationGaps": "What gaps exist between current state and AI-native operations?"
+  "evidence": ["Direct quote or paraphrase from transcript", "Supporting reference"] or [],
+  "businessValue": "Quantifiable impact on revenue, efficiency, or competitive advantage",
+  "frameworkAlignment": "Current organizational position: Assistance/Automation/Amplification stage",
+  "transformationGaps": "Critical gaps preventing advancement to next transformation stage",
+  "executiveActions": ["Decision 1 requiring C-level approval", "Initiative 2 with clear ownership"] or [],
+  "riskFactors": "Strategic risks if current trajectory continues",
+  "timeHorizon": "Short-term (0-6 months), Medium-term (6-18 months), or Long-term (18+ months) impact"
 }`;
 
     case 'synthesis':
       return baseInstruction + `
-Synthesize ONLY what's in the transcript in this exact JSON format:
+Synthesize discussion into EXECUTIVE SUMMARY format:
 {
-  "synthesis": "Summary of actual discussion points (or 'No discussion to synthesize yet' if empty)",
+  "synthesis": "Strategic summary of key decisions and outcomes (or 'Insufficient content for executive synthesis' if minimal)",
   "confidence": 0.0 to 1.0,
   "type": "synthesis",
-  "keyPoints": ["Point 1 from transcript", "Point 2"] or [],
-  "speakerCount": number of distinct speakers identified or 0,
-  "transformationReadiness": "Based on discussion, where is the organization on the transformation journey?",
-  "nextSteps": ["Concrete action 1", "Concrete action 2"] or []
+  "keyDecisions": ["Decision 1 with business impact", "Decision 2 with ownership"] or [],
+  "speakerCount": number of distinct participants or 0,
+  "transformationReadiness": "Organizational maturity assessment: Which transformation stage and readiness score (1-10)",
+  "strategicOutcomes": ["Outcome 1 with measurable impact", "Outcome 2 with timeline"] or [],
+  "investmentRequired": "Resource allocation needs: People, Technology, Process changes",
+  "competitiveImplications": "How these decisions affect market position and competitive advantage",
+  "nextActions": ["Action 1 (Owner: Role, Timeline: Date)", "Action 2 (Owner: Role, Timeline: Date)"] or []
 }`;
 
-    case 'questions':
+    case 'followup':
       return baseInstruction + `
-Generate follow-up questions based ONLY on the transcript in this exact JSON format:
+Generate STRATEGIC FOLLOW-UP QUESTIONS based on transcript content:
 {
-  "questions": ["Question 1 based on actual content", "Question 2"] or ["What would you like to discuss?"],
+  "questions": ["Strategic question 1 based on actual content", "Decision-focused question 2"] or ["What strategic AI initiatives should we prioritize?"],
   "confidence": 0.0 to 1.0,
-  "type": "questions",
-  "rationale": "Why these questions based on the transcript (or 'Waiting for discussion to begin' if empty)",
-  "frameworkQuestions": ["How can you move from Assistance to Automation?", "What foundations enable Amplification?"],
-  "pivotStrategy": "If discussion is stuck, how to redirect toward transformation?"
+  "type": "followup",
+  "rationale": "Strategic reasoning for these questions (or 'Awaiting executive input to generate targeted questions' if minimal)",
+  "frameworkQuestions": ["What ROI do we need to justify moving from Assistance to Automation?", "Which capabilities must we build to achieve Amplification?", "What competitive risks do we face if we don't act?"],
+  "pivotStrategy": "How to elevate discussion from tactical to strategic transformation focus",
+  "decisionPoints": ["Budget allocation decision", "Technology platform choice", "Organizational structure change"] or [],
+  "urgencyLevel": "High/Medium/Low based on competitive landscape and discussion urgency"
 }`;
 
     case 'cross_reference':
@@ -140,13 +150,31 @@ Identify connections ONLY within the provided transcript in this exact JSON form
   "examples": ["Connection 1 with specific references", "Connection 2"] or []
 }`;
 
+    case 'executive':
+      return baseInstruction + `
+Generate EXECUTIVE SUMMARY with strategic recommendations:
+{
+  "executiveSummary": "High-level strategic summary for C-suite consumption (or 'Discussion requires more strategic depth for executive briefing' if insufficient)",
+  "confidence": 0.0 to 1.0,
+  "type": "executive",
+  "strategicRecommendations": ["Recommendation 1 with business justification", "Recommendation 2 with ROI projection"] or [],
+  "budgetImplications": "Investment requirements and expected returns",
+  "timeToValue": "Expected timeline from decision to business impact",
+  "competitiveAdvantage": "How these actions improve market position",
+  "riskMitigation": "Key risks and proposed mitigation strategies",
+  "successMetrics": ["KPI 1 with target", "KPI 2 with measurement method"] or [],
+  "organizationalChange": "Required changes in structure, skills, or culture",
+  "immediateActions": ["Action 1 (Owner: C-level role, By: Date)", "Action 2 (Owner: Department, By: Date)"] or []
+}`;
+
     default:
       return baseInstruction + `
-Provide analysis in this exact JSON format:
+Provide strategic analysis in this JSON format:
 {
-  "result": "Analysis based on transcript",
+  "result": "Executive-focused analysis based on transcript content",
   "confidence": 0.0 to 1.0,
-  "type": "${analysisType}"
+  "type": "${analysisType}",
+  "businessImplications": "Strategic impact and decision requirements"
 }`;
   }
 }
