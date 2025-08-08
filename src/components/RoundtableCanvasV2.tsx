@@ -9,6 +9,7 @@ import { generateSessionPDF, prepareSessionDataForExport } from '../utils/pdfExp
 import { checkFeature } from '../config/feature-flags';
 import { TemplateModal } from './TemplateModal';
 import FacilitatorPanel from './FacilitatorPanel';
+import TemplateSelector from './TemplateSelector';
 // Centralized types and constants
 import { SessionState, TranscriptEntry, SessionContext } from '@/types/session';
 import { FACILITATOR_PATTERNS, MIN_WORDS_FOR_INSIGHTS } from '@/constants/speech';
@@ -79,7 +80,8 @@ const TopNavigation = ({
   presentationMode,
   setPresentationMode,
   showParticipantDetection,
-  setShowParticipantDetection 
+  setShowParticipantDetection,
+  setShowTemplateSelector
 }: {
   sessionContext: SessionContext;
   goToPreviousQuestion: () => void;
@@ -89,6 +91,7 @@ const TopNavigation = ({
   setPresentationMode: (mode: boolean) => void;
   showParticipantDetection: boolean;
   setShowParticipantDetection: (show: boolean) => void;
+  setShowTemplateSelector: (show: boolean) => void;
 }) => (
   <div className="sticky top-0 z-50 bg-white border-b shadow-sm p-4">
     <div className="flex justify-between items-center max-w-7xl mx-auto">
@@ -123,6 +126,15 @@ const TopNavigation = ({
       </div>
       
       <div className="flex items-center gap-3">
+        {/* Template Selection Button */}
+        <button
+          onClick={() => setShowTemplateSelector(true)}
+          className="px-3 py-2 rounded-lg bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors font-medium"
+          title="Choose executive session template"
+        >
+          📋 Templates
+        </button>
+        
         {/* Phase 1.3: Participant Detection Toggle */}
         <button
           onClick={() => setShowParticipantDetection(!showParticipantDetection)}
@@ -186,6 +198,7 @@ const RoundtableCanvasV2: React.FC = () => {
   const [activeAITab, setActiveAITab] = useState<'insights' | 'questions' | 'synthesis'>('insights');
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [templateModalMode, setTemplateModalMode] = useState<'save' | 'load' | 'manage' | 'create'>('save');
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   
   // Enhanced Speaker Mode State
   const [speakerMode, setSpeakerMode] = useState<'facilitator' | 'participant'>('facilitator');
@@ -721,6 +734,33 @@ This session follows the Assistance → Automation → Amplification progression
     
     return currentSpeaker;
   }, [currentSpeaker, participantCounter]);
+
+  // Template Selection Handler
+  const handleTemplateSelection = useCallback((templateSessionContext: any) => {
+    setSessionContext(prev => ({
+      ...prev,
+      topic: templateSessionContext.sessionTopic,
+      currentTopic: templateSessionContext.sessionTopic,
+      // Reset session state for new template
+      liveTranscript: [],
+      aiInsights: [],
+      keyThemes: [],
+      followupQuestions: [],
+      crossReferences: [],
+      currentQuestionIndex: 0,
+      questionStartTime: undefined,
+      agendaProgress: {}
+    }));
+    
+    // Show success message
+    if (templateSessionContext.sessionTopic) {
+      showToast({
+        type: 'success',
+        message: `Template "${templateSessionContext.sessionTopic}" loaded successfully`,
+        durationMs: 3000
+      });
+    }
+  }, [showToast]);
 
   // Render Functions
   const renderIntroState = () => (
@@ -1552,6 +1592,7 @@ This session follows the Assistance → Automation → Amplification progression
         setPresentationMode={setPresentationMode}
         showParticipantDetection={showParticipantDetection}
         setShowParticipantDetection={setShowParticipantDetection}
+        setShowTemplateSelector={setShowTemplateSelector}
       />
       
       {/* Enhanced Recording Indicator */}
@@ -1765,6 +1806,13 @@ This session follows the Assistance → Automation → Amplification progression
           </div>
         </div>
       )}
+
+      {/* Template Selector Modal */}
+      <TemplateSelector
+        isOpen={showTemplateSelector}
+        onTemplateSelect={handleTemplateSelection}
+        onClose={() => setShowTemplateSelector(false)}
+      />
     </>
   );
 };
