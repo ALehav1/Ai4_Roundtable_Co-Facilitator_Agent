@@ -940,30 +940,26 @@ This session follows the Assistance → Automation → Amplification progression
     // 5. Apply proximity/continuity logic
     const isWithinContinuityWindow = lastSpeakerDetection && (now - lastSpeakerDetection.timestamp) < CONTINUITY_WINDOW_MS;
     
-    // Strong participant indicators (override other patterns and continuity)
-    if (isParticipantFirstHand || isParticipantSelfIntro) {
+    // VERY Strong participant indicators (override continuity) - only self-introductions
+    if (isParticipantSelfIntro) {
       const result = 'Participant';
       setLastSpeakerDetection({ speaker: result, timestamp: now, confidence: 'high' });
       return result;
     }
     
-    // Strong facilitator indicators
-    const isFacilitator = matchesFacilitatorPattern || 
-                         isSelfIntroduction || 
-                         isOrgReference || 
-                         isTopicIntroduction || 
-                         isFacilitatorGuideQuestion ||
-                         isFacilitatorAskingAboutOthers ||
-                         (isQuestion && hasTransitionWords) || 
-                         hasSummaryLanguage;
+    // VERY Strong facilitator indicators (override continuity)
+    const isVeryStrongFacilitator = isSelfIntroduction || 
+                                   isOrgReference || 
+                                   isTopicIntroduction || 
+                                   isFacilitatorGuideQuestion;
     
-    if (isFacilitator) {
+    if (isVeryStrongFacilitator) {
       const result = 'Facilitator';
       setLastSpeakerDetection({ speaker: result, timestamp: now, confidence: 'high' });
       return result;
     }
     
-    // 6. Apply continuity logic if no strong indicators
+    // 6. Apply continuity logic BEFORE weaker patterns
     if (isWithinContinuityWindow && lastSpeakerDetection) {
       // Check for continuity breaks
       if (lastSpeakerDetection.speaker === 'Facilitator' && isFacilitatorAskingAudience) {
@@ -980,10 +976,30 @@ This session follows the Assistance → Automation → Amplification progression
         return result;
       }
       
-      // No continuity break - continue with last speaker
+      // No continuity break - continue with last speaker (HIGH PRIORITY)
       if (!isFacilitatorAskingAudience && !isAskingFacilitatorClarification) {
+        console.log(`🔄 Continuity: "${text.substring(0, 30)}..." → ${lastSpeakerDetection.speaker} (within ${Math.round((now - lastSpeakerDetection.timestamp) / 1000)}s)`);
         return lastSpeakerDetection.speaker;
       }
+    }
+    
+    // 7. Weaker pattern matching (only if no continuity)
+    const isWeakFacilitator = matchesFacilitatorPattern || 
+                             isFacilitatorAskingAboutOthers ||
+                             (isQuestion && hasTransitionWords) || 
+                             hasSummaryLanguage;
+    
+    if (isWeakFacilitator) {
+      const result = 'Facilitator';
+      setLastSpeakerDetection({ speaker: result, timestamp: now, confidence: 'medium' });
+      return result;
+    }
+    
+    // Weaker participant indicators (only if no continuity)
+    if (isParticipantFirstHand) {
+      const result = 'Participant';
+      setLastSpeakerDetection({ speaker: result, timestamp: now, confidence: 'medium' });
+      return result;
     }
     
     // 7. Default fallback
