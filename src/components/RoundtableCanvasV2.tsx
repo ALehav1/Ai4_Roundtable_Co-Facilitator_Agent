@@ -338,13 +338,15 @@ const RoundtableCanvasV2: React.FC = () => {
 
   const callAIAnalysis = useCallback(async (analysisType: string = 'insights') => {
     try {
-      const transcriptText = sessionContext.liveTranscript
-        .map(entry => `${entry.speaker}: ${entry.text}`)
-        .join('\n');
-
+      // Set analyzing state
+      setIsAnalyzing(true);
+      
+      // Build rich context using the dedicated context builder
+      const aiContext = buildAIContext();
+      
       // Minimum content threshold check
       const MIN_WORDS_FOR_INSIGHTS = 50;
-      const wordCount = transcriptText.split(/\s+/).filter(word => word.length > 0).length;
+      const wordCount = aiContext.transcript.split(/\s+/).filter(word => word.length > 0).length;
 
       if (wordCount < MIN_WORDS_FOR_INSIGHTS && analysisType === 'insights') {
         const insufficientContentInsight = {
@@ -362,19 +364,23 @@ const RoundtableCanvasV2: React.FC = () => {
         return;
       }
 
-      // Get current phase information
+      // Get current question for additional context
       const currentQuestion = getCurrentQuestion(sessionContext.currentQuestionIndex);
-      const currentPhase = currentQuestion?.title || 'Discussion Phase';
       const timeInPhase = sessionContext.questionStartTime ? 
         Math.round((Date.now() - sessionContext.questionStartTime.getTime()) / 60000) : 0;
 
-      // Enhanced transcript with rich context headers
+      // Enhanced transcript with rich context headers using buildAIContext
       const enhancedTranscriptText = `SESSION CONTEXT:
-Title: ${sessionContext.currentTopic || 'Strategic Planning Session'}
-Current Phase: ${currentPhase}
-Phase Description: ${currentQuestion?.description || ''}
+Title: ${aiContext.sessionTopic}
+Current Question: ${aiContext.currentQuestion}
+Question Context: ${aiContext.questionContext}
+Progress: ${aiContext.questionProgress}
+Facilitator Prompt: ${aiContext.facilitatorPrompt}
 Time in Phase: ${timeInPhase} minutes
 Total Participants: ${new Set(sessionContext.liveTranscript.map(e => e.speaker)).size}
+
+PREVIOUS INSIGHTS FOR THIS QUESTION:
+${aiContext.previousInsights}
 
 RECENT TRANSCRIPT (Last 15 entries):
 ${sessionContext.liveTranscript
@@ -389,16 +395,19 @@ This session follows the Assistance → Automation → Amplification progression
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sessionTopic: sessionContext.currentTopic || 'Strategic Planning Session',
+          sessionTopic: aiContext.sessionTopic,
           liveTranscript: enhancedTranscriptText,
           analysisType: analysisType,
           participantCount: new Set(sessionContext.liveTranscript.map(e => e.speaker)).size,
           clientId: 'live-session',
           phaseContext: {
-            currentPhase,
-            phaseDescription: currentQuestion?.description,
+            currentPhase: aiContext.currentQuestion,
+            phaseDescription: aiContext.questionContext,
             timeInPhase,
-            totalPhases: getTotalQuestions()
+            totalPhases: getTotalQuestions(),
+            questionProgress: aiContext.questionProgress,
+            facilitatorPrompt: aiContext.facilitatorPrompt,
+            previousInsights: aiContext.previousInsights
           }
         })
       });
@@ -440,7 +449,7 @@ This session follows the Assistance → Automation → Amplification progression
             confidence: result.confidence || 0.85,
             metadata: {
               transcriptLength: wordCount,
-              phase: currentPhase,
+              phase: aiContext.currentQuestion,
               timeInPhase,
               participantCount: new Set(sessionContext.liveTranscript.map(e => e.speaker)).size
             }
@@ -498,8 +507,38 @@ This session follows the Assistance → Automation → Amplification progression
         ...prev,
         aiInsights: [...prev.aiInsights, technicalErrorInsight]
       }));
+    } finally {
+      // ALWAYS reset analyzing state
+      setIsAnalyzing(false);
     }
-  }, [sessionContext.liveTranscript, sessionContext.currentTopic, sessionContext.currentQuestionIndex, sessionContext.questionStartTime, sessionContext.aiInsights, showToast]);
+  }, [sessionContext.liveTranscript, sessionContext.currentTopic, sessionContext.currentQuestionIndex, sessionContext.aiInsights, showToast]);
+
+  // ADD THIS FUNCTION - builds rich context for AI analysis
+  const buildAIContext = useCallback(() => {
+    const currentQuestion = getCurrentQuestion(sessionContext.currentQuestionIndex);
+    const questionProgress = `Question ${sessionContext.currentQuestionIndex + 1} of ${getTotalQuestions()}`;
+    
+    // Get previous insights for this question (if any)
+    const previousInsights = sessionContext.aiInsights
+      .filter(output => output.questionId === currentQuestion?.id)
+      .map(output => `[${output.type}]: ${output.content}`)
+      .join('\n');
+    
+    // Get transcript text
+    const transcript = sessionContext.liveTranscript
+      .map(entry => `${entry.speaker}: ${entry.text}`)
+      .join('\n');
+    
+    return {
+      sessionTopic: sessionContext.currentTopic || 'General Discussion',
+      currentQuestion: currentQuestion?.title || 'Open Discussion',
+      questionContext: currentQuestion?.description || '',
+      questionProgress,
+      facilitatorPrompt: currentQuestion?.facilitatorGuidance?.keyPrompt || '',
+      previousInsights: previousInsights || 'None',
+      transcript
+    };
+  }, [sessionContext.liveTranscript, sessionContext.currentQuestionIndex, sessionContext.currentTopic, sessionContext.aiInsights]);
 
   // Smart Insight Triggering System - positioned after callAIAnalysis declaration
   useEffect(() => {
@@ -934,9 +973,43 @@ This session follows the Assistance → Automation → Amplification progression
                 <span className="phase-badge">
                   Phase {sessionContext.currentQuestionIndex + 1} of {AI_TRANSFORMATION_QUESTIONS.length}
                 </span>
-                <span className="participant-count">
-                  {new Set(sessionContext.liveTranscript.map(e => e.speaker)).size} speakers
-                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (sessionContext.currentQuestionIndex > 0) {
+                        setSessionContext(prev => ({
+                          ...prev,
+                          currentQuestionIndex: prev.currentQuestionIndex - 1
+                        }));
+                      }
+                    }}
+                    disabled={sessionContext.currentQuestionIndex === 0}
+                    className="inline-flex items-center px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Previous phase"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      if (sessionContext.currentQuestionIndex < AI_TRANSFORMATION_QUESTIONS.length - 1) {
+                        setSessionContext(prev => ({
+                          ...prev,
+                          currentQuestionIndex: prev.currentQuestionIndex + 1
+                        }));
+                      }
+                    }}
+                    disabled={sessionContext.currentQuestionIndex >= AI_TRANSFORMATION_QUESTIONS.length - 1}
+                    className="inline-flex items-center px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Next phase"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
             
@@ -1373,56 +1446,7 @@ This session follows the Assistance → Automation → Amplification progression
                 />
               )}
 
-              {/* Phase navigation */}
-              <div className="flex justify-between items-center">
-                <button
-                  onClick={() => setSessionContext(prev => ({
-                    ...prev,
-                    currentQuestionIndex: Math.max(0, prev.currentQuestionIndex - 1)
-                  }))}
-                  disabled={sessionContext.currentQuestionIndex === 0}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  Previous Phase
-                </button>
-                
-                <div className="text-sm text-gray-600">
-                  Phase {sessionContext.currentQuestionIndex + 1} of {AI_TRANSFORMATION_QUESTIONS.length}
-                </div>
-                
-                <button
-                  onClick={() => {
-                    if (sessionContext.currentQuestionIndex < AI_TRANSFORMATION_QUESTIONS.length - 1) {
-                      setSessionContext(prev => ({
-                        ...prev,
-                        currentQuestionIndex: prev.currentQuestionIndex + 1
-                      }));
-                    } else {
-                      setSessionState('summary');
-                    }
-                  }}
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  {sessionContext.currentQuestionIndex < AI_TRANSFORMATION_QUESTIONS.length - 1 ? (
-                    <>
-                      Next Phase
-                      <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </>
-                  ) : (
-                    <>
-                      Complete Session
-                      <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </>
-                  )}
-                </button>
-              </div>
+
             </div>
           </div>
 

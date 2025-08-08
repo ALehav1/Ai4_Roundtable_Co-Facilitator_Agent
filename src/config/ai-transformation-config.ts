@@ -70,22 +70,24 @@ export const AI_TRANSFORMATION_QUESTIONS: RoundtableQuestion[] = [
   {
     id: "phase-1-provocation",
     title: "Phase 1: Welcome & Strategic Provocation",
-    description: "Break surface-level assumptions about AI adoption",
-    timeLimit: 5,
+    description: "Introductions and strategic framing",
+    timeLimit: 8,
     facilitatorGuidance: {
-      openingLine: "Most enterprises say they're using AI. But very few have changed how they work, decide, or learn.",
-      objective: "Surface assumptions, fears, and levels of maturity",
-      keyPrompt: "Fast-forward 3–5 years: What's the best outcome—and the worst—for your org because of AI? And what are you doing today to tilt toward the best?",
+      openingLine: "Welcome to our executive roundtable on AI transformation. Let's start with quick introductions to understand who's in the room.",
+      objective: "Build context through introductions, then surface assumptions, fears, and levels of maturity",
+      keyPrompt: "Please introduce yourself: Name, organization, role, and briefly - what's your biggest AI priority and biggest challenge right now?",
       whatToListenFor: [
-        "Surface-level vs. deep understanding of AI impact",
-        "Fear-based vs. opportunity-based thinking", 
-        "Individual productivity focus vs. systemic transformation"
+        "Range of AI maturity levels across participants",
+        "Common challenges and priorities emerging",
+        "Industry/functional diversity in the room",
+        "Leadership vs. tactical perspectives"
       ],
       facilitationTips: [
-        "Surface 2–3 perspectives from the group to reveal mindset diversity",
-        "Note who's thinking systemically vs. tactically"
+        "Keep introductions crisp (1-2 minutes each)",
+        "Note AI maturity patterns for strategic framing",
+        "Listen for common themes to reference later"
       ],
-      transitionLine: "This session is about what it really takes to move from AI experimentation to transformation."
+      transitionLine: "Thank you. Now that we know who's here, let's get provocative. Most enterprises say they're using AI. But very few have changed how they work, decide, or learn. Fast-forward 3–5 years: What's the best outcome—and the worst—for your organization because of AI? And what are you doing today to tilt toward the best?"
     },
     aiPromptContext: "This is the opening provocation. Look for patterns in how participants view AI's future impact - both positive and negative scenarios. Focus on their level of AI maturity and transformation readiness.",
     followUpPrompts: [
