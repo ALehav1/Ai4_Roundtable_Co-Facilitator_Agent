@@ -14,6 +14,7 @@ A sophisticated AI-powered co-facilitation system designed for strategic roundta
 - ✅ **Unified Template Management**: Consolidated template/config systems into single, clear UX
 - ✅ **Template Creation Mode**: New ability to create templates from scratch
 - ✅ **Improved AI Panel**: Tabbed interface for insights, questions, and synthesis
+- 🧹 **AI Panel Cleanup**: Removed redundant lower tab bar; the 2×2 analysis button grid now controls tabs and content filtering
 - ✅ **Enhanced Error Handling**: Better user guidance when waiting for AI responses
 - 🛎️ **Executive-Friendly Error Toasts**: Visible, accessible toast notifications for API and export errors (global `ToastProvider` + `useToast` hook)
 - 🧯 **Fixed API Rate Limiting**: Corrected persistent increment bug; requests only count after a successful AI call (both `/api/analyze` and `/api/analyze-live`)

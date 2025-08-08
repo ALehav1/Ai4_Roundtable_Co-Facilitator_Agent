@@ -189,6 +189,7 @@ const RoundtableCanvasV2: React.FC = () => {
   const [currentSpeaker, setCurrentSpeaker] = useState('Participant'); // DEFAULT TO PARTICIPANT per new guide
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzingType, setAnalyzingType] = useState<string | null>(null);
   const [showFacilitatorPanel, setShowFacilitatorPanel] = useState(true);
   const [interimTranscript, setInterimTranscript] = useState<string>('');
   const [showManualModal, setShowManualModal] = useState(false);
@@ -323,30 +324,63 @@ const RoundtableCanvasV2: React.FC = () => {
 
   // BUILD AI CONTEXT - Must be defined before callAIAnalysis uses it
   const buildAIContext = useCallback(() => {
-    const currentQuestion = getCurrentQuestion(sessionContext.currentQuestionIndex);
-    const questionProgress = `Question ${sessionContext.currentQuestionIndex + 1} of ${getTotalQuestions()}`;
+    const currentTopic = sessionContext.currentTopic;
+    const questionIndex = sessionContext.currentQuestionIndex;
+    const questions = AI_TRANSFORMATION_QUESTIONS; // from config
+    const totalQuestions = questions.length;
     
-    // Get previous insights for this question (if any)
-    const previousInsights = sessionContext.aiInsights
-      .filter(output => output.questionId === currentQuestion?.id)
-      .map(output => `[${output.type}]: ${output.content}`)
-      .join('\n');
-    
-    // Get transcript text
-    const transcript = sessionContext.liveTranscript
-      .map(entry => `${entry.speaker}: ${entry.text}`)
-      .join('\n');
+    // Helper function to get session duration
+    const getSessionDuration = () => {
+      if (!sessionContext.startTime) return 'Not started';
+      const now = new Date();
+      const start = new Date(sessionContext.startTime);
+      const durationMs = now.getTime() - start.getTime();
+      const minutes = Math.floor(durationMs / 60000);
+      const seconds = Math.floor((durationMs % 60000) / 1000);
+      return `${minutes}m ${seconds}s`;
+    };
+
+    // Helper function to format transcript with speakers
+    const formatTranscriptWithSpeakers = (transcriptEntries: any[]) => {
+      return transcriptEntries
+        .map(entry => `${entry.speaker}: ${entry.text}`)
+        .join('\n');
+    };
     
     return {
-      sessionTopic: sessionContext.currentTopic || 'General Discussion',
-      currentQuestion: currentQuestion?.title || 'Open Discussion',
-      questionContext: currentQuestion?.description || '',
-      questionProgress,
-      facilitatorPrompt: currentQuestion?.facilitatorGuidance?.keyPrompt || '',
-      previousInsights: previousInsights || 'None',
-      transcript
+      sessionInfo: {
+        topic: currentTopic,
+        currentQuestion: getCurrentQuestion(questionIndex),
+        questionProgress: `${questionIndex + 1} of ${totalQuestions}`,
+        participantCount: new Set(sessionContext.liveTranscript.map(e => e.speaker)).size,
+        sessionDuration: getSessionDuration()
+      },
+      recentTranscript: formatTranscriptWithSpeakers(
+        sessionContext.liveTranscript.slice(-10) // Last 10 entries
+      ),
+      previousInsights: sessionContext.aiInsights
+        .filter(i => i.type === 'insights')
+        .slice(-3)
+        .map(i => i.content)
     };
-  }, [sessionContext.liveTranscript, sessionContext.currentQuestionIndex, sessionContext.currentTopic, sessionContext.aiInsights]);
+  }, [sessionContext.liveTranscript, sessionContext.currentQuestionIndex, sessionContext.currentTopic, sessionContext.aiInsights, sessionContext.startTime]);
+
+  // Filter insights based on active tab
+  const getFilteredInsights = () => {
+    return sessionContext.aiInsights.filter(insight => {
+      if (activeAITab === 'insights') {
+        return insight.type === 'insight' || insight.type === 'insights' || insight.type === 'followup';
+      } else if (activeAITab === 'synthesis') {
+        return insight.type === 'synthesis';
+      } else if (activeAITab === 'followup') {
+        return insight.type === 'followup';
+      } else if (activeAITab === 'executive') {
+        return insight.type === 'executive';
+      }
+      // activeAITab === 'all' or any other value, show all insights
+      return true;
+    });
+  };
 
   const endSession = useCallback(async () => {
     setSessionState('summary');
@@ -364,16 +398,20 @@ const RoundtableCanvasV2: React.FC = () => {
   }, [speechTranscription]);
 
   const callAIAnalysis = useCallback(async (analysisType: string = 'insights') => {
+    // Prevent spam - check if already analyzing
+    if (isAnalyzing) return;
+    
+    // Set analyzing state and type
+    setIsAnalyzing(true);
+    setAnalyzingType(analysisType);
+    
     try {
-      // Set analyzing state
-      setIsAnalyzing(true);
-      
       // Build rich context using the dedicated context builder
       const aiContext = buildAIContext();
       
       // Minimum content threshold check
       const MIN_WORDS_FOR_INSIGHTS = 50;
-      const wordCount = aiContext.transcript.split(/\s+/).filter(word => word.length > 0).length;
+      const wordCount = aiContext.recentTranscript.split(/\s+/).filter(word => word.length > 0).length;
 
       if (wordCount < MIN_WORDS_FOR_INSIGHTS && analysisType === 'insights') {
         const insufficientContentInsight = {
@@ -398,16 +436,16 @@ const RoundtableCanvasV2: React.FC = () => {
 
       // Enhanced transcript with rich context headers using buildAIContext
       const enhancedTranscriptText = `SESSION CONTEXT:
-Title: ${aiContext.sessionTopic}
-Current Question: ${aiContext.currentQuestion}
-Question Context: ${aiContext.questionContext}
-Progress: ${aiContext.questionProgress}
-Facilitator Prompt: ${aiContext.facilitatorPrompt}
+Title: ${aiContext.sessionInfo.topic}
+Current Question: ${aiContext.sessionInfo.currentQuestion?.title || 'Open Discussion'}
+Question Context: ${aiContext.sessionInfo.currentQuestion?.description || ''}
+Progress: ${aiContext.sessionInfo.questionProgress}
+Facilitator Prompt: ${aiContext.sessionInfo.currentQuestion?.facilitatorGuidance?.keyPrompt || ''}
 Time in Phase: ${timeInPhase} minutes
 Total Participants: ${new Set(sessionContext.liveTranscript.map(e => e.speaker)).size}
 
 PREVIOUS INSIGHTS FOR THIS QUESTION:
-${aiContext.previousInsights}
+${aiContext.previousInsights.join('\n\n')}
 
 RECENT TRANSCRIPT (Last 15 entries):
 ${sessionContext.liveTranscript
@@ -422,19 +460,19 @@ This session follows the Assistance → Automation → Amplification progression
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sessionTopic: aiContext.sessionTopic,
+          sessionTopic: aiContext.sessionInfo.topic,
           liveTranscript: enhancedTranscriptText,
           analysisType: analysisType,
           participantCount: new Set(sessionContext.liveTranscript.map(e => e.speaker)).size,
           clientId: 'live-session',
           phaseContext: {
-            currentPhase: aiContext.currentQuestion,
-            phaseDescription: aiContext.questionContext,
+            currentPhase: aiContext.sessionInfo.currentQuestion?.title || 'Open Discussion',
+            phaseDescription: aiContext.sessionInfo.currentQuestion?.description || '',
             timeInPhase,
             totalPhases: getTotalQuestions(),
-            questionProgress: aiContext.questionProgress,
-            facilitatorPrompt: aiContext.facilitatorPrompt,
-            previousInsights: aiContext.previousInsights
+            questionProgress: aiContext.sessionInfo.questionProgress,
+            facilitatorPrompt: aiContext.sessionInfo.currentQuestion?.facilitatorGuidance?.keyPrompt || '',
+            previousInsights: aiContext.previousInsights.join('\n\n')
           }
         })
       });
@@ -476,7 +514,7 @@ This session follows the Assistance → Automation → Amplification progression
             confidence: result.confidence || 0.85,
             metadata: {
               transcriptLength: wordCount,
-              phase: aiContext.currentQuestion,
+              phase: aiContext.sessionInfo.currentQuestion?.title || 'Open Discussion',
               timeInPhase,
               participantCount: new Set(sessionContext.liveTranscript.map(e => e.speaker)).size
             }
@@ -535,8 +573,9 @@ This session follows the Assistance → Automation → Amplification progression
         aiInsights: [...prev.aiInsights, technicalErrorInsight]
       }));
     } finally {
-      // ALWAYS reset analyzing state
+      // ALWAYS reset analyzing state and type
       setIsAnalyzing(false);
+      setAnalyzingType(null);
     }
   }, [sessionContext.liveTranscript, sessionContext.currentTopic, sessionContext.currentQuestionIndex, sessionContext.aiInsights, showToast]);
 
@@ -1720,24 +1759,9 @@ This session follows the Assistance → Automation → Amplification progression
                         </p>
                       </div>
                     ) : (
-                      <div className="space-y-3">
-                        {(() => {
-                          // Filter insights based on active tab
-                          let filteredInsights = sessionContext.aiInsights;
-                          
-                          if (activeAITab === 'insights') {
-                            filteredInsights = sessionContext.aiInsights.filter(insight => insight.type === 'insights');
-                          } else if (activeAITab === 'followup') {
-                            filteredInsights = sessionContext.aiInsights.filter(insight => insight.type === 'followup');
-                          } else if (activeAITab === 'synthesis') {
-                            filteredInsights = sessionContext.aiInsights.filter(insight => insight.type === 'synthesis');
-                          } else if (activeAITab === 'executive') {
-                            filteredInsights = sessionContext.aiInsights.filter(insight => insight.type === 'executive');
-                          }
-                          // If activeAITab === 'all' or any other value, show all insights
-                          
-                          return filteredInsights.slice(-3);
-                        })().map((insight, idx) => {
+                      <div>
+                        <div className="space-y-3">
+                        {getFilteredInsights().slice(-3).map((insight, idx) => {
                           const insightType = insight.type || 'info';
                           const colorClass = insightType === 'insights' ? 'purple' : insightType === 'followup' ? 'blue' : insightType === 'synthesis' ? 'green' : 'info';
                           
@@ -1767,6 +1791,7 @@ This session follows the Assistance → Automation → Amplification progression
                             </div>
                           );
                         })}
+                      </div>
                       </div>
                     )}
                   </div>
