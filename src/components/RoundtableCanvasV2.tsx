@@ -231,9 +231,11 @@ const RoundtableCanvasV2: React.FC = () => {
       console.log('🎯 Final transcript received:', finalEvent.text);
       setInterimTranscript('');
       
+      // Use smart speaker detection for speech transcription too
+      const detectedSpeaker = detectSpeaker(finalEvent.text);
       addTranscriptEntry({
         text: finalEvent.text,
-        speaker: currentSpeaker || 'Speaker',
+        speaker: detectedSpeaker,
         isAutoDetected: true,
         confidence: finalEvent.confidence
       });
@@ -831,7 +833,11 @@ const RoundtableCanvasV2: React.FC = () => {
     // 1. Check semantic facilitator patterns - much more flexible detection
     const matchesFacilitatorPattern = Object.values(FACILITATOR_SEMANTIC_PATTERNS)
       .flat()
-      .some(regex => regex.test(text));
+      .some(regex => {
+        const matches = regex.test(text);
+        console.log(`🔍 DEBUG: Pattern ${regex} matches "${text}": ${matches}`);
+        return matches;
+      });
     
     // 2. Context-sensitive facilitator detection for Ari from Moody's
     
@@ -2087,10 +2093,12 @@ const RoundtableCanvasV2: React.FC = () => {
               <button
                 onClick={() => {
                   if (manualEntryText.trim()) {
+                    // Use smart speaker detection instead of currentSpeaker
+                    const detectedSpeaker = detectSpeaker(manualEntryText.trim());
                     addTranscriptEntry({
                       text: manualEntryText.trim(),
-                      speaker: currentSpeaker,
-                      isAutoDetected: false,
+                      speaker: detectedSpeaker,
+                      isAutoDetected: true, // Now using auto-detection
                     });
                     setShowManualModal(false);
                     setManualEntryText('');
