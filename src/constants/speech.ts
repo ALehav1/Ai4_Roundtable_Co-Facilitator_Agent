@@ -1,47 +1,70 @@
-export const FACILITATOR_PATTERNS = [
-  // Opening/closing
-  "welcome", "welcome to", "thank you for joining", "let's begin", "let's wrap up",
-  "before we close", "final thoughts", "one more question",
+// Semantic Pattern Categories for Flexible Facilitator Detection
+export const FACILITATOR_SEMANTIC_PATTERNS = {
+  // Greetings & Openings - Any welcoming/opening language
+  GREETINGS: [
+    /\b(hi|hello|good morning|good afternoon|welcome|greetings)\b/i,
+    /\b(thank you for (joining|coming)|thanks for being here)\b/i,
+    /\b(let's (begin|start|get started)|shall we begin)\b/i
+  ],
   
-  // Facilitation phrases
-  "what I'm hearing", "let me summarize", "can you say more",
-  "tell me more", "how does that connect", "building on that",
-  "that's interesting", "great point", "excellent question",
+  // Group Questions - Questions directed at participants
+  GROUP_QUESTIONS: [
+    /\b(what do you (think|feel|believe|see))\b/i,
+    /\b(how do you (view|approach|handle|think about))\b/i,
+    /\b(what's your (experience|perspective|view|take))\b/i,
+    /\b(can you (tell us|share|explain))\b/i,
+    /\b(would you (share|elaborate|expand))\b/i,
+    /\b(any (thoughts|questions|reactions))\b/i,
+    /\b(does anyone (have|want to))\b/i
+  ],
   
-  // Transitions
-  "moving on", "next question", "let's shift", "that brings us to",
-  "turning to", "with that in mind",
+  // Facilitation Language - Managing discussion flow
+  FACILITATION: [
+    /\b(what I'm hearing|let me summarize|to summarize)\b/i,
+    /\b(can you say more|tell me more|elaborate on that)\b/i,
+    /\b(how does that connect|building on that|following up)\b/i,
+    /\b(that's (interesting|great|excellent))\b/i,
+    /\b(just to clarify|to build on)\b/i,
+    /\b(i appreciate|thanks for sharing)\b/i
+  ],
   
-  // From your session guide
-  "most enterprises say they're using AI",
-  "let me offer a framing",
-  "fast forward to", "what does your org look like",
-  "the darker version", "what scares you most",
-  "the question isn't whether AI will work",
-  "if that future is compelling",
-  "what needs to be true today",
-  "are your systems building institutional memory",
-  "what's one takeaway",
+  // Transitions - Moving between topics
+  TRANSITIONS: [
+    /\b(moving on|let's move|next (question|topic))\b/i,
+    /\b(let's (shift|explore|turn to))\b/i,
+    /\b(that brings us to|turning to)\b/i,
+    /\b(with that in mind|speaking of)\b/i,
+    /\b(our next|the next)\b/i
+  ],
   
-  // Core framework language
-  "tools to agents", "outputs to feedback loops",
-  "assistance automation amplification",
-  "time saved is fleeting",
+  // Time Management - Session timing
+  TIME_MANAGEMENT: [
+    /\b(we have about|few more minutes|time for one more)\b/i,
+    /\b(let's spend|in the interest of time)\b/i,
+    /\b(before we (close|wrap up|end))\b/i,
+    /\b(final thoughts|one more question)\b/i
+  ],
   
-  // Additional facilitation patterns
-  "what do you think", "how does that", "can you tell us", "would you share", "what's your experience",
-  "let's move on", "our next question", "moving to", "let's explore", "next topic",
-  "thank you for sharing", "i appreciate that", "interesting perspective", "thanks for that",
-  "we have about", "few more minutes", "time for one more", "let's spend",
-  "welcome everyone", "to summarize", "let me ask",
-  "just to clarify", "to build on that", "following up on",
+  // Organizational Context - Facilitator's org references
+  ORG_CONTEXT: [
+    /\b(we at moody'?s|here at moody'?s|at moody'?s we)\b/i,
+    /\b(moody'?s (perspective|research|experience))\b/i,
+    /\b(from moody'?s standpoint|our work at moody'?s)\b/i,
+    /\b(i'm ari|this is ari|ari (lehavi|from moody'?s))\b/i
+  ],
   
-  // Moody's facilitator patterns (Ari Lehavi and organization references)
-  "we at moody's", "we at moodys", "here at moody's", "at moody's we",
-  "moody's perspective", "from moody's standpoint", "moody's research shows",
-  "as we've seen at moody's", "moody's experience", "our work at moody's",
-  "ari lehavi", "i'm ari", "this is ari", "ari from moody's"
-];
+  // Framework Language - Session-specific concepts
+  FRAMEWORK: [
+    /\b(assistance.*(automation|amplification)|automation.*amplification)\b/i,
+    /\b(tools to agents|outputs to feedback)\b/i,
+    /\b(fast forward.*years|what does your org look like)\b/i,
+    /\b(what scares you most|what's one takeaway)\b/i,
+    /\b(institutional memory|time saved is fleeting)\b/i
+  ]
+};
+
+// Legacy export for backward compatibility (now unused)
+export const FACILITATOR_PATTERNS: string[] = [];
 
 export const MIN_WORDS_FOR_INSIGHTS = 50;
 export const MAX_NETWORK_ERRORS = 10;

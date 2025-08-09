@@ -12,7 +12,7 @@ import FacilitatorPanel from './FacilitatorPanel';
 import TemplateSelector from './TemplateSelector';
 // Centralized types and constants
 import { SessionState, TranscriptEntry, SessionContext } from '@/types/session';
-import { FACILITATOR_PATTERNS, MIN_WORDS_FOR_INSIGHTS } from '@/constants/speech';
+import { FACILITATOR_SEMANTIC_PATTERNS, MIN_WORDS_FOR_INSIGHTS } from '../constants/speech';
 import { useToast } from '@/components/ToastProvider';
 import { DebugPanel } from '@/components/DebugPanel';
 
@@ -828,10 +828,10 @@ const RoundtableCanvasV2: React.FC = () => {
     const lowerText = text.toLowerCase();
     const now = Date.now();
     
-    // 1. Check generic facilitator patterns first
-    const matchesFacilitatorPattern = FACILITATOR_PATTERNS.some(pattern => 
-      lowerText.includes(pattern.toLowerCase())
-    );
+    // 1. Check semantic facilitator patterns - much more flexible detection
+    const matchesFacilitatorPattern = Object.values(FACILITATOR_SEMANTIC_PATTERNS)
+      .flat()
+      .some(regex => regex.test(text));
     
     // 2. Context-sensitive facilitator detection for Ari from Moody's
     
