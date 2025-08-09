@@ -322,7 +322,7 @@ const RoundtableCanvasV2: React.FC = () => {
   }, [sessionContext.liveTranscript, sessionContext.currentQuestionIndex, sessionContext.currentTopic, sessionContext.aiInsights, sessionContext.startTime]);
 
   // Progressive Tab System Configuration
-  type TabType = 'insights' | 'synthesis' | 'advanced';
+  type TabType = 'insights' | 'followup' | 'synthesis' | 'executive' | 'advanced';
   type AnalysisType = 'strategic' | 'followup' | 'synthesis' | 'executive';
 
   interface TabConfig {
@@ -335,15 +335,27 @@ const RoundtableCanvasV2: React.FC = () => {
   const TAB_CONFIGURATION: TabConfig[] = [
     {
       id: 'insights',
-      label: 'Insights',
+      label: 'Strategic Insights',
       icon: '💡',
-      analysisTypes: ['insights', 'insight', 'followup'] // Combines Strategic + Follow-up
+      analysisTypes: ['insights', 'insight']
+    },
+    {
+      id: 'followup',
+      label: 'Follow-up Questions',
+      icon: '❓',
+      analysisTypes: ['followup', 'questions']
     },
     {
       id: 'synthesis', 
-      label: 'Synthesis',
+      label: 'Synthesize Discussion',
       icon: '🔄',
-      analysisTypes: ['synthesis', 'executive'] // Combines Synthesis + Executive
+      analysisTypes: ['synthesis']
+    },
+    {
+      id: 'executive',
+      label: 'Executive Summary',
+      icon: '📋',
+      analysisTypes: ['executive', 'summary']
     }
   ];
 
