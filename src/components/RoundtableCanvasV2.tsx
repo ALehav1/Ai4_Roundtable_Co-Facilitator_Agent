@@ -20,9 +20,6 @@ import { DebugPanel } from '@/components/DebugPanel';
 // SessionState, TranscriptEntry, SessionContext imported from @/types/session
 // FACILITATOR_PATTERNS, MIN_WORDS_FOR_INSIGHTS imported from @/constants/speech
 
-// Temporary Speaker Detection Tester Component
-
-
 // Enhanced Recording Indicator Component
 const RecordingIndicator = ({ isRecording }: { isRecording: boolean }) => {
   if (!isRecording) return null;
@@ -192,7 +189,10 @@ const RoundtableCanvasV2: React.FC = () => {
   const [bulkTranscriptText, setBulkTranscriptText] = useState('');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('blank_template');
   const [isExporting, setIsExporting] = useState(false);
-  const [activeAITab, setActiveAITab] = useState<'all' | 'insights' | 'followup' | 'synthesis' | 'executive'>('all');
+  
+  // CHANGED: Now this is for the tab selection, not filtering
+  const [activeAITab, setActiveAITab] = useState<'insights' | 'synthesis' | 'followup' | 'executive'>('insights');
+  
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [templateModalMode, setTemplateModalMode] = useState<'save' | 'load' | 'manage' | 'create'>('save');
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
@@ -323,79 +323,6 @@ const RoundtableCanvasV2: React.FC = () => {
     };
   }, [sessionContext.liveTranscript, sessionContext.currentQuestionIndex, sessionContext.currentTopic, sessionContext.aiInsights, sessionContext.startTime]);
 
-  // Progressive Tab System Configuration
-  type TabType = 'insights' | 'followup' | 'synthesis' | 'executive' | 'advanced';
-  type AnalysisType = 'strategic' | 'followup' | 'synthesis' | 'executive';
-
-  interface TabConfig {
-    id: TabType;
-    label: string;
-    icon: string;
-    analysisTypes: string[];  // Map which analysis types belong to each tab
-  }
-
-  const TAB_CONFIGURATION: TabConfig[] = [
-    {
-      id: 'insights',
-      label: 'Strategic Insights',
-      icon: '💡',
-      analysisTypes: ['insights', 'insight']
-    },
-    {
-      id: 'followup',
-      label: 'Follow-up Questions',
-      icon: '❓',
-      analysisTypes: ['followup', 'questions']
-    },
-    {
-      id: 'synthesis', 
-      label: 'Synthesize Discussion',
-      icon: '🔄',
-      analysisTypes: ['synthesis']
-    },
-    {
-      id: 'executive',
-      label: 'Executive Summary',
-      icon: '📋',
-      analysisTypes: ['executive', 'summary']
-    }
-  ];
-
-  const ADVANCED_TAB: TabConfig = {
-    id: 'advanced',
-    label: 'Advanced',
-    icon: '🚀',
-    analysisTypes: [] // Custom filtering logic
-  };
-
-  // Progressive disclosure state
-  const [showAdvancedTab, setShowAdvancedTab] = useState(false);
-
-  // Show advanced tab after 3+ analyses
-  useEffect(() => {
-    const analysisCount = sessionContext.aiInsights?.length || 0;
-    if (analysisCount >= 3 && !showAdvancedTab) {
-      setShowAdvancedTab(true);
-    }
-  }, [sessionContext.aiInsights, showAdvancedTab]);
-
-  // Get current tab configuration
-  const availableTabs = showAdvancedTab 
-    ? [...TAB_CONFIGURATION, ADVANCED_TAB]
-    : TAB_CONFIGURATION;
-
-  // Filter insights based on active tab with new progressive system
-  const getFilteredInsights = () => {
-    if (!sessionContext.aiInsights) return [];
-    
-    const activeConfig = availableTabs.find(tab => tab.id === activeAITab);
-    if (!activeConfig) return sessionContext.aiInsights;
-    
-    return sessionContext.aiInsights.filter(insight => {
-      return activeConfig.analysisTypes.includes(insight.type || 'insight');
-    });
-  };
-
   const endSession = useCallback(async () => {
     setSessionState('summary');
     setIsRecording(false);
@@ -493,6 +420,13 @@ const RoundtableCanvasV2: React.FC = () => {
               }],
             }));
             
+            // Show success toast
+            showToast({
+              type: 'success',
+              title: 'AI Analysis Complete',
+              message: `New ${analysisType} generated successfully.`
+            });
+            
             return liveData;
           }
         }
@@ -553,14 +487,22 @@ const RoundtableCanvasV2: React.FC = () => {
         }],
       }));
       
+      showToast({
+        type: 'error',
+        title: 'AI Analysis Failed',
+        message: 'Unable to generate analysis. Please try again.',
+        action: { 
+          label: 'Retry', 
+          onClick: () => callAIAnalysis(analysisType) 
+        }
+      });
+      
       throw error;
     } finally {
       setIsAnalyzing(false);
       setAnalyzingType(null);
     }
-  }, [sessionContext, isAnalyzing]);
-
-
+  }, [sessionContext, isAnalyzing, showToast]);
 
   // Smart Insight Triggering System - positioned after callAIAnalysis declaration
   useEffect(() => {
@@ -957,7 +899,7 @@ const RoundtableCanvasV2: React.FC = () => {
     const result = 'Participant';
     setLastSpeakerDetection({ speaker: result, timestamp: now, confidence: 'low' });
     return result;
-  }, []);
+  }, [lastSpeakerDetection]);
 
   // Template Selection Handler
   const handleTemplateSelection = useCallback((templateSessionContext: any) => {
@@ -980,11 +922,16 @@ const RoundtableCanvasV2: React.FC = () => {
     if (templateSessionContext.sessionTopic) {
       showToast({
         type: 'success',
-        message: `Template "${templateSessionContext.sessionTopic}" loaded successfully`,
-        durationMs: 3000
+        title: 'Template loaded',
+        message: `Template "${templateSessionContext.sessionTopic}" loaded successfully`
       });
     }
   }, [showToast]);
+
+  // Helper function to get insights for a specific type
+  const getInsightsForType = (type: string) => {
+    return sessionContext.aiInsights.filter(i => i.type === type);
+  };
 
   // Render Functions
   const renderIntroState = () => (
@@ -1313,7 +1260,10 @@ const RoundtableCanvasV2: React.FC = () => {
 
               {/* Transcript section - keep existing transcript display code */}
               <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Discussion Transcript</h3>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-semibold text-gray-900">Discussion Transcript</h3>
+                  <span className="text-xs text-gray-500">Speakers auto-detected</span>
+                </div>
                 <div className="transcript-section">
                   <div className="transcript-container">
                     {sessionContext.liveTranscript.length === 0 ? (
@@ -1395,7 +1345,7 @@ const RoundtableCanvasV2: React.FC = () => {
               </div>
 
               {/* Recording Controls with Status */}
-              <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold">🎙️ Live Capture</h3>
                   
@@ -1467,47 +1417,276 @@ const RoundtableCanvasV2: React.FC = () => {
                 )}
               </div>
 
-              {/* Simplified Speaker Indicator - Read Only During Recording */}
-              <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Current Speaker (Auto-Detected)
-                  </label>
-                  <span className="text-xs text-gray-500">
-                    AI detects speakers automatically
-                  </span>
-                </div>
-                
-                {/* Just show who's currently being recorded */}
-                <div className="flex items-center gap-2">
-                  <div className={`px-3 py-2 rounded-md font-medium ${
-                    currentSpeaker === 'Facilitator' 
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'bg-green-100 text-green-700'
-                  }`}>
-                    {currentSpeaker === 'Facilitator' ? (
-                      <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    ) : (
-                      <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
+              {/* NEW: AI Co-Facilitator Section - MOVED OUT OF FACILITATOR PANEL */}
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                  AI Co-Facilitator
+                </h3>
+
+                {/* 2x2 Grid as TAB SELECTORS - Not action buttons */}
+                <div className="grid grid-cols-2 gap-2 mb-6">
+                  <button
+                    onClick={() => setActiveAITab('insights')}
+                    className={`flex items-center justify-center gap-2 px-3 py-4 text-sm rounded-lg transition-all ${
+                      activeAITab === 'insights'
+                        ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <span className="text-lg">💡</span>
+                    <span className="font-medium">Strategic Insights</span>
+                    {getInsightsForType('insight').length > 0 && (
+                      <span className="ml-1 text-xs bg-white/20 px-1.5 py-0.5 rounded-full">
+                        {getInsightsForType('insight').length}
+                      </span>
                     )}
-                    {currentSpeaker}
-                  </div>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveAITab('synthesis')}
+                    className={`flex items-center justify-center gap-2 px-3 py-4 text-sm rounded-lg transition-all ${
+                      activeAITab === 'synthesis'
+                        ? 'bg-green-600 text-white shadow-md ring-2 ring-green-400'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <span className="text-lg">🔄</span>
+                    <span className="font-medium">Synthesis</span>
+                    {getInsightsForType('synthesis').length > 0 && (
+                      <span className="ml-1 text-xs bg-white/20 px-1.5 py-0.5 rounded-full">
+                        {getInsightsForType('synthesis').length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => setActiveAITab('followup')}
+                    className={`flex items-center justify-center gap-2 px-3 py-4 text-sm rounded-lg transition-all ${
+                      activeAITab === 'followup'
+                        ? 'bg-purple-600 text-white shadow-md ring-2 ring-purple-400'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <span className="text-lg">❓</span>
+                    <span className="font-medium">Follow-up Questions</span>
+                    {getInsightsForType('followup').length > 0 && (
+                      <span className="ml-1 text-xs bg-white/20 px-1.5 py-0.5 rounded-full">
+                        {getInsightsForType('followup').length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => setActiveAITab('executive')}
+                    className={`flex items-center justify-center gap-2 px-3 py-4 text-sm rounded-lg transition-all ${
+                      activeAITab === 'executive'
+                        ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <span className="text-lg">📋</span>
+                    <span className="font-medium">Executive Summary</span>
+                    {getInsightsForType('executive').length > 0 && (
+                      <span className="ml-1 text-xs bg-white/20 px-1.5 py-0.5 rounded-full">
+                        {getInsightsForType('executive').length}
+                      </span>
+                    )}
+                  </button>
                 </div>
-                
-                {/* Optional: Post-session speaker review */}
-                {sessionContext.liveTranscript.length > 10 && !isRecording && (
+
+                {/* Content Area - Shows based on active tab */}
+                <div className="border-t pt-4">
+                  {activeAITab === 'insights' && (
+                    <div>
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="font-medium text-gray-900">Strategic Insights</h4>
+                        <button
+                          onClick={() => callAIAnalysis('insight')}
+                          disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
+                          className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {isAnalyzing && analyzingType === 'insight' ? (
+                            <span className="flex items-center gap-2">
+                              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              Generating...
+                            </span>
+                          ) : (
+                            'Generate New Insight'
+                          )}
+                        </button>
+                      </div>
+                      
+                      <div className="space-y-3 max-h-64 overflow-y-auto">
+                        {getInsightsForType('insight').length === 0 ? (
+                          <p className="text-center py-8 text-gray-500">
+                            No insights generated yet. Click "Generate New Insight" to analyze the discussion.
+                          </p>
+                        ) : (
+                          getInsightsForType('insight').slice(-3).reverse().map((insight, idx) => (
+                            <div key={insight.id || idx} className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                              <p className="text-sm text-gray-800">{insight.content}</p>
+                              <span className="text-xs text-gray-500 mt-2 block">
+                                {new Date(insight.timestamp).toLocaleTimeString('en-US', {
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                  hour12: true
+                                })}
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {activeAITab === 'synthesis' && (
+                    <div>
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="font-medium text-gray-900">Discussion Synthesis</h4>
+                        <button
+                          onClick={() => callAIAnalysis('synthesis')}
+                          disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
+                          className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {isAnalyzing && analyzingType === 'synthesis' ? (
+                            <span className="flex items-center gap-2">
+                              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              Synthesizing...
+                            </span>
+                          ) : (
+                            'Generate Synthesis'
+                          )}
+                        </button>
+                      </div>
+                      
+                      <div className="space-y-3 max-h-64 overflow-y-auto">
+                        {getInsightsForType('synthesis').length === 0 ? (
+                          <p className="text-center py-8 text-gray-500">
+                            No synthesis generated yet. Click "Generate Synthesis" to summarize key themes.
+                          </p>
+                        ) : (
+                          getInsightsForType('synthesis').slice(-3).reverse().map((insight, idx) => (
+                            <div key={insight.id || idx} className="bg-green-50 rounded-lg p-4 border border-green-200">
+                              <p className="text-sm text-gray-800">{insight.content}</p>
+                              <span className="text-xs text-gray-500 mt-2 block">
+                                {new Date(insight.timestamp).toLocaleTimeString('en-US', {
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                  hour12: true
+                                })}
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {activeAITab === 'followup' && (
+                    <div>
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="font-medium text-gray-900">Follow-up Questions</h4>
+                        <button
+                          onClick={() => callAIAnalysis('followup')}
+                          disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
+                          className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {isAnalyzing && analyzingType === 'followup' ? (
+                            <span className="flex items-center gap-2">
+                              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              Generating...
+                            </span>
+                          ) : (
+                            'Generate Questions'
+                          )}
+                        </button>
+                      </div>
+                      
+                      <div className="space-y-3 max-h-64 overflow-y-auto">
+                        {getInsightsForType('followup').length === 0 ? (
+                          <p className="text-center py-8 text-gray-500">
+                            No follow-up questions yet. Click "Generate Questions" to get AI-suggested questions.
+                          </p>
+                        ) : (
+                          getInsightsForType('followup').slice(-3).reverse().map((insight, idx) => (
+                            <div key={insight.id || idx} className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                              <p className="text-sm text-gray-800">{insight.content}</p>
+                              <span className="text-xs text-gray-500 mt-2 block">
+                                {new Date(insight.timestamp).toLocaleTimeString('en-US', {
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                  hour12: true
+                                })}
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {activeAITab === 'executive' && (
+                    <div>
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="font-medium text-gray-900">Executive Summary</h4>
+                        <button
+                          onClick={() => callAIAnalysis('executive')}
+                          disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
+                          className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {isAnalyzing && analyzingType === 'executive' ? (
+                            <span className="flex items-center gap-2">
+                              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              Generating...
+                            </span>
+                          ) : (
+                            'Generate Summary'
+                          )}
+                        </button>
+                      </div>
+                      
+                      <div className="space-y-3 max-h-64 overflow-y-auto">
+                        {getInsightsForType('executive').length === 0 ? (
+                          <p className="text-center py-8 text-gray-500">
+                            No executive summary yet. Click "Generate Summary" for a high-level overview.
+                          </p>
+                        ) : (
+                          getInsightsForType('executive').slice(-3).reverse().map((insight, idx) => (
+                            <div key={insight.id || idx} className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
+                              <p className="text-sm text-gray-800">{insight.content}</p>
+                              <span className="text-xs text-gray-500 mt-2 block">
+                                {new Date(insight.timestamp).toLocaleTimeString('en-US', {
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                  hour12: true
+                                })}
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* AI Speaker Review - Only show after meaningful content */}
+              {sessionContext.liveTranscript.length > 10 && !isRecording && (
+                <div className="mt-4">
                   <button
                     onClick={runSpeakerAttribution}
-                    className="mt-3 text-sm text-blue-600 hover:text-blue-700"
+                    className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-2"
                   >
-                    🤖 Run AI Speaker Identification
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    Run AI Speaker Identification
                   </button>
-                )}
-              </div>
+                </div>
+              )}
               
               {/* Smart Detection Status Bar - Hidden by default for executive UX */}
               {showParticipantDetection && (
@@ -1589,287 +1768,111 @@ const RoundtableCanvasV2: React.FC = () => {
                   isVisible={sessionContext.liveTranscript.length > 0 || isRecording} 
                 />
               )}
-
-
             </div>
           </div>
 
-          {/* Collapsible facilitator panel */}
-          {showFacilitatorPanel && (
-            <div className="w-96 bg-gray-50 border-l overflow-y-auto">
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Facilitator Guide</h3>
-                  <button
-                    onClick={() => setShowFacilitatorPanel(false)}
-                    className="text-gray-400 hover:text-gray-600"
-                    title="Close facilitator guide panel"
-                    aria-label="Close facilitator guide"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-
-                {currentQuestion?.facilitatorGuidance && (
-                  <div className="space-y-4">
-                    {/* Objective */}
-                    {currentQuestion.facilitatorGuidance.objective && (
-                      <div>
-                        <h4 className="font-medium text-gray-900 mb-1">Objective</h4>
-                        <p className="text-sm text-gray-600">
-                          {currentQuestion.facilitatorGuidance.objective}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* What to listen for */}
-                    {currentQuestion.facilitatorGuidance.whatToListenFor && (
-                      <div>
-                        <h4 className="font-medium text-gray-900 mb-1">What to Listen For</h4>
-                        <ul className="text-sm text-gray-600 space-y-1">
-                          {currentQuestion.facilitatorGuidance.whatToListenFor.map((item, idx) => (
-                            <li key={idx} className="flex items-start">
-                              <span className="text-blue-500 mr-2">•</span>
-                              <span>{item}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Facilitation tips */}
-                    {currentQuestion.facilitatorGuidance.facilitationTips && (
-                      <div>
-                        <h4 className="font-medium text-gray-900 mb-1">Facilitation Tips</h4>
-                        <ul className="text-sm text-gray-600 space-y-1">
-                          {currentQuestion.facilitatorGuidance.facilitationTips.map((tip, idx) => (
-                            <li key={idx} className="flex items-start">
-                              <span className="text-green-500 mr-2">✓</span>
-                              <span>{tip}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Presentation notes */}
-                    {currentQuestion.facilitatorGuidance.presentationNotes && (
-                      <div>
-                        <h4 className="font-medium text-gray-900 mb-1">Presentation Notes</h4>
-                        <ul className="text-sm text-gray-600 space-y-1">
-                          {currentQuestion.facilitatorGuidance.presentationNotes.map((note, idx) => (
-                            <li key={idx} className="flex items-start">
-                              <span className="text-yellow-500 mr-2">★</span>
-                              <span>{note}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Transition line */}
-                    {currentQuestion.facilitatorGuidance.transitionLine && (
-                      <div>
-                        <h4 className="font-medium text-gray-900 mb-1">Transition to Next</h4>
-                        <p className="text-sm text-gray-600 italic">
-                          "{currentQuestion.facilitatorGuidance.transitionLine}"
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Closing message (for Phase 5) */}
-                    {currentQuestion.facilitatorGuidance.closingMessage && (
-                      <div>
-                        <h4 className="font-medium text-gray-900 mb-1">Closing Message</h4>
-                        <p className="text-sm text-gray-600">
-                          {currentQuestion.facilitatorGuidance.closingMessage}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* AI Co-Facilitator Panel */}
-                <div className="ai-panel mt-6 pt-6 border-t p-6 bg-white rounded-lg shadow-sm">
-                  <div className="ai-header">
-                    <h2 className="ai-title">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                      </svg>
-                      AI Co-Facilitator
-                    </h2>
-                    
-                    {/* Progressive Tab Navigation - 2x2 Grid Layout */}
-                    <nav 
-                      className="grid grid-cols-2 gap-3 mb-6 border-b border-gray-200 pb-4"
-                      role="tablist"
-                      aria-label="AI Analysis Navigation"
+          {/* Facilitator Panel - NOW ONLY CONTAINS THE GUIDE, NO AI SECTION */}
+          <div className={`facilitator-panel ${showFacilitatorPanel ? 'w-96' : 'w-0'} bg-gray-50 border-l overflow-hidden transition-all duration-300`}>
+            {showFacilitatorPanel && (
+              <div className="p-6 overflow-y-auto h-full">
+                {/* Facilitator Guide Section Only */}
+                <div className="mb-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Facilitator Guide</h3>
+                    <button
+                      onClick={() => setShowFacilitatorPanel(false)}
+                      className="text-gray-400 hover:text-gray-600"
+                      title="Close panel"
                     >
-                      {availableTabs.map((tab) => {
-                        const isActive = activeAITab === tab.id;
-                        return (
-                          <button
-                            key={tab.id}
-                            onClick={() => setActiveAITab(tab.id as any)}
-                            className={`
-                              px-4 py-2 rounded-lg font-medium transition-all duration-200
-                              flex items-center gap-2 relative
-                              ${
-                                isActive 
-                                  ? 'bg-blue-500 text-white shadow-md transform scale-105' 
-                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
-                              }
-                              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                            `}
-                            role="tab"
-                            aria-selected={isActive}
-                            aria-controls={`${tab.label.toLowerCase()}-panel`}
-                          >
-                            <span className="text-lg" aria-hidden="true">{tab.icon}</span>
-                            <span>{tab.label}</span>
-                            {tab.id === 'advanced' && showAdvancedTab && (
-                              <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </nav>
-                    
-                    {/* Quick Action Button */}
-                    <div className="mb-4">
-                      <button
-                        onClick={() => {
-                          const currentTab = availableTabs.find(t => t.id === activeAITab);
-                          if (currentTab?.id === 'insights') {
-                            callAIAnalysis('insights');
-                          } else if (currentTab?.id === 'synthesis') {
-                            callAIAnalysis('synthesis');
-                          } else {
-                            callAIAnalysis('insights'); // Default fallback
-                          }
-                        }}
-                        disabled={isAnalyzing}
-                        className="w-full py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 
-                                   transition-colors duration-200 font-medium shadow-sm
-                                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                                   disabled:opacity-50 disabled:cursor-not-allowed"
-                        aria-label={`Generate new ${availableTabs.find(t => t.id === activeAITab)?.label || 'analysis'}`}
-                      >
-                        {isAnalyzing ? (
-                          <span className="flex items-center justify-center gap-2">
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            Generating...
-                          </span>
-                        ) : (
-                          `Generate New ${availableTabs.find(t => t.id === activeAITab)?.label || 'Analysis'}`
-                        )}
-                      </button>
-                    </div>
-                    
-                    {/* Executive Summary Button - Appears after 1+ insights */}
-                    {sessionContext.aiInsights && sessionContext.aiInsights.length >= 1 && (
-                      <div className="mb-4">
-                        <button
-                          onClick={() => callAIAnalysis('executive')}
-                          disabled={isAnalyzing}
-                          className="w-full py-3 bg-gradient-to-r from-purple-500 to-indigo-500 text-white 
-                                     rounded-lg hover:from-purple-600 hover:to-indigo-600 
-                                     transition-all duration-200 font-medium shadow-md
-                                     focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2
-                                     disabled:opacity-50 disabled:cursor-not-allowed
-                                     transform hover:scale-105"
-                          aria-label="Generate Executive Summary"
-                        >
-                          {isAnalyzing ? (
-                            <span className="flex items-center justify-center gap-2">
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              Generating Executive Summary...
-                            </span>
-                          ) : (
-                            <span className="flex items-center justify-center gap-2">
-                              📋 Executive Summary
-                              <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
-                                {sessionContext.aiInsights.length} insights ready
-                              </span>
-                            </span>
-                          )}
-                        </button>
-                      </div>
-                    )}
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
 
-                  {/* AI Insights Container - Modern Component-Based Rendering */}
-                  <div className="tab-content p-4 bg-gray-50 rounded-lg transition-opacity duration-300">
-                    {(() => {
-                      const filteredInsights = getFilteredInsights();
-                      
-                      if (filteredInsights.length === 0) {
-                        // Empty State Component
-                        return (
-                          <div className="text-center py-12">
-                            <div className="text-4xl mb-4">
-                              {activeAITab === 'insights' ? '💭' : 
-                               activeAITab === 'synthesis' ? '🔄' :
-                               activeAITab === 'followup' ? '❓' : 
-                               activeAITab === 'executive' ? '📋' : '🤖'}
-                            </div>
-                            <p className="text-gray-500">
-                              No {activeAITab === 'all' ? 'insights' : activeAITab} available yet. Start your session to see AI-generated content here.
-                            </p>
-                          </div>
-                        );
-                      }
-                      
-                      // Show latest 3 insights with modern card design
-                      return (
-                        <div className="space-y-4">
-                          {filteredInsights.slice(-3).map((insight, idx) => {
-                            // Modern Insight Card Component
-                            const getInsightIcon = (type: string) => {
-                              switch (type) {
-                                case 'synthesis': return '🔄';
-                                case 'followup': return '❓';
-                                case 'executive': return '📋';
-                                case 'cross_reference': return '🔗';
-                                case 'facilitation': return '🎯';
-                                case 'transition': return '➡️';
-                                case 'strategic': return '🎯';
-                                case 'insight':
-                                case 'insights':
-                                default: return '💡';
-                              }
-                            };
-                            
-                            return (
-                              <div key={insight.id || idx} className="bg-white rounded-lg p-5 shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-200 transition-all duration-200">
-                                <div className="flex items-start gap-3">
-                                  <span className="text-2xl">
-                                    {getInsightIcon(insight.type || 'insight')}
-                                  </span>
-                                  <div className="flex-1">
-                                    <p className="text-gray-800">{insight.content}</p>
-                                    <span className="text-xs text-gray-500 mt-2 block">
-                                      {new Date(insight.timestamp || Date.now()).toLocaleTimeString('en-US', {
-                                        hour: 'numeric',
-                                        minute: '2-digit',
-                                        hour12: true
-                                      })}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
+                  {/* Collapsible Guide Content */}
+                  {currentQuestion?.facilitatorGuidance && (
+                    <div className="space-y-4">
+                      {/* Objective */}
+                      {currentQuestion.facilitatorGuidance.objective && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-1">Objective</h4>
+                          <p className="text-sm text-gray-600">
+                            {currentQuestion.facilitatorGuidance.objective}
+                          </p>
                         </div>
-                      );
-                    })()}
-                  </div>
+                      )}
+
+                      {/* What to listen for */}
+                      {currentQuestion.facilitatorGuidance.whatToListenFor && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-1">What to Listen For</h4>
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            {currentQuestion.facilitatorGuidance.whatToListenFor.map((item, idx) => (
+                              <li key={idx} className="flex items-start">
+                                <span className="text-blue-500 mr-2">•</span>
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Facilitation tips */}
+                      {currentQuestion.facilitatorGuidance.facilitationTips && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-1">Facilitation Tips</h4>
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            {currentQuestion.facilitatorGuidance.facilitationTips.map((tip, idx) => (
+                              <li key={idx} className="flex items-start">
+                                <span className="text-green-500 mr-2">✓</span>
+                                <span>{tip}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Presentation notes */}
+                      {currentQuestion.facilitatorGuidance.presentationNotes && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-1">Presentation Notes</h4>
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            {currentQuestion.facilitatorGuidance.presentationNotes.map((note, idx) => (
+                              <li key={idx} className="flex items-start">
+                                <span className="text-yellow-500 mr-2">★</span>
+                                <span>{note}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Transition line */}
+                      {currentQuestion.facilitatorGuidance.transitionLine && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-1">Transition to Next</h4>
+                          <p className="text-sm text-gray-600 italic">
+                            "{currentQuestion.facilitatorGuidance.transitionLine}"
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Closing message (for Phase 5) */}
+                      {currentQuestion.facilitatorGuidance.closingMessage && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-1">Closing Message</h4>
+                          <p className="text-sm text-gray-600">
+                            {currentQuestion.facilitatorGuidance.closingMessage}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
          </main>
 
          {/* Manual Entry Modal */}
@@ -2067,7 +2070,7 @@ const RoundtableCanvasV2: React.FC = () => {
       {sessionState === 'discussion' && renderDiscussionState()}
       {sessionState === 'summary' && renderSummaryState()}
       
-      {/* Manual Entry Modal */}
+      {/* Manual Entry Modal (simplified version at the end) */}
       {showManualModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
@@ -2280,10 +2283,6 @@ const RoundtableCanvasV2: React.FC = () => {
         onTemplateSelect={handleTemplateSelection}
         onClose={() => setShowTemplateSelector(false)}
       />
-
-      {/* Temporary Speaker Detection Tester */}
-
-
     </>
   );
 };
