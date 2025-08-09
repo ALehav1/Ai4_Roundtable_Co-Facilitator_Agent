@@ -892,7 +892,8 @@ const RoundtableCanvasV2: React.FC = () => {
     }
     
     // VERY Strong facilitator indicators (override continuity)
-    const isVeryStrongFacilitator = isSelfIntroduction || 
+    const isVeryStrongFacilitator = matchesFacilitatorPattern || // SEMANTIC PATTERNS NOW VERY STRONG
+                                   isSelfIntroduction || 
                                    isOrgReference || 
                                    isTopicIntroduction || 
                                    isFacilitatorGuideQuestion;
@@ -900,6 +901,7 @@ const RoundtableCanvasV2: React.FC = () => {
     if (isVeryStrongFacilitator) {
       const result = 'Facilitator';
       setLastSpeakerDetection({ speaker: result, timestamp: now, confidence: 'high' });
+      console.log(`✅ Strong Facilitator: "${text.substring(0, 30)}..." → ${result} (semantic pattern match)`);
       return result;
     }
     
@@ -928,8 +930,7 @@ const RoundtableCanvasV2: React.FC = () => {
     }
     
     // 7. Weaker pattern matching (only if no continuity)
-    const isWeakFacilitator = matchesFacilitatorPattern || 
-                             isFacilitatorAskingAboutOthers ||
+    const isWeakFacilitator = isFacilitatorAskingAboutOthers ||
                              (isQuestion && hasTransitionWords) || 
                              hasSummaryLanguage;
     
