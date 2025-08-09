@@ -183,6 +183,7 @@ const RoundtableCanvasV2: React.FC = () => {
   const [analyzingType, setAnalyzingType] = useState<string | null>(null);
   const [showFacilitatorPanel, setShowFacilitatorPanel] = useState(true);
   const [interimTranscript, setInterimTranscript] = useState<string>('');
+  const [speechError, setSpeechError] = useState<string | null>(null);
   const [showManualModal, setShowManualModal] = useState(false);
   const [manualEntryText, setManualEntryText] = useState('');
   const [entryMode, setEntryMode] = useState<'single' | 'bulk'>('single');
@@ -224,71 +225,35 @@ const RoundtableCanvasV2: React.FC = () => {
   }, []);
 
   // Refs and Hooks
-  const speechTranscription = useSpeechTranscription();
+  const speechTranscription = useSpeechTranscription(
+    (partialText: string) => setInterimTranscript(partialText),
+    (finalEvent: TranscriptEvent) => {
+      console.log('🎯 Final transcript received:', finalEvent.text);
+      setInterimTranscript('');
+      
+      addTranscriptEntry({
+        text: finalEvent.text,
+        speaker: currentSpeaker || 'Speaker',
+        isAutoDetected: true,
+        confidence: finalEvent.confidence
+      });
+    },
+    (error: string) => {
+      // Only set error for critical issues, not for no-speech
+      if (error === 'not-allowed' || error === 'audio-capture') {
+        setSpeechError('Microphone access required');
+      } else {
+        setSpeechError(null);
+      }
+    }
+  );
+  
   const transcriptRef = useRef<HTMLDivElement>(null);
 
-  // Setup speech transcription
+  // Update speech error from hook
   useEffect(() => {
-    speechTranscription.onPartial((event: TranscriptEvent) => {
-      setInterimTranscript(event.text);
-    });
-
-    speechTranscription.onFinal((event: TranscriptEvent) => {
-      if (event.text.trim()) {
-        // Apply smart speaker detection
-        const detectedSpeaker = detectSpeaker(event.text.trim());
-        
-        addTranscriptEntry({
-          text: event.text.trim(),
-          speaker: detectedSpeaker,
-          confidence: event.confidence,
-          isAutoDetected: true,
-        });
-        
-        // Update current speaker for UI display
-        setCurrentSpeaker(detectedSpeaker);
-        setInterimTranscript('');
-        
-        // Trigger AI analysis after sufficient content
-        const recentWordCount = sessionContext.liveTranscript
-          .slice(-5)
-          .reduce((count, entry) => count + entry.text.split(/\s+/).length, 0);
-          
-        if (recentWordCount > 100) {
-          setTimeout(() => {
-            callAIAnalysis('insights');
-          }, 1500);
-        }
-      }
-    });
-
-    speechTranscription.onError((error: string) => {
-      console.error('Speech Recognition Error:', error);
-      setIsRecording(false);
-      
-      // Show user-friendly error toast
-      const errorMessages: Record<string, string> = {
-        'not-allowed': 'Microphone access denied. Please allow microphone permissions in your browser.',
-        'audio-capture': 'No microphone detected. Please check your audio devices and try again.',
-        'no-speech': 'No speech detected. Please speak clearly into your microphone.',
-        'network': 'Speech recognition requires HTTPS. Please use the deployed version for speech features.',
-        'service-not-allowed': 'Speech recognition service unavailable. Please try manual entry instead.',
-      };
-      
-      const userMessage = errorMessages[error] || `Speech recognition error: ${error}. Please try manual entry.`;
-      
-      showToast({
-        type: 'error',
-        title: 'Speech Recognition Error',
-        message: userMessage,
-        durationMs: 6000,
-        action: {
-          label: 'Try Manual Entry',
-          onClick: () => setShowManualModal(true)
-        }
-      });
-    });
-  }, [speechTranscription]);
+    setSpeechError(speechTranscription.error);
+  }, [speechTranscription.error]);
 
   // Core Functions
   const addTranscriptEntry = useCallback((entry: Omit<TranscriptEntry, 'id' | 'timestamp'>) => {
@@ -432,187 +397,154 @@ const RoundtableCanvasV2: React.FC = () => {
     }));
   }, [speechTranscription]);
 
+  // AI analysis with live transcript context
   const callAIAnalysis = useCallback(async (analysisType: string = 'insights') => {
-    // Prevent spam - check if already analyzing
-    if (isAnalyzing) return;
-    
-    // Set analyzing state and type
-    setIsAnalyzing(true);
-    setAnalyzingType(analysisType);
+    // Prevent spam clicking
+    if (isAnalyzing) {
+      console.log('⏳ Analysis already in progress, skipping...');
+      return;
+    }
     
     try {
-      // Build rich context using the dedicated context builder
-      const aiContext = buildAIContext();
+      setIsAnalyzing(true);
+      setAnalyzingType(analysisType);
       
-      // Minimum content threshold check
-      const MIN_WORDS_FOR_INSIGHTS = 50;
-      const wordCount = aiContext.recentTranscript.split(/\s+/).filter(word => word.length > 0).length;
+      // Build live transcript for AI context
+      const transcriptText = sessionContext.liveTranscript
+        .map(entry => `${entry.speaker}: ${entry.text}`)
+        .join('\n');
+      
+      // Get current question context
+      const currentQuestion = getCurrentQuestion(sessionContext.currentQuestionIndex);
+      const totalQuestions = getTotalQuestions();
+      
+      console.log('🔍 Starting AI Analysis:', {
+        type: analysisType,
+        transcriptLength: transcriptText.length,
+        entryCount: sessionContext.liveTranscript.length,
+        topic: sessionContext.currentTopic,
+        currentQuestion: currentQuestion?.title,
+        questionProgress: `${sessionContext.currentQuestionIndex + 1} of ${totalQuestions}`
+      });
 
-      if (wordCount < MIN_WORDS_FOR_INSIGHTS && analysisType === 'insights') {
-        const insufficientContentInsight = {
-          id: `insight_${Date.now()}`,
-          type: 'info',
-          content: `📝 Please capture more discussion content before generating insights. The AI needs at least ${MIN_WORDS_FOR_INSIGHTS} words of meaningful conversation to provide quality analysis. Current: ${wordCount} words.`,
-          timestamp: new Date(),
-          confidence: 1.0
-        };
+      // Build enhanced context
+      const enhancedContext = {
+        sessionTopic: sessionContext.currentTopic || 'Strategic Planning Session',
+        liveTranscript: transcriptText || "No conversation content has been captured yet in this live session.",
+        analysisType,
+        participantCount: new Set(sessionContext.liveTranscript.map(e => e.speaker)).size || 5,
+        sessionDuration: Math.floor((Date.now() - sessionContext.startTime.getTime()) / 60000),
+        clientId: 'live-session',
+        // Add question context
+        questionContext: {
+          index: sessionContext.currentQuestionIndex,
+          total: totalQuestions,
+          question: currentQuestion ? {
+            title: currentQuestion.title,
+            content: currentQuestion.description,
+            guidance: currentQuestion.facilitatorGuidance
+          } : null
+        },
+        // Add previous insights for context
+        previousInsights: sessionContext.aiInsights
+          .filter(i => i.type === 'insight' && !i.isError)
+          .slice(-3)
+          .map(i => ({ type: i.type, content: i.content.substring(0, 200) }))
+      };
+
+      // TRY NEW /api/analyze-live endpoint first (strict JSON)
+      try {
+        const liveResponse = await fetch('/api/analyze-live', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(enhancedContext),
+        });
+
+        if (liveResponse.ok) {
+          const liveData = await liveResponse.json();
+          console.log('✅ Live AI Analysis (new endpoint):', liveData);
+          
+          if (liveData.success) {
+            // Add AI insight to session context with enhanced metadata
+            setSessionContext(prev => ({
+              ...prev,
+              aiInsights: [...prev.aiInsights, {
+                id: `insight_${Date.now()}`,
+                type: analysisType,
+                content: liveData.content,
+                timestamp: new Date(),
+                confidence: liveData.confidence,
+                suggestions: liveData.suggestions || [],
+                metadata: liveData.metadata
+              }],
+            }));
+            
+            return liveData;
+          }
+        }
         
-        setSessionContext(prev => ({
-          ...prev,
-          aiInsights: [...prev.aiInsights, insufficientContentInsight]
-        }));
-        return;
+        console.log('⚠️ Live endpoint failed, falling back to legacy endpoint');
+      } catch (liveError) {
+        console.log('⚠️ Live endpoint error, using fallback:', liveError);
       }
 
-      // Get current question for additional context
-      const currentQuestion = getCurrentQuestion(sessionContext.currentQuestionIndex);
-      const timeInPhase = sessionContext.questionStartTime ? 
-        Math.round((Date.now() - sessionContext.questionStartTime.getTime()) / 60000) : 0;
-
-      // Enhanced transcript with rich context headers using buildAIContext
-      const enhancedTranscriptText = `SESSION CONTEXT:
-Title: ${aiContext.sessionInfo.topic}
-Current Question: ${aiContext.sessionInfo.currentQuestion?.title || 'Open Discussion'}
-Question Context: ${aiContext.sessionInfo.currentQuestion?.description || ''}
-Progress: ${aiContext.sessionInfo.questionProgress}
-Facilitator Prompt: ${aiContext.sessionInfo.currentQuestion?.facilitatorGuidance?.keyPrompt || ''}
-Time in Phase: ${timeInPhase} minutes
-Total Participants: ${new Set(sessionContext.liveTranscript.map(e => e.speaker)).size}
-
-PREVIOUS INSIGHTS FOR THIS QUESTION:
-${aiContext.previousInsights.join('\n\n')}
-
-RECENT TRANSCRIPT (Last 15 entries):
-${sessionContext.liveTranscript
-  .slice(-15) // Last 15 entries for focused context
-  .map(entry => `${entry.speaker}: ${entry.text}`)
-  .join('\n')}
-
-FRAMEWORK CONTEXT:
-This session follows the Assistance → Automation → Amplification progression for AI transformation strategy.`;
-
-      const response = await fetch('/api/analyze-live', {
+      // FALLBACK to legacy /api/analyze endpoint
+      const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sessionTopic: aiContext.sessionInfo.topic,
-          liveTranscript: enhancedTranscriptText,
-          analysisType: analysisType,
-          participantCount: new Set(sessionContext.liveTranscript.map(e => e.speaker)).size,
-          clientId: 'live-session',
-          phaseContext: {
-            currentPhase: aiContext.sessionInfo.currentQuestion?.title || 'Open Discussion',
-            phaseDescription: aiContext.sessionInfo.currentQuestion?.description || '',
-            timeInPhase,
-            totalPhases: getTotalQuestions(),
-            questionProgress: aiContext.sessionInfo.questionProgress,
-            facilitatorPrompt: aiContext.sessionInfo.currentQuestion?.facilitatorGuidance?.keyPrompt || '',
-            previousInsights: aiContext.previousInsights.join('\n\n')
-          }
-        })
+          questionContext: `Live Discussion Session - ${sessionContext.currentTopic || 'Strategic Planning'}`,
+          currentTranscript: transcriptText || "No conversation content has been captured yet in this live session.",
+          analysisType,
+          // Include question context for legacy endpoint too
+          currentQuestion: currentQuestion,
+          questionProgress: enhancedContext.questionContext
+        }),
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        const insightContent = result.content || result.summary || '';
-        
-        // Skip empty or error responses
-        if (!insightContent || insightContent.toLowerCase().includes('no significant new content')) {
-          const waitingGuidance = {
-            id: `insight_${Date.now()}`,
-            type: 'guidance',
-            content: '⏳ The discussion is developing. Try capturing a few more responses, then request insights for richer analysis.',
-            timestamp: new Date(),
-            confidence: 1.0
-          };
-          
-          setSessionContext(prev => ({
-            ...prev,
-            aiInsights: [...prev.aiInsights, waitingGuidance]
-          }));
-          return;
-        }
-        
-        // Deduplication check - compare first 100 characters
-        const isDuplicate = sessionContext.aiInsights.some(
-          existing => 
-            existing.type === analysisType &&
-            existing.content.substring(0, 100) === insightContent.substring(0, 100)
-        );
-
-        if (!isDuplicate) {
-          const newInsight = {
-            id: `insight_${Date.now()}`,
-            type: analysisType,
-            content: insightContent,
-            timestamp: new Date(),
-            confidence: result.confidence || 0.85,
-            metadata: {
-              transcriptLength: wordCount,
-              phase: aiContext.sessionInfo.currentQuestion?.title || 'Open Discussion',
-              timeInPhase,
-              participantCount: new Set(sessionContext.liveTranscript.map(e => e.speaker)).size
-            }
-          };
-          
-          setSessionContext(prev => ({
-            ...prev,
-            aiInsights: [...prev.aiInsights, newInsight]
-          }));
-        }
-      } else {
-        // Handle API errors gracefully + visible toast
-        showToast({
-          type: response.status === 429 ? 'warning' : 'error',
-          title: response.status === 429 ? 'Rate limit reached' : 'AI analysis unavailable',
-          message: response.status === 429
-            ? 'Too many requests. Please wait a minute and try again.'
-            : 'The AI analysis service is temporarily unavailable. Please try again shortly.',
-          action: { label: 'Retry', onClick: () => callAIAnalysis(analysisType) }
-        });
-
-        const errorInsight = {
-          id: `insight_${Date.now()}`,
-          type: 'error',
-          content: '🔧 AI analysis temporarily unavailable. The discussion content is being captured and you can try again in a moment.',
-          timestamp: new Date(),
-          confidence: 1.0
-        };
-
-        setSessionContext(prev => ({
-          ...prev,
-          aiInsights: [...prev.aiInsights, errorInsight]
-        }));
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    } catch (error) {
-      console.error('AI Analysis Error:', error);
-      // Visible network error toast
-      showToast({
-        type: 'error',
-        title: 'Network error',
-        message: 'Unable to contact the AI service. Please check your connection and try again.',
-        action: { label: 'Retry', onClick: () => callAIAnalysis(analysisType) }
-      });
 
-      // User-friendly error handling
-      const technicalErrorInsight = {
-        id: `insight_${Date.now()}`,
-        type: 'error', 
-        content: '⚠️ Unable to generate insights right now. Your discussion is being recorded safely. Please try again in a moment.',
-        timestamp: new Date(),
-        confidence: 1.0
-      };
-      
+      const data = await response.json();
+      console.log('✅ Legacy AI Analysis (fallback):', data);
+
+      // Add AI insight to session context (legacy format)
       setSessionContext(prev => ({
         ...prev,
-        aiInsights: [...prev.aiInsights, technicalErrorInsight]
+        aiInsights: [...prev.aiInsights, {
+          id: `insight_${Date.now()}`,
+          type: analysisType,
+          content: data.insights || data.analysis || data.result,
+          timestamp: new Date(),
+          confidence: 0.8, // Default confidence for legacy endpoint
+          isLegacy: true
+        }],
       }));
+
+      return data;
+    } catch (error) {
+      console.error('❌ AI Analysis Error (both endpoints failed):', error);
+      
+      // Add error insight to maintain UX
+      setSessionContext(prev => ({
+        ...prev,
+        aiInsights: [...prev.aiInsights, {
+          id: `error_${Date.now()}`,
+          type: 'error',
+          content: 'AI analysis temporarily unavailable. Please try again or continue with manual facilitation.',
+          timestamp: new Date(),
+          confidence: 0,
+          isError: true
+        }],
+      }));
+      
+      throw error;
     } finally {
-      // ALWAYS reset analyzing state and type
       setIsAnalyzing(false);
       setAnalyzingType(null);
     }
-  }, [sessionContext.liveTranscript, sessionContext.currentTopic, sessionContext.currentQuestionIndex, sessionContext.aiInsights, showToast]);
+  }, [sessionContext, isAnalyzing]);
 
 
 
@@ -896,8 +828,8 @@ This session follows the Assistance → Automation → Amplification progression
                               /\b(ari|ari lehavi).*(here|facilitator|leading|moderating)\b/i.test(text);
     
     // Organization context (facilitator referencing their org, not participants asking about it)
-    const isOrgReference = /\b(at moody's|from moody's|we at moody's)\b/i.test(text) &&
-                          !/\b(how do you|how does|what does).*(moody's|you)\b/i.test(text); // Exclude participant questions
+    const isOrgReference = /\b(at moody'?s|from moody'?s|we at moody'?s)\b/i.test(text) &&
+                          !/\b(how do you|how does|what does).*(moody'?s|you)\b/i.test(text); // Exclude participant questions
     
     // Topic introduction (facilitator introducing agenda items or guide questions)
     const isTopicIntroduction = /\b(let's talk about|our next topic|turning to|moving to).*(ai|artificial intelligence|transformation|automation)\b/i.test(text) ||
@@ -1443,14 +1375,38 @@ This session follows the Assistance → Automation → Amplification progression
                 )}
               </div>
 
-              {/* Session Controls */}
-              <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-gray-900">Session Controls</h3>
+              {/* Recording Controls with Status */}
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold">🎙️ Live Capture</h3>
+                  
+                  {/* Speech Status Indicator */}
+                  {isRecording && (
+                    <div className="flex items-center gap-3 text-sm">
+                      {speechTranscription.isListening && (
+                        <div className="flex items-center gap-2">
+                          <div className="relative">
+                            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                            <div className="absolute inset-0 w-3 h-3 bg-red-400 rounded-full animate-ping" />
+                          </div>
+                          <span className="text-gray-600">Recording</span>
+                        </div>
+                      )}
+                      
+                      {speechError && speechError !== 'Listening...' && (
+                        <span className="text-amber-600">{speechError}</span>
+                      )}
+                      
+                      {interimTranscript && (
+                        <span className="text-gray-400 italic truncate max-w-xs">
+                          "{interimTranscript}"
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 
-                <div className="flex space-x-3">
-                  {/* Recording Control Button */}
+                <div className="flex gap-3">
                   <button
                     onClick={async () => {
                       if (isRecording) {
@@ -1465,46 +1421,31 @@ This session follows the Assistance → Automation → Amplification progression
                         } catch (error) {
                           console.error('Failed to start recording:', error);
                           setIsRecording(false);
-                          // Could add toast notification here
-                          alert('Recording failed. Please check microphone permissions.');
                         }
                       }
                     }}
-                    className={`px-4 py-2 rounded flex items-center gap-2 font-medium transition-colors ${
+                    className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
                       isRecording 
-                        ? 'bg-red-600 text-white hover:bg-red-700 animate-pulse' 
-                        : 'bg-green-600 text-white hover:bg-green-700'
+                        ? 'bg-red-500 hover:bg-red-600 text-white' 
+                        : 'bg-blue-500 hover:bg-blue-600 text-white'
                     }`}
-                    title={isRecording ? 'Stop recording' : 'Start recording'}
                   >
-                    {isRecording ? (
-                      <>
-                        <span className="w-3 h-3 bg-white rounded-full animate-ping"></span>
-                        🛑 Stop Recording
-                      </>
-                    ) : (
-                      <>
-                        🎤 Start Recording
-                      </>
-                    )}
-                  </button>
-
-                  <button
-                    onClick={() => setShowManualModal(true)}
-                    className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 font-medium"
-                  >
-                    ➕ Manual Entry
+                    {isRecording ? '⏹️ Stop Recording' : '🎤 Start Recording'}
                   </button>
                   
                   <button
-                    onClick={() => setSessionState('summary')}
-                    disabled={true}
-                    className="px-4 py-2 bg-gray-400 text-gray-600 rounded cursor-not-allowed font-medium"
-                    title="Session end flow needs UX redesign - temporarily disabled"
+                    onClick={() => setShowManualModal(true)}
+                    className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
                   >
-                    ⏹️ End Session (Disabled)
+                    ✏️ Manual Entry
                   </button>
                 </div>
+                
+                {isRecording && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Speak naturally - recording continues until you stop it. No timeouts.
+                  </p>
+                )}
               </div>
 
               {/* Simplified Speaker Indicator - Read Only During Recording */}
@@ -1807,6 +1748,37 @@ This session follows the Assistance → Automation → Amplification progression
                         )}
                       </button>
                     </div>
+                    
+                    {/* Executive Summary Button - Appears after 1+ insights */}
+                    {sessionContext.aiInsights && sessionContext.aiInsights.length >= 1 && (
+                      <div className="mb-4">
+                        <button
+                          onClick={() => callAIAnalysis('executive')}
+                          disabled={isAnalyzing}
+                          className="w-full py-3 bg-gradient-to-r from-purple-500 to-indigo-500 text-white 
+                                     rounded-lg hover:from-purple-600 hover:to-indigo-600 
+                                     transition-all duration-200 font-medium shadow-md
+                                     focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2
+                                     disabled:opacity-50 disabled:cursor-not-allowed
+                                     transform hover:scale-105"
+                          aria-label="Generate Executive Summary"
+                        >
+                          {isAnalyzing ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              Generating Executive Summary...
+                            </span>
+                          ) : (
+                            <span className="flex items-center justify-center gap-2">
+                              📋 Executive Summary
+                              <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
+                                {sessionContext.aiInsights.length} insights ready
+                              </span>
+                            </span>
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* AI Insights Container - Modern Component-Based Rendering */}
@@ -1841,6 +1813,10 @@ This session follows the Assistance → Automation → Amplification progression
                                 case 'synthesis': return '🔄';
                                 case 'followup': return '❓';
                                 case 'executive': return '📋';
+                                case 'cross_reference': return '🔗';
+                                case 'facilitation': return '🎯';
+                                case 'transition': return '➡️';
+                                case 'strategic': return '🎯';
                                 case 'insight':
                                 case 'insights':
                                 default: return '💡';

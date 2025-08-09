@@ -34,7 +34,13 @@ export const FACILITATOR_PATTERNS = [
   "thank you for sharing", "i appreciate that", "interesting perspective", "thanks for that",
   "we have about", "few more minutes", "time for one more", "let's spend",
   "welcome everyone", "to summarize", "let me ask",
-  "just to clarify", "to build on that", "following up on"
+  "just to clarify", "to build on that", "following up on",
+  
+  // Moody's facilitator patterns (Ari Lehavi and organization references)
+  "we at moody's", "we at moodys", "here at moody's", "at moody's we",
+  "moody's perspective", "from moody's standpoint", "moody's research shows",
+  "as we've seen at moody's", "moody's experience", "our work at moody's",
+  "ari lehavi", "i'm ari", "this is ari", "ari from moody's"
 ];
 
 export const MIN_WORDS_FOR_INSIGHTS = 50;
