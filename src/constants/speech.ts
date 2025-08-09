@@ -1,6 +1,6 @@
 export const FACILITATOR_PATTERNS = [
   // Opening/closing
-  "welcome to", "thank you for joining", "let's begin", "let's wrap up",
+  "welcome", "welcome to", "thank you for joining", "let's begin", "let's wrap up",
   "before we close", "final thoughts", "one more question",
   
   // Facilitation phrases

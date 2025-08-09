@@ -1694,9 +1694,9 @@ const RoundtableCanvasV2: React.FC = () => {
                       AI Co-Facilitator
                     </h2>
                     
-                    {/* Progressive Tab Navigation - Clean and Accessible */}
+                    {/* Progressive Tab Navigation - 2x2 Grid Layout */}
                     <nav 
-                      className="flex gap-2 mb-6 border-b border-gray-200 pb-4"
+                      className="grid grid-cols-2 gap-3 mb-6 border-b border-gray-200 pb-4"
                       role="tablist"
                       aria-label="AI Analysis Navigation"
                     >
