@@ -135,6 +135,9 @@ export interface SessionSnapshot {
   /** Current topic at time of snapshot */
   currentTopic?: string;
   
+  /** Facilitator name */
+  facilitator?: string;
+  
   /** Number of participants */
   participantCount: number;
   

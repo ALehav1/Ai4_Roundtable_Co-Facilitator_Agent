@@ -1,52 +1,11 @@
-/**
- * Enhanced PDF Export Utility for Executive AI Roundtable Sessions
- * Generates professional executive reports with strategic insights and action items
- */
+// utils/pdfExport.ts
+import { jsPDF } from 'jspdf';
+import { SessionContext } from '@/types/session';
 
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-
-// Types for session data
-interface TranscriptEntry {
-  id: string;
-  speaker: string;
-  text: string;
-  timestamp: Date;
-  isAutoDetected: boolean;
-  confidence?: number;
-}
-
-interface AIInsight {
-  id: string;
-  type: string;
-  content: string;
-  timestamp: Date;
-  confidence?: number;
-  suggestions?: string[];
-  metadata?: any;
-  isLegacy?: boolean;
-  isError?: boolean;
-}
-
-interface SessionExportData {
-  sessionTopic: string;
-  facilitator: string;
-  participantCount: number;
-  startTime: Date;
-  endTime: Date;
-  duration: number; // in minutes
-  transcript: TranscriptEntry[];
-  aiInsights: AIInsight[];
-  currentQuestionIndex: number;
-  totalQuestions: number;
-  // Enhanced executive data
+interface ExportData {
+  sessionContext: SessionContext;
   executiveSummary?: string;
-  keyDecisions?: string[];
-  actionItems?: ActionItem[];
-  strategicInsights?: StrategyInsight[];
-  competitiveImplications?: string;
-  businessValue?: string;
-  nextSteps?: string[];
+  timestamp: Date;
 }
 
 interface ActionItem {
@@ -71,211 +30,200 @@ interface StrategyInsight {
 /**
  * Generate PDF from session data
  */
-export const generateSessionPDF = async (sessionData: SessionExportData): Promise<void> => {
-  try {
-    console.log('📄 Generating PDF export for session:', sessionData.sessionTopic);
+export const generateSessionPDF = async (exportData: ExportData): Promise<void> => {
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 20;
+  const contentWidth = pageWidth - (margin * 2);
+  let yPosition = margin;
+  
+  // Helper function to add text with word wrap
+  const addWrappedText = (text: string, fontSize: number, isBold: boolean = false, color: [number, number, number] = [0, 0, 0]) => {
+    pdf.setFontSize(fontSize);
+    pdf.setTextColor(...color);
+    if (isBold) {
+      pdf.setFont('helvetica', 'bold');
+    } else {
+      pdf.setFont('helvetica', 'normal');
+    }
     
-    // Create PDF document
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 20;
-    const lineHeight = 7;
-    let yPosition = margin;
-
-    // Helper function to add a new page if needed
-    const checkPageBreak = (requiredHeight: number = lineHeight) => {
-      if (yPosition + requiredHeight > pageHeight - margin) {
+    const lines = pdf.splitTextToSize(text, contentWidth);
+    
+    lines.forEach((line: string) => {
+      if (yPosition + 10 > pageHeight - margin) {
         pdf.addPage();
         yPosition = margin;
-        return true;
       }
-      return false;
-    };
-
-    // Helper function to add text with word wrapping
-    const addWrappedText = (text: string, fontSize: number = 12, isBold: boolean = false) => {
-      pdf.setFontSize(fontSize);
-      pdf.setFont('helvetica', isBold ? 'bold' : 'normal');
-      
-      const maxWidth = pageWidth - (2 * margin);
-      const lines = pdf.splitTextToSize(text, maxWidth);
-      
-      for (const line of lines) {
-        checkPageBreak();
-        pdf.text(line, margin, yPosition);
-        yPosition += lineHeight;
-      }
-    };
-
-    // PDF Header
-    pdf.setFillColor(59, 130, 246); // Blue background
-    pdf.rect(0, 0, pageWidth, 40, 'F');
-    
-    pdf.setTextColor(255, 255, 255); // White text
-    pdf.setFontSize(24);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('AI Roundtable Session Report', margin, 25);
-    
-    pdf.setTextColor(0, 0, 0); // Reset to black
-    yPosition = 50;
-
-    // Session Overview
-    addWrappedText('SESSION OVERVIEW', 16, true);
-    yPosition += 5;
-
-    addWrappedText(`Topic: ${sessionData.sessionTopic}`, 12);
-    addWrappedText(`Facilitator: ${sessionData.facilitator}`, 12);
-    addWrappedText(`Participants: ${sessionData.participantCount}`, 12);
-    addWrappedText(`Date: ${sessionData.startTime.toLocaleDateString()}`, 12);
-    addWrappedText(`Duration: ${sessionData.duration} minutes`, 12);
-    addWrappedText(`Questions Completed: ${sessionData.currentQuestionIndex + 1} of ${sessionData.totalQuestions}`, 12);
-    
-    yPosition += 10;
-
-    // AI Insights Section
-    if (sessionData.aiInsights.length > 0) {
-      addWrappedText('AI INSIGHTS & ANALYSIS', 16, true);
-      yPosition += 5;
-
-      sessionData.aiInsights.forEach((insight, index) => {
-        checkPageBreak(20); // Ensure space for insight
-        
-        addWrappedText(`${index + 1}. ${insight.type.toUpperCase()} (${insight.timestamp.toLocaleTimeString()})`, 12, true);
-        addWrappedText(insight.content, 11);
-        
-        if (insight.suggestions && insight.suggestions.length > 0) {
-          addWrappedText('Suggestions:', 11, true);
-          insight.suggestions.forEach(suggestion => {
-            addWrappedText(`• ${suggestion}`, 11);
-          });
-        }
-        
-        yPosition += 5;
-      });
-    }
-
-    // Conversation Transcript
-    if (sessionData.transcript.length > 0) {
-      checkPageBreak(30);
-      addWrappedText('CONVERSATION TRANSCRIPT', 16, true);
-      yPosition += 5;
-
-      sessionData.transcript.forEach((entry, index) => {
-        checkPageBreak(15); // Ensure space for transcript entry
-        
-        const timeStr = entry.timestamp.toLocaleTimeString();
-        const speakerText = `[${timeStr}] ${entry.speaker}:`;
-        
-        addWrappedText(speakerText, 11, true);
-        addWrappedText(entry.text, 11);
-        yPosition += 3;
-      });
-    }
-
-    // Footer on last page
-    const pageCount = (pdf as any).internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      pdf.setPage(i);
-      pdf.setFontSize(8);
-      pdf.setTextColor(128, 128, 128);
-      pdf.text(
-        `Generated by AI Roundtable Facilitator | Page ${i} of ${pageCount} | ${new Date().toLocaleString()}`,
-        margin,
-        pageHeight - 10
-      );
-    }
-
-    // Generate filename and download
-    const filename = `ai-roundtable-${sessionData.sessionTopic.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
-    
-    pdf.save(filename);
-    console.log('✅ PDF exported successfully:', filename);
-    
-  } catch (error) {
-    console.error('❌ PDF export failed:', error);
-    throw new Error(`PDF export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-};
-
-/**
- * Generate PDF from HTML element (alternative method for complex layouts)
- */
-export const generatePDFFromElement = async (elementId: string, filename: string): Promise<void> => {
-  try {
-    console.log('📄 Generating PDF from HTML element:', elementId);
-    
-    const element = document.getElementById(elementId);
-    if (!element) {
-      throw new Error(`Element with id '${elementId}' not found`);
-    }
-
-    // Capture the element as canvas
-    const canvas = await html2canvas(element, {
-      scale: 2, // Higher quality
-      useCORS: true,
-      logging: false,
-      height: element.scrollHeight,
-      width: element.scrollWidth
+      pdf.text(line, margin, yPosition);
+      yPosition += fontSize * 0.4;
     });
-
-    // Create PDF
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
     
-    const imgWidth = pageWidth - 20; // 10mm margin on each side
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    yPosition += 5; // Add spacing after paragraph
+  };
+  
+  // Title Page
+  pdf.setFillColor(59, 130, 246); // Blue background
+  pdf.rect(0, 0, pageWidth, 60, 'F');
+  
+  // White text on blue background
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFontSize(24);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('AI Transformation Roundtable', pageWidth / 2, 25, { align: 'center' });
+  
+  pdf.setFontSize(16);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text('Session Summary Report', pageWidth / 2, 40, { align: 'center' });
+  
+  // Reset text color
+  pdf.setTextColor(0, 0, 0);
+  yPosition = 80;
+  
+  // Session Information Box
+  pdf.setDrawColor(200, 200, 200);
+  pdf.setFillColor(249, 250, 251);
+  pdf.roundedRect(margin, yPosition - 10, contentWidth, 50, 3, 3, 'FD');
+  
+  pdf.setFontSize(12);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Session Details', margin + 5, yPosition);
+  yPosition += 10;
+  
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(10);
+  const sessionDate = new Date(exportData.sessionContext.startTime);
+  const details = [
+    `Event: Ai4 Conference, Las Vegas`,
+    `Date: ${sessionDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`,
+    `Facilitator: Ari Lehavi, Head of Applied AI, Moody's`,
+    `Topic: ${exportData.sessionContext.currentTopic || 'AI Transformation Strategy'}`,
+    `Duration: ${Math.floor((exportData.timestamp.getTime() - sessionDate.getTime()) / 60000)} minutes`
+  ];
+  
+  details.forEach(detail => {
+    pdf.text(detail, margin + 5, yPosition);
+    yPosition += 6;
+  });
+  
+  yPosition += 15;
+  
+  // Executive Summary Section
+  pdf.addPage();
+  yPosition = margin;
+  
+  addWrappedText('EXECUTIVE SUMMARY', 18, true, [59, 130, 246]);
+  yPosition += 5;
+  
+  if (exportData.executiveSummary && exportData.executiveSummary !== 'No executive summary generated yet.') {
+    // Parse and format the executive summary content
+    const summaryLines = exportData.executiveSummary.split('\n');
     
-    let heightLeft = imgHeight;
-    let position = 10; // 10mm top margin
-
-    // Add image to PDF (split across pages if needed)
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 10, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight - 20; // Account for margins
-
-    while (heightLeft >= 0) {
-      position = heightLeft - imgHeight + 10;
-      pdf.addPage();
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 10, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight - 20;
-    }
-
-    pdf.save(filename);
-    console.log('✅ PDF exported successfully from HTML element:', filename);
-    
-  } catch (error) {
-    console.error('❌ PDF export from HTML failed:', error);
-    throw new Error(`PDF export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    summaryLines.forEach(line => {
+      const trimmedLine = line.trim();
+      
+      // Check if it's a section header (contains ** or numbers followed by period)
+      if (trimmedLine.includes('**') || /^\d+\./.test(trimmedLine)) {
+        // Extract header text
+        const headerText = trimmedLine.replace(/\*\*/g, '').replace(/^\d+\.\s*/, '');
+        if (headerText) {
+          yPosition += 5; // Extra space before headers
+          addWrappedText(headerText, 12, true, [31, 41, 55]);
+        }
+      } else if (trimmedLine.startsWith('-') || trimmedLine.startsWith('•')) {
+        // Bullet points
+        const bulletText = trimmedLine.replace(/^[-•]\s*/, '• ');
+        addWrappedText(bulletText, 10, false, [55, 65, 81]);
+      } else if (trimmedLine) {
+        // Regular paragraph text
+        addWrappedText(trimmedLine, 10, false, [55, 65, 81]);
+      }
+    });
+  } else {
+    addWrappedText('No executive summary has been generated for this session yet. Generate an executive summary in the final phase to include it in the PDF export.', 10, false, [107, 114, 128]);
   }
+  
+  // Key Insights Section (if any)
+  const insights = exportData.sessionContext.aiInsights.filter(i => i.type === 'insights');
+  if (insights.length > 0) {
+    pdf.addPage();
+    yPosition = margin;
+    
+    addWrappedText('KEY INSIGHTS', 18, true, [59, 130, 246]);
+    yPosition += 5;
+    
+    insights.slice(-5).forEach((insight, index) => {
+      addWrappedText(`Insight ${index + 1}:`, 11, true);
+      addWrappedText(insight.content, 10);
+      yPosition += 5;
+    });
+  }
+  
+  // Session Transcript Summary
+  if (exportData.sessionContext.liveTranscript.length > 0) {
+    pdf.addPage();
+    yPosition = margin;
+    
+    addWrappedText('DISCUSSION HIGHLIGHTS', 18, true, [59, 130, 246]);
+    yPosition += 5;
+    
+    addWrappedText(`Total Contributions: ${exportData.sessionContext.liveTranscript.length}`, 10);
+    addWrappedText(`Participants: ${new Set(exportData.sessionContext.liveTranscript.map(e => e.speaker)).size}`, 10);
+    yPosition += 10;
+    
+    // Show last few transcript entries as examples
+    addWrappedText('Recent Discussion Points:', 12, true);
+    yPosition += 3;
+    
+    exportData.sessionContext.liveTranscript.slice(-5).forEach(entry => {
+      const timeStr = new Date(entry.timestamp).toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      });
+      
+      addWrappedText(`[${timeStr}] ${entry.speaker}:`, 9, true, [75, 85, 99]);
+      addWrappedText(entry.text, 9, false, [55, 65, 81]);
+      yPosition += 3;
+    });
+  }
+  
+  // Footer on last page
+  pdf.setFontSize(8);
+  pdf.setTextColor(128, 128, 128);
+  pdf.text(
+    `Generated on ${exportData.timestamp.toLocaleDateString()} at ${exportData.timestamp.toLocaleTimeString()}`,
+    pageWidth / 2,
+    pageHeight - 10,
+    { align: 'center' }
+  );
+  
+  // Save the PDF
+  const fileName = `AI_Transformation_Session_${sessionDate.toISOString().split('T')[0]}.pdf`;
+  pdf.save(fileName);
 };
 
 /**
  * Utility to prepare session data for PDF export
  */
-export const prepareSessionDataForExport = (sessionContext: any): SessionExportData => {
-  const now = new Date();
-  const durationMs = now.getTime() - sessionContext.startTime.getTime();
-  const durationMinutes = Math.round(durationMs / 60000);
+export const prepareSessionDataForExport = (sessionContext: SessionContext): ExportData => {
+  // Find the executive summary from AI insights
+  const executiveSummary = sessionContext.aiInsights
+    .filter(insight => insight.type === 'executive')
+    .map(insight => insight.content)
+    .join('\n\n');
 
   return {
-    sessionTopic: sessionContext.currentTopic || 'AI Roundtable Session',
-    facilitator: 'AI Facilitator', // Default facilitator name
-    participantCount: sessionContext.participantCount || 5,
-    startTime: sessionContext.startTime,
-    endTime: now,
-    duration: durationMinutes,
-    transcript: sessionContext.liveTranscript || [],
-    aiInsights: sessionContext.aiInsights || [],
-    currentQuestionIndex: sessionContext.currentQuestionIndex || 0,
-    totalQuestions: 10 // This should come from config
+    sessionContext,
+    executiveSummary: executiveSummary || 'No executive summary generated yet.',
+    timestamp: new Date()
   };
 };
 
 /**
  * Generate executive summary from session context
  */
-function generateExecutiveSummary(sessionContext: any): string {
+function generateExecutiveSummary(sessionContext: SessionContext): string {
   const insights = sessionContext.aiInsights || [];
   const transcript = sessionContext.liveTranscript || [];
 
@@ -315,7 +263,7 @@ function extractStrategicInsights(aiInsights: any[]): StrategyInsight[] {
 /**
  * Generate action items from session context
  */
-function generateActionItems(sessionContext: any): ActionItem[] {
+function generateActionItems(sessionContext: SessionContext): ActionItem[] {
   const suggestions = sessionContext.aiInsights
     ?.filter((insight: any) => insight.suggestions && insight.suggestions.length > 0)
     .flatMap((insight: any) => insight.suggestions)
@@ -348,21 +296,21 @@ function extractKeyDecisions(transcript: any[]): string[] {
 /**
  * Generate competitive implications
  */
-function generateCompetitiveImplications(sessionContext: any): string {
+function generateCompetitiveImplications(sessionContext: SessionContext): string {
   return 'Strategic initiatives discussed will enhance competitive positioning through AI-driven capabilities and operational excellence.';
 }
 
 /**
  * Generate business value statement
  */
-function generateBusinessValue(sessionContext: any): string {
+function generateBusinessValue(sessionContext: SessionContext): string {
   return 'Projected 15-25% efficiency improvement and enhanced strategic decision-making capabilities through AI transformation.';
 }
 
 /**
  * Generate next steps
  */
-function generateNextSteps(sessionContext: any): string[] {
+function generateNextSteps(sessionContext: SessionContext): string[] {
   return [
     'Schedule follow-up executive session within 2 weeks',
     'Assign ownership for key action items to executive team members',
@@ -370,3 +318,5 @@ function generateNextSteps(sessionContext: any): string[] {
     'Establish success metrics and progress tracking mechanisms'
   ];
 }
+
+
