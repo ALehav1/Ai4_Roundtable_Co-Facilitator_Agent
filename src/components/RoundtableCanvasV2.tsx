@@ -65,78 +65,121 @@ const TopNavigation = ({
   setPresentationMode: (mode: boolean) => void;
   setShowTemplateSelector: (show: boolean) => void;
 }) => (
-  <div className="sticky top-0 z-50 bg-white border-b shadow-sm p-2 md:p-4">
-    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2 max-w-7xl mx-auto">
-      {/* Mobile: Stack vertically, Desktop: Side by side */}
-      
-      {/* Phase Navigation - Full width on mobile */}
-      <div className="flex items-center justify-between gap-2 w-full md:w-auto">
-        <button
-          onClick={goToPreviousQuestion}
-          disabled={sessionContext.currentQuestionIndex === 0}
-          className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
-            sessionContext.currentQuestionIndex === 0
-              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          ← Prev
-        </button>
+  <header className="sticky top-0 z-50 bg-white border-b shadow-sm">
+    <div className="max-w-full px-4 md:px-6 py-3 md:py-4">
+      <div className="flex items-center justify-between">
+        {/* Title - Full on desktop, shortened on mobile */}
+        <h1 className="text-sm md:text-base font-semibold text-gray-900 flex-shrink-0">
+          <span className="hidden md:inline">🎙️ AI Roundtable Co-Facilitator</span>
+          <span className="md:hidden">🎙️ AI Roundtable</span>
+        </h1>
         
-        {/* Phase indicator with progress */}
-        <div className="flex items-center gap-2 flex-1 justify-center">
-          <span className="text-xs md:text-sm text-gray-600 whitespace-nowrap">
-            Phase {sessionContext.currentQuestionIndex + 1}/{totalQuestions}
-          </span>
-          {/* Progress bar - hidden on very small screens */}
-          <div className="hidden sm:block w-16 h-1.5 bg-gray-200 rounded-full">
-            <div 
-              className="h-full bg-blue-500 rounded-full transition-all"
-              style={{ 
-                width: `${((sessionContext.currentQuestionIndex + 1) / totalQuestions) * 100}%` 
-              }}
-            />
+        {/* Desktop: Full navigation | Mobile: Hidden (replaced by mobile nav below) */}
+        <div className="hidden md:flex items-center gap-4 bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center px-3 py-1.5 bg-blue-500 text-white text-sm font-semibold rounded-full shadow-sm">
+              Phase {sessionContext.currentQuestionIndex + 1} of {totalQuestions}
+            </span>
+            
+            <button
+              onClick={goToPreviousQuestion}
+              disabled={sessionContext.currentQuestionIndex === 0}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                sessionContext.currentQuestionIndex === 0
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              ← Previous
+            </button>
+            
+            <button
+              onClick={goToNextQuestion}
+              disabled={sessionContext.currentQuestionIndex >= totalQuestions - 1}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                sessionContext.currentQuestionIndex >= totalQuestions - 1
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              Next Phase →
+            </button>
+            
+            <button
+              onClick={() => setShowTemplateSelector(true)}
+              className="px-3 py-2 rounded-lg bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors font-medium"
+              title="Choose executive session template"
+            >
+              📋 Templates
+            </button>
+            
+            <button
+              onClick={() => setPresentationMode(!presentationMode)}
+              className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors"
+              title="Toggle Presentation Mode (Cmd+P)"
+            >
+              {presentationMode ? '👁️ Exit Presentation' : '📊 Presentation Mode'}
+            </button>
           </div>
         </div>
         
-        <button
-          onClick={goToNextQuestion}
-          disabled={sessionContext.currentQuestionIndex >= totalQuestions - 1}
-          className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
-            sessionContext.currentQuestionIndex >= totalQuestions - 1
-              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
-          }`}
-        >
-          Next →
-        </button>
-      </div>
-      
-      {/* Action buttons - Responsive layout */}
-      <div className="flex items-center justify-between md:justify-end gap-2 w-full md:w-auto">
-        {/* Templates button */}
-        <button
-          onClick={() => setShowTemplateSelector(true)}
-          className="px-3 py-1.5 text-sm rounded-lg bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors font-medium"
-          title="Choose template"
-        >
-          📋 <span className="hidden sm:inline">Templates</span>
-        </button>
-        
-        {/* Presentation Mode - Icon only on mobile */}
-        <button
-          onClick={() => setPresentationMode(!presentationMode)}
-          className="px-3 py-1.5 text-sm rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors"
-          title="Presentation Mode (Cmd+P)"
-        >
-          {presentationMode ? '👁️' : '📊'} 
-          <span className="hidden sm:inline ml-1">
-            {presentationMode ? 'Exit' : 'Present'}
+        {/* Mobile: Simple phase nav */}
+        <div className="flex md:hidden items-center gap-2">
+          <button
+            onClick={goToPreviousQuestion}
+            disabled={sessionContext.currentQuestionIndex === 0}
+            className={`p-2 rounded-lg transition-colors ${
+              sessionContext.currentQuestionIndex === 0
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-gray-200 text-gray-700 active:bg-gray-300'
+            }`}
+            title="Previous Phase"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          
+          <span className="text-sm font-medium text-gray-600 px-2">
+            {sessionContext.currentQuestionIndex + 1}/{totalQuestions}
           </span>
-        </button>
+          
+          <button
+            onClick={goToNextQuestion}
+            disabled={sessionContext.currentQuestionIndex >= totalQuestions - 1}
+            className={`p-2 rounded-lg transition-colors ${
+              sessionContext.currentQuestionIndex >= totalQuestions - 1
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 text-white active:bg-blue-700'
+            }`}
+            title="Next Phase"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+        
+        {/* Mobile action button - Templates and Presentation combined */}
+        <div className="flex md:hidden items-center gap-1">
+          <button
+            onClick={() => setShowTemplateSelector(true)}
+            className="p-2 rounded-lg bg-indigo-100 text-indigo-700 active:bg-indigo-200"
+            title="Templates"
+          >
+            📋
+          </button>
+          <button
+            onClick={() => setPresentationMode(!presentationMode)}
+            className="p-2 rounded-lg bg-gray-200 text-gray-700 active:bg-gray-300"
+            title="Presentation Mode"
+          >
+            {presentationMode ? '👁️' : '📊'}
+          </button>
+        </div>
       </div>
     </div>
-  </div>
+  </header>
 );
 
 const RoundtableCanvasV2: React.FC = () => {
