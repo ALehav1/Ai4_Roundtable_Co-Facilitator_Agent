@@ -1778,64 +1778,16 @@ const RoundtableCanvasV2: React.FC = () => {
 
             {/* Tab Content Area */}
             <div className="flex-1 overflow-y-auto p-6">
-              {/* Facilitator Guide Tab */}
+              {/* Facilitator Guide Tab - Comprehensive Panel */}
               {rightPanelTab === 'guide' && (
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Facilitator Guide</h3>
-                  {currentQuestion?.facilitatorGuidance && (
-                    <div className="space-y-4">
-                      {/* Keep ALL the existing guide content here - DO NOT MODIFY */}
-                      {/* Objective */}
-                      {currentQuestion.facilitatorGuidance.objective && (
-                        <div>
-                          <h4 className="font-medium text-gray-900 mb-1">Objective</h4>
-                          <p className="text-sm text-gray-600">
-                            {currentQuestion.facilitatorGuidance.objective}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* What to listen for */}
-                      {currentQuestion.facilitatorGuidance.whatToListenFor && (
-                        <div>
-                          <h4 className="font-medium text-gray-900 mb-1">What to Listen For</h4>
-                          <ul className="text-sm text-gray-600 space-y-1">
-                            {currentQuestion.facilitatorGuidance.whatToListenFor.map((item, idx) => (
-                              <li key={idx} className="flex items-start">
-                                <span className="text-blue-500 mr-2">•</span>
-                                <span>{item}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Facilitation tips */}
-                      {currentQuestion.facilitatorGuidance.facilitationTips && (
-                        <div>
-                          <h4 className="font-medium text-gray-900 mb-1">Facilitation Tips</h4>
-                          <ul className="text-sm text-gray-600 space-y-1">
-                            {currentQuestion.facilitatorGuidance.facilitationTips.map((tip, idx) => (
-                              <li key={idx} className="flex items-start">
-                                <span className="text-green-500 mr-2">✓</span>
-                                <span>{tip}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Transition line */}
-                      {currentQuestion.facilitatorGuidance.transitionLine && (
-                        <div>
-                          <h4 className="font-medium text-gray-900 mb-1">Transition to Next</h4>
-                          <p className="text-sm text-gray-600 italic">
-                            "{currentQuestion.facilitatorGuidance.transitionLine}"
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <div className="max-h-[600px] overflow-y-auto pr-2">
+                    <FacilitatorPanel 
+                      currentQuestion={currentQuestion || null} 
+                      isVisible={true} 
+                    />
+                  </div>
                 </div>
               )}
 
