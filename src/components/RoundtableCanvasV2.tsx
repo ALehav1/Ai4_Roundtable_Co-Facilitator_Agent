@@ -20,6 +20,22 @@ import { DebugPanel } from '@/components/DebugPanel';
 // SessionState, TranscriptEntry, SessionContext imported from @/types/session
 // FACILITATOR_PATTERNS, MIN_WORDS_FOR_INSIGHTS imported from @/constants/speech
 
+// Helper function to format AI-generated content with better spacing and readability
+const formatAIContent = (content: string): string => {
+  return content
+    // Add spacing after numbered lists
+    .replace(/(\d+\.)\s+/g, '\n$1 ')
+    // Add spacing between major sections
+    .replace(/(\*\*[^*]+\*\*:)/g, '\n\n$1')
+    // Ensure bullet points have proper spacing
+    .replace(/(\n-\s+)/g, '\n\n- ')
+    // Add spacing after section headers
+    .replace(/(\*\*[^*]+\*\*)\s*([^:])/g, '$1\n\n$2')
+    // Clean up excessive newlines
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+};
+
 // Enhanced Recording Indicator Component
 const RecordingIndicator = ({ isRecording }: { isRecording: boolean }) => {
   if (!isRecording) return null;
@@ -704,18 +720,11 @@ const RoundtableCanvasV2: React.FC = () => {
   // Process manual entry submission
   const submitManualEntry = useCallback(() => {
     if (entryMode === 'single' && manualEntryText.trim()) {
-      // Auto-detect speaker type based on content
-      const detectedSpeaker = detectSpeaker(manualEntryText.trim());
-      
-      // Use manual override if explicitly set to Custom with a name
-      const speakerName = manualSpeakerName === 'Custom' && customSpeakerName.trim()
-        ? customSpeakerName.trim()
-        : detectedSpeaker;
-      
+      // Always use unified Speaker label
       addTranscriptEntry({
-        speaker: speakerName,
+        speaker: 'Speaker',
         text: manualEntryText.trim(),
-        isAutoDetected: manualSpeakerName !== 'Custom' || !customSpeakerName.trim(),
+        isAutoDetected: true, // All entries use unified detection
         confidence: 1.0 // Manual entries have full confidence
       });
       
@@ -732,9 +741,8 @@ const RoundtableCanvasV2: React.FC = () => {
         const match = line.match(/^([^:]+):\s*(.+)$/);
         if (match) {
           const [, speaker, text] = match;
-          // Use auto-detection for bulk entries too, but allow manual speaker override
-          const detectedSpeaker = detectSpeaker(text.trim());
-          const finalSpeaker = speaker.trim().toLowerCase() === 'auto' ? detectedSpeaker : speaker.trim();
+          // Use unified Speaker label for bulk entries, but allow manual speaker override
+          const finalSpeaker = speaker.trim().toLowerCase() === 'auto' ? 'Speaker' : speaker.trim();
           
           addTranscriptEntry({
             speaker: finalSpeaker,
@@ -837,138 +845,7 @@ const RoundtableCanvasV2: React.FC = () => {
   const CONTINUITY_WINDOW_MS = 30000; // 30 seconds for speaker continuity
 
   // Smart Speaker Detection Function using imported patterns + context-sensitive logic + proximity
-  const detectSpeaker = useCallback((text: string): string => {
-    const lowerText = text.toLowerCase();
-    const now = Date.now();
-    
-    // 1. Check semantic facilitator patterns - much more flexible detection
-    const matchesFacilitatorPattern = Object.values(FACILITATOR_SEMANTIC_PATTERNS)
-      .flat()
-      .some(regex => {
-        const matches = regex.test(text);
-        console.log(`🔍 DEBUG: Pattern ${regex} matches "${text}": ${matches}`);
-        return matches;
-      });
-    
-    // 2. Context-sensitive facilitator detection for Ari from Moody's
-    
-    // Self-introduction patterns (facilitator introducing themselves)
-    const isSelfIntroduction = /\b(my name is|i'm|i am).*(ari|ari lehavi)\b/i.test(text) ||
-                              /\b(ari|ari lehavi).*(here|facilitator|leading|moderating)\b/i.test(text);
-    
-    // Organization context (facilitator referencing their org, not participants asking about it)
-    const isOrgReference = /\b(at moody'?s|from moody'?s|we at moody'?s)\b/i.test(text) &&
-                          !/\b(how do you|how does|what does).*(moody'?s|you)\b/i.test(text); // Exclude participant questions
-    
-    // Topic introduction (facilitator introducing agenda items or guide questions)
-    const isTopicIntroduction = /\b(let's talk about|our next topic|turning to|moving to).*(ai|artificial intelligence|transformation|automation)\b/i.test(text) ||
-                               /\b(today we'll|we're going to|our agenda|our focus)\b/i.test(text);
-    
-    // Facilitator guide questions (from your session framework)
-    const isFacilitatorGuideQuestion = /\b(what does your org look like|what scares you most|what's one takeaway|how does that connect|can you say more)\b/i.test(text) ||
-                                      /\b(fast forward.*years|the darker version|what needs to be true)\b/i.test(text);
-    
-    // Advanced context patterns for company/org references
-    
-    // PARTICIPANT indicators (first-hand experience, speaking about their own org)
-    const isParticipantFirstHand = /\b(the way we do it at|at our company|our experience at|we handle it by|at \w+, we)\b/i.test(text) ||
-                                  /\b(in our organization|our approach at|we've found that|our team at)\b/i.test(text);
-    
-    // PARTICIPANT self-introductions (any name/org other than Ari/Ari Lehavi/Moody's)
-    const isParticipantSelfIntro = /\b(my name is|i'm|i am)\s+(?!ari\b|ari\s+lehavi\b)\w+/i.test(text) ||
-                                  /\b(from|at|with)\s+(?!moody'?s\b)\w+[\s\w]*(?:company|corp|inc|llc|ltd|organization|org|group|team)\b/i.test(text) ||
-                                  /\b(i work at|i'm with|i'm from)\s+(?!moody'?s\b)\w+/i.test(text);
-    
-    // FACILITATOR indicators (asking about others' experiences)
-    const isFacilitatorAskingAboutOthers = /\b(how does \w+ do it|how do you at \w+|what's your experience at|how does your company)\b/i.test(text) ||
-                                          /\b(how do they handle it at|what's the approach at \w+|how does \w+ think about)\b/i.test(text);
-    
-    // 3. Additional heuristics for facilitator detection
-    const isQuestion = text.trim().endsWith('?') && text.length < 200; // Short questions often from facilitator
-    const hasTransitionWords = /^(so|now|okay|alright|great|well|let's)/i.test(text);
-    const hasSummaryLanguage = /summariz|wrap up|key takeaway|moving forward/i.test(text);
-    
-    // 4. Check for continuity breaks (questions that break speaker flow)
-    
-    // Facilitator asking audience questions (breaks facilitator continuity)
-    const isFacilitatorAskingAudience = /\b(what do you think|what's your view|how do you see|tell me|share with us|thoughts on)\b/i.test(text) ||
-                                       /\b(any questions|what questions|does anyone)\b/i.test(text);
-    
-    // Speaker asking facilitator for clarification (breaks participant continuity) 
-    const isAskingFacilitatorClarification = /\b(ari|ari lehavi|moody's).*(what|how|why|can you|could you)\b/i.test(text) ||
-                                            /\b(can you clarify|what did you mean|how do you|what's your take)\b/i.test(text);
-    
-    // 5. Apply proximity/continuity logic
-    const isWithinContinuityWindow = lastSpeakerDetection && (now - lastSpeakerDetection.timestamp) < CONTINUITY_WINDOW_MS;
-    
-    // VERY Strong participant indicators (override continuity) - only self-introductions
-    if (isParticipantSelfIntro) {
-      const result = 'Participant';
-      setLastSpeakerDetection({ speaker: result, timestamp: now, confidence: 'high' });
-      return result;
-    }
-    
-    // VERY Strong facilitator indicators (override continuity)
-    const isVeryStrongFacilitator = matchesFacilitatorPattern || // SEMANTIC PATTERNS NOW VERY STRONG
-                                   isSelfIntroduction || 
-                                   isOrgReference || 
-                                   isTopicIntroduction || 
-                                   isFacilitatorGuideQuestion;
-    
-    if (isVeryStrongFacilitator) {
-      const result = 'Facilitator';
-      setLastSpeakerDetection({ speaker: result, timestamp: now, confidence: 'high' });
-      console.log(`✅ Strong Facilitator: "${text.substring(0, 30)}..." → ${result} (semantic pattern match)`);
-      return result;
-    }
-    
-    // 6. Apply continuity logic BEFORE weaker patterns
-    if (isWithinContinuityWindow && lastSpeakerDetection) {
-      // Check for continuity breaks
-      if (lastSpeakerDetection.speaker === 'Facilitator' && isFacilitatorAskingAudience) {
-        // Facilitator asking audience breaks facilitator continuity
-        const result = 'Facilitator'; // Still facilitator, but reset continuity
-        setLastSpeakerDetection({ speaker: result, timestamp: now, confidence: 'medium' });
-        return result;
-      }
-      
-      if (lastSpeakerDetection.speaker === 'Participant' && isAskingFacilitatorClarification) {
-        // Participant asking facilitator breaks participant continuity
-        const result = 'Participant'; // Still participant, but reset continuity  
-        setLastSpeakerDetection({ speaker: result, timestamp: now, confidence: 'medium' });
-        return result;
-      }
-      
-      // No continuity break - continue with last speaker (HIGH PRIORITY)
-      if (!isFacilitatorAskingAudience && !isAskingFacilitatorClarification) {
-        console.log(`🔄 Continuity: "${text.substring(0, 30)}..." → ${lastSpeakerDetection.speaker} (within ${Math.round((now - lastSpeakerDetection.timestamp) / 1000)}s)`);
-        return lastSpeakerDetection.speaker;
-      }
-    }
-    
-    // 7. Weaker pattern matching (only if no continuity)
-    const isWeakFacilitator = isFacilitatorAskingAboutOthers ||
-                             (isQuestion && hasTransitionWords) || 
-                             hasSummaryLanguage;
-    
-    if (isWeakFacilitator) {
-      const result = 'Facilitator';
-      setLastSpeakerDetection({ speaker: result, timestamp: now, confidence: 'medium' });
-      return result;
-    }
-    
-    // Weaker participant indicators (only if no continuity)
-    if (isParticipantFirstHand) {
-      const result = 'Participant';
-      setLastSpeakerDetection({ speaker: result, timestamp: now, confidence: 'medium' });
-      return result;
-    }
-    
-    // 7. Default fallback
-    const result = 'Participant';
-    setLastSpeakerDetection({ speaker: result, timestamp: now, confidence: 'low' });
-    return result;
-  }, [lastSpeakerDetection]);
+  // Removed detectSpeaker function - now using unified "Speaker" labels
 
   // TRANSCRIPT BUFFERING: Handle transcription updates with natural pause detection
   const handleTranscriptionUpdate = useCallback((text: string, isFinal: boolean) => {
@@ -990,16 +867,13 @@ const RoundtableCanvasV2: React.FC = () => {
       const completeText = (currentUtterance + ' ' + text).trim();
       
       if (completeText.length > 0) {
-        // Use smart speaker detection
-        const detectedSpeaker = detectSpeaker(completeText);
-        
         // Only add if it's substantial (more than just a few characters)
         if (completeText.length > 5) {
           addTranscriptEntry({
             text: completeText,
-            speaker: detectedSpeaker,
-            isAutoDetected: true,
-            confidence: 0.9
+            speaker: 'Speaker',
+            isAutoDetected: false,
+            confidence: 1.0
           });
         }
         setCurrentUtterance('');
@@ -1011,18 +885,17 @@ const RoundtableCanvasV2: React.FC = () => {
       // Set timeout to commit after pause (1.5 seconds = end of natural utterance)
       utteranceTimeoutRef.current = setTimeout(() => {
         if (currentUtterance.length > 5) {
-          const detectedSpeaker = detectSpeaker(currentUtterance);
           addTranscriptEntry({
             text: currentUtterance,
-            speaker: detectedSpeaker,
-            isAutoDetected: true,
-            confidence: 0.8
+            speaker: 'Speaker',
+            isAutoDetected: false,
+            confidence: 1.0
           });
           setCurrentUtterance('');
         }
       }, 1500);
     }
-  }, [currentUtterance, detectSpeaker, addTranscriptEntry]);
+  }, [currentUtterance, addTranscriptEntry]);
 
   // Helper function to extract discussion patterns
   const detectDiscussionPatterns = useCallback((transcript: TranscriptEntry[]) => {
@@ -1570,21 +1443,13 @@ const RoundtableCanvasV2: React.FC = () => {
                       <div className="space-y-0">
                          {sessionContext.liveTranscript.map((entry, index) => {
                           const isLast = index === sessionContext.liveTranscript.length - 1;
-                          const speakerType = (entry.speaker === 'Facilitator') ? 'facilitator' : 'participant';
-                          
-                          // DEBUG: Log what's actually in entry.speaker
-                          console.log(` Entry ${index}: speaker="${entry.speaker}", text="${entry.text?.substring(0, 30)}..."`);
                           
                           return (
                             <div key={entry.id || index} className="transcript-entry">
-                              {/* Timeline Visual */}
+                              {/* Timeline Visual - Unified gray style */}
                               <div className="timeline">
-                                <div className={`timeline-dot ${speakerType}`}>
-                                  {speakerType === 'facilitator' ? (
-                                    <span className="text-xs font-bold text-white bg-blue-500 rounded-full w-6 h-6 flex items-center justify-center ring-2 ring-blue-200">F</span>
-                                  ) : (
-                                    <span className="text-xs font-bold text-white bg-green-500 rounded-full w-6 h-6 flex items-center justify-center ring-2 ring-green-200">P</span>
-                                  )}
+                                <div className="timeline-dot speaker">
+                                  <span className="text-xs font-bold text-white bg-gray-500 rounded-full w-6 h-6 flex items-center justify-center ring-2 ring-gray-200">S</span>
                                 </div>
                                 {!isLast && <div className="timeline-line" />}
                               </div>
@@ -1592,8 +1457,8 @@ const RoundtableCanvasV2: React.FC = () => {
                               {/* Entry Content */}
                               <div className="entry-content">
                                 <div className="entry-header">
-                                  <span className={`speaker-name ${speakerType}`}>
-                                    {entry.speaker || 'Participant'}
+                                  <span className="speaker-name speaker">
+                                    Speaker
                                   </span>
                                   <span className="timestamp">
                                     {new Date(entry.timestamp).toLocaleTimeString('en-US', {
@@ -1919,7 +1784,7 @@ const RoundtableCanvasV2: React.FC = () => {
                     ) : (
                       getInsightsForType('insights').slice(-5).reverse().map((insight, idx) => (
                         <div key={insight.id || idx} className="bg-white rounded-lg p-4 border border-blue-100 shadow-sm hover:shadow-md transition-shadow">
-                          <p className="text-sm text-gray-800">{insight.content}</p>
+                          <div className="text-sm text-gray-800 whitespace-pre-wrap">{formatAIContent(insight.content)}</div>
                           <span className="text-xs text-gray-500 mt-2 block">
                             {new Date(insight.timestamp).toLocaleTimeString('en-US', {
                               hour: 'numeric',
@@ -1963,7 +1828,7 @@ const RoundtableCanvasV2: React.FC = () => {
                     ) : (
                       getInsightsForType('synthesis').slice(-1).map((insight, idx) => (
                         <div key={insight.id || idx} className="bg-white rounded-lg p-4 border border-green-100 shadow-sm hover:shadow-md transition-shadow">
-                          <p className="text-sm text-gray-800">{insight.content}</p>
+                          <div className="text-sm text-gray-800 whitespace-pre-wrap">{formatAIContent(insight.content)}</div>
                           <span className="text-xs text-gray-500 mt-2 block">
                             {new Date(insight.timestamp).toLocaleTimeString('en-US', {
                               hour: 'numeric',
@@ -2007,7 +1872,7 @@ const RoundtableCanvasV2: React.FC = () => {
                     ) : (
                       getInsightsForType('followup').slice(-5).reverse().map((insight, idx) => (
                         <div key={insight.id || idx} className="bg-white rounded-lg p-4 border border-purple-100 shadow-sm hover:shadow-md transition-shadow">
-                          <p className="text-sm text-gray-800">{insight.content}</p>
+                          <div className="text-sm text-gray-800 whitespace-pre-wrap">{formatAIContent(insight.content)}</div>
                           <span className="text-xs text-gray-500 mt-2 block">
                             {new Date(insight.timestamp).toLocaleTimeString('en-US', {
                               hour: 'numeric',
@@ -2061,7 +1926,7 @@ const RoundtableCanvasV2: React.FC = () => {
                     ) : (
                       getInsightsForType('executive').slice(-5).reverse().map((insight, idx) => (
                         <div key={insight.id || idx} className="bg-white rounded-lg p-4 border border-indigo-100 shadow-sm hover:shadow-md transition-shadow">
-                          <p className="text-sm text-gray-800">{insight.content}</p>
+                          <div className="text-sm text-gray-800 whitespace-pre-wrap">{formatAIContent(insight.content)}</div>
                           <span className="text-xs text-gray-500 mt-2 block">
                             {new Date(insight.timestamp).toLocaleTimeString('en-US', {
                               hour: 'numeric',
@@ -2122,26 +1987,8 @@ const RoundtableCanvasV2: React.FC = () => {
                {entryMode === 'single' && (
                  <div className="space-y-4">
                    <div>
-                     <label className="block text-sm font-medium mb-2">Speaker</label>
-                     <select
-                       value={manualSpeakerName}
-                       onChange={(e) => setManualSpeakerName(e.target.value)}
-                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                     >
-                       <option value="Facilitator">Facilitator</option>
-                       <option value="Speaker">Speaker</option>
-                       <option value="Custom">Custom Name...</option>
-                     </select>
-                     {manualSpeakerName === 'Custom' && (
-                       <input
-                         type="text"
-                         value={customSpeakerName}
-                         onChange={(e) => setCustomSpeakerName(e.target.value)}
-                         className="w-full px-3 py-2 border border-gray-300 rounded-md mt-2"
-                         placeholder="Enter speaker name"
-                         autoFocus
-                       />
-                     )}
+                     <label className="block text-sm font-medium mb-2">Speaker: Speaker</label>
+                     <p className="text-sm text-gray-500 mb-3">All entries will be labeled as "Speaker"</p>
                    </div>
                    <div>
                      <label className="block text-sm font-medium mb-2">Entry Text</label>
@@ -2150,7 +1997,7 @@ const RoundtableCanvasV2: React.FC = () => {
                        onChange={(e) => setManualEntryText(e.target.value)}
                        className="w-full px-3 py-2 border border-gray-300 rounded-md h-32 resize-none"
                        placeholder="Enter the transcript text..."
-                       autoFocus={manualSpeakerName !== 'Custom'}
+                       autoFocus
                      />
                    </div>
                  </div>

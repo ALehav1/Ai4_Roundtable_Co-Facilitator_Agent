@@ -172,21 +172,20 @@ const RoundtableCanvasV2: React.FC = () => {
 
   // UI State
   const [isRecording, setIsRecording] = useState(false);
-  const [showManualEntry, setShowManualEntry] = useState(false);
+  // REMOVED: Duplicate manual entry state - using showManualModal instead
   const [manualText, setManualText] = useState('');
-  const [currentSpeaker, setCurrentSpeaker] = useState('Participant'); // DEFAULT TO PARTICIPANT per new guide
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzingType, setAnalyzingType] = useState<string | null>(null);
 
   const [interimTranscript, setInterimTranscript] = useState<string>('');
   const [speechError, setSpeechError] = useState<string | null>(null);
-  const [showManualModal, setShowManualModal] = useState(false);
-  const [manualEntryText, setManualEntryText] = useState('');
-  const [entryMode, setEntryMode] = useState<'single' | 'bulk'>('single');
-  const [manualSpeakerName, setManualSpeakerName] = useState('Speaker');
   const [customSpeakerName, setCustomSpeakerName] = useState('');
   const [bulkTranscriptText, setBulkTranscriptText] = useState('');
+  
+  // TRANSCRIPT BUFFERING: Accumulate speech until natural pause
+  const [currentUtterance, setCurrentUtterance] = useState('');
+  const utteranceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('blank_template');
   const [isExporting, setIsExporting] = useState(false);
   
@@ -201,6 +200,13 @@ const RoundtableCanvasV2: React.FC = () => {
   
   // Enhanced Speaker Mode State
   const [speakerMode, setSpeakerMode] = useState<'facilitator' | 'participant'>('facilitator');
+  const [currentSpeaker, setCurrentSpeaker] = useState('Participant');
+  
+  // Manual Entry Modal States
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [entryMode, setEntryMode] = useState<'single' | 'bulk'>('single');
+  const [manualEntryText, setManualEntryText] = useState('');
+  const [manualSpeakerName, setManualSpeakerName] = useState('Speaker');
   
   // Presentation Mode State (Phase 1.1 - Critical UI Fix)
   const [presentationMode, setPresentationMode] = useState(false);
@@ -226,21 +232,20 @@ const RoundtableCanvasV2: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
 
-  // Refs and Hooks
+
+
   const speechTranscription = useSpeechTranscription(
-    (partialText: string) => setInterimTranscript(partialText),
+    (partialText: string) => {
+      setInterimTranscript(partialText);
+      // Use buffering for interim results - don't finalize immediately
+      handleTranscriptionUpdate(partialText, false);
+    },
     (finalEvent: TranscriptEvent) => {
       console.log('🎯 Final transcript received:', finalEvent.text);
       setInterimTranscript('');
       
-      // Use smart speaker detection for speech transcription too
-      const detectedSpeaker = detectSpeaker(finalEvent.text);
-      addTranscriptEntry({
-        text: finalEvent.text,
-        speaker: detectedSpeaker,
-        isAutoDetected: true,
-        confidence: finalEvent.confidence
-      });
+      // Use buffering for final results - this will complete any accumulated text
+      handleTranscriptionUpdate(finalEvent.text, true);
     },
     (error: string) => {
       // Only set error for critical issues, not for no-speech
@@ -352,211 +357,218 @@ const RoundtableCanvasV2: React.FC = () => {
       setIsAnalyzing(true);
       setAnalyzingType(analysisType);
       
-      // Build live transcript for AI context
+      // Build transcript with minimum context check
       const transcriptText = sessionContext.liveTranscript
         .map(entry => `${entry.speaker}: ${entry.text}`)
         .join('\n');
       
-      // Get current question context
+      // Require minimum content before analysis (CRITICAL FIX)
+      if (transcriptText.length < 200 && analysisType !== 'summary') {
+        console.log('⚠️ Insufficient content for AI analysis:', {
+          transcriptLength: transcriptText.length,
+          required: 200,
+          analysisType
+        });
+        
+        showToast({
+          type: 'warning',
+          title: 'More Discussion Needed',
+          message: 'Please continue the conversation before requesting AI analysis.'
+        });
+        
+        return;
+      }
+      
+      // Get current context
       const currentQuestion = getCurrentQuestion(sessionContext.currentQuestionIndex);
       const totalQuestions = getTotalQuestions();
       
-      // Build enhanced context
-      const discussionPatterns = detectDiscussionPatterns(sessionContext.liveTranscript);
-      const phaseSpecificGuidance = getPhaseSpecificContext(
-        analysisType, 
-        currentQuestion,
-        sessionContext.currentQuestionIndex
-      );
-
-      console.log('🔍 Starting AI Analysis:', {
-        type: analysisType,
-        transcriptLength: transcriptText.length,
-        entryCount: sessionContext.liveTranscript.length,
-        topic: sessionContext.currentTopic,
-        currentQuestion: currentQuestion?.title,
-        questionProgress: `${sessionContext.currentQuestionIndex + 1} of ${totalQuestions}`,
-        phaseGuidance: phaseSpecificGuidance.instruction,
-        discussionStats: {
-          questions: discussionPatterns.facilitatorQuestionCount,
-          challenges: discussionPatterns.participantResponseTypes.challenges,
-          opportunities: discussionPatterns.participantResponseTypes.opportunities
-        }
-      });
-      
-      const enhancedContext = {
-        sessionTopic: sessionContext.currentTopic || 'Strategic Planning Session',
-        liveTranscript: transcriptText || "No conversation content has been captured yet in this live session.",
-        analysisType,
-        participantCount: new Set(sessionContext.liveTranscript.map(e => e.speaker)).size || 5,
-        sessionDuration: Math.floor((Date.now() - sessionContext.startTime.getTime()) / 60000),
-        clientId: 'live-session',
+      // Enhanced context builder with proper schema (CRITICAL FIX)
+      const requestPayload = {
+        // CORRECTED: Match API schema exactly
+        sessionTopic: sessionContext.currentTopic || 'AI Transformation Strategy',
+        liveTranscript: transcriptText,  // ✅ FIXED: Use correct API schema key
+        analysisType: analysisType,
         
-        // Enhanced question context with phase guidance
-        questionContext: {
-          index: sessionContext.currentQuestionIndex,
-          total: totalQuestions,
-          question: currentQuestion ? {
+        // Enhanced context for better analysis
+        sessionContext: {
+          topic: sessionContext.currentTopic || 'AI Transformation Strategy',
+          currentPhase: sessionContext.currentQuestionIndex + 1,
+          totalPhases: totalQuestions,
+          currentQuestion: currentQuestion ? {
             title: currentQuestion.title,
-            content: currentQuestion.description,
+            description: currentQuestion.description,
             guidance: currentQuestion.facilitatorGuidance
           } : null,
-          phaseSpecificGuidance: phaseSpecificGuidance
-        },
-        
-        // Discussion patterns for better insights
-        discussionPatterns: discussionPatterns,
-        
-        // Previous insights for context and deduplication
-        previousInsights: sessionContext.aiInsights
-          .filter(i => i.type === analysisType && !i.isError)
-          .slice(-3)
-          .map(i => ({ 
-            type: i.type, 
-            content: i.content.substring(0, 200),
-            timestamp: i.timestamp 
-          })),
-          
-        // Timing context
-        timing: {
-          minutesIntoSession: Math.floor((Date.now() - sessionContext.startTime.getTime()) / 60000),
-          minutesInCurrentPhase: sessionContext.questionStartTime ? 
-            Math.floor((Date.now() - new Date(sessionContext.questionStartTime).getTime()) / 60000) : 0
+          participantCount: new Set(sessionContext.liveTranscript.map(e => e.speaker)).size,
+          sessionDuration: Math.floor((Date.now() - sessionContext.startTime.getTime()) / 60000),
+          lastTranscriptEntries: sessionContext.liveTranscript.slice(-10),
+          recentInsights: sessionContext.aiInsights.slice(-3).map(insight => ({
+            type: insight.type,
+            content: insight.content.substring(0, 200),
+            timestamp: insight.timestamp
+          }))
         }
       };
 
-      // TRY NEW /api/analyze-live endpoint first (strict JSON)
-      try {
-        const liveResponse = await fetch('/api/analyze-live', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(enhancedContext),
-        });
-
-        if (liveResponse.ok) {
-          const liveData = await liveResponse.json();
-          console.log('✅ Live AI Analysis (new endpoint):', liveData);
-          
-          if (liveData.success) {
-            // Validate content before adding
-            const validation = validateInsightContent(liveData.content || '', analysisType, sessionContext.aiInsights);
-            
-            if (!validation.isValid) {
-              // Show validation error toast
-              showToast({
-                type: 'error',
-                title: 'Invalid Content',
-                message: validation.message || 'Content validation failed'
-              });
-              return;
-            }
-            
-            // Add AI insight to session context with enhanced metadata
-            setSessionContext(prev => ({
-              ...prev,
-              aiInsights: analysisType === 'synthesis' 
-                ? [
-                    // For synthesis, replace previous synthesis entries (overwrite behavior)
-                    ...prev.aiInsights.filter(insight => insight.type !== 'synthesis'),
-                    {
-                      id: `insight_${Date.now()}`,
-                      type: analysisType,
-                      content: liveData.content || '',
-                      timestamp: new Date(),
-                      confidence: liveData.confidence,
-                      suggestions: liveData.suggestions || [],
-                      metadata: liveData.metadata
-                    }
-                  ]
-                : [
-                    // For other types, append normally
-                    ...prev.aiInsights, {
-                      id: `insight_${Date.now()}`,
-                      type: analysisType,
-                      content: liveData.content || '',
-                      timestamp: new Date(),
-                      confidence: liveData.confidence,
-                      suggestions: liveData.suggestions || [],
-                      metadata: liveData.metadata
-                    }
-                  ],
-            }));
-            
-            // Show success toast
-            showToast({
-              type: 'success',
-              title: 'AI Analysis Complete',
-              message: `New ${analysisType} generated successfully.`
-            });
-            
-            return liveData;
-          }
-        }
-        
-        console.log('⚠️ Live endpoint failed, falling back to legacy endpoint');
-      } catch (liveError) {
-        console.log('⚠️ Live endpoint error, using fallback:', liveError);
-      }
-
-      // FALLBACK to legacy /api/analyze endpoint
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          questionContext: `Live Discussion Session - ${sessionContext.currentTopic || 'Strategic Planning'}`,
-          currentTranscript: transcriptText || "No conversation content has been captured yet in this live session.",
-          analysisType,
-          // Include question context for legacy endpoint too
-          currentQuestion: currentQuestion,
-          questionProgress: enhancedContext.questionContext
-        }),
+      console.log('🔍 AI Analysis Request:', {
+        type: analysisType,
+        transcriptLength: transcriptText.length,
+        entryCount: sessionContext.liveTranscript.length,
+        payloadSize: JSON.stringify(requestPayload).length
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('✅ Legacy AI Analysis (fallback):', data);
-
-      // Validate content before adding (legacy endpoint)
-      const legacyContent = data.insights || data.analysis || data.result || '';
-      const validation = validateInsightContent(legacyContent, analysisType, sessionContext.aiInsights);
-      
-      if (!validation.isValid) {
-        // Show validation error toast
-        showToast({
-          type: 'error',
-          title: 'Invalid Content',
-          message: validation.message || 'Content validation failed'
+      // Primary endpoint: /api/analyze-live (CORRECTED PAYLOAD)
+      try {
+        const response = await fetch('/api/analyze-live', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(requestPayload),
         });
-        return;
-      }
 
-      // Add AI insight to session context (legacy format)
-      setSessionContext(prev => ({
-        ...prev,
-        aiInsights: [...prev.aiInsights, {
-          id: `insight_${Date.now()}`,
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ API Error Response:', {
+            status: response.status,
+            statusText: response.statusText,
+            body: errorText
+          });
+          throw new Error(`API Error ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log('✅ AI Analysis Success:', {
           type: analysisType,
-          content: legacyContent,
-          timestamp: new Date(),
-          confidence: 0.8, // Default confidence for legacy endpoint
-          isLegacy: true
-        }],
-      }));
+          hasContent: !!data.content,
+          contentLength: data.content?.length
+        });
+        
+        if (data.success && data.content) {
+          // Validate content quality
+          const validation = validateInsightContent(data.content, analysisType, sessionContext.aiInsights);
+          
+          if (!validation.isValid) {
+            showToast({
+              type: 'warning',
+              title: 'Analysis Needs Refinement',
+              message: validation.message || 'Generated analysis needs more context'
+            });
+            return;
+          }
+          
+          // Add insight with enhanced metadata
+          setSessionContext(prev => ({
+            ...prev,
+            aiInsights: analysisType === 'synthesis' 
+              ? [
+                  // Replace previous synthesis
+                  ...prev.aiInsights.filter(insight => insight.type !== 'synthesis'),
+                  {
+                    id: `insight_${Date.now()}`,
+                    type: analysisType,
+                    content: data.content,
+                    timestamp: new Date(),
+                    confidence: data.confidence || 0.85,
+                    suggestions: data.suggestions || [],
+                    metadata: data.metadata || {}
+                  }
+                ]
+              : [
+                  // Append for other types
+                  ...prev.aiInsights, 
+                  {
+                    id: `insight_${Date.now()}`,
+                    type: analysisType,
+                    content: data.content,
+                    timestamp: new Date(),
+                    confidence: data.confidence || 0.85,
+                    suggestions: data.suggestions || [],
+                    metadata: data.metadata || {}
+                  }
+                ],
+          }));
+          
+          showToast({
+            type: 'success',
+            title: 'Analysis Complete',
+            message: `${analysisType} analysis generated successfully`
+          });
+          
+          return data;
+        } else {
+          throw new Error('Invalid API response format');
+        }
+        
+      } catch (primaryError) {
+        console.warn('⚠️ Primary endpoint failed, trying fallback:', primaryError);
+        
+        // Fallback endpoint: /api/analyze (LEGACY COMPATIBILITY)
+        try {
+          const fallbackResponse = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+              questionContext: `${sessionContext.currentTopic || 'AI Strategy Session'} - Phase ${sessionContext.currentQuestionIndex + 1}`,
+              currentTranscript: transcriptText,
+              analysisType: analysisType
+            }),
+          });
 
-      return data;
-    } catch (error) {
-      console.error('❌ AI Analysis Error (both endpoints failed):', error);
+          if (!fallbackResponse.ok) {
+            throw new Error(`Fallback API Error ${fallbackResponse.status}`);
+          }
+
+          const fallbackData = await fallbackResponse.json();
+          const content = fallbackData.insights || fallbackData.analysis || fallbackData.result || '';
+          
+          if (!content) {
+            throw new Error('No content in fallback response');
+          }
+          
+          // Add fallback insight
+          setSessionContext(prev => ({
+            ...prev,
+            aiInsights: [...prev.aiInsights, {
+              id: `insight_${Date.now()}`,
+              type: analysisType,
+              content: content,
+              timestamp: new Date(),
+              confidence: 0.75,
+              isLegacy: true
+            }],
+          }));
+          
+          showToast({
+            type: 'success',
+            title: 'Analysis Complete',
+            message: 'Analysis generated (legacy mode)'
+          });
+          
+          return fallbackData;
+          
+        } catch (fallbackError) {
+          const primaryMsg = primaryError instanceof Error ? primaryError.message : String(primaryError);
+          const fallbackMsg = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+          throw new Error(`All endpoints failed: ${primaryMsg} | ${fallbackMsg}`);
+        }
+      }
       
-      // Add error insight to maintain UX
+    } catch (error) {
+      console.error('❌ Complete AI Analysis Failure:', error);
+      
+      // Add helpful error insight
       setSessionContext(prev => ({
         ...prev,
         aiInsights: [...prev.aiInsights, {
           id: `error_${Date.now()}`,
           type: 'error',
-          content: 'AI analysis temporarily unavailable. Please try again or continue with manual facilitation.',
+          content: 'AI analysis temporarily unavailable. You can continue facilitating manually or try again in a moment.',
           timestamp: new Date(),
           confidence: 0,
           isError: true
@@ -565,10 +577,10 @@ const RoundtableCanvasV2: React.FC = () => {
       
       showToast({
         type: 'error',
-        title: 'AI Analysis Failed',
-        message: 'Unable to generate analysis. Please try again.',
+        title: 'Analysis Failed',
+        message: 'Unable to connect to AI services. Please continue manually.',
         action: { 
-          label: 'Retry', 
+          label: 'Retry Analysis', 
           onClick: () => callAIAnalysis(analysisType) 
         }
       });
@@ -580,31 +592,24 @@ const RoundtableCanvasV2: React.FC = () => {
     }
   }, [sessionContext, isAnalyzing, showToast]);
 
-  // Smart Insight Triggering System - positioned after callAIAnalysis declaration
+  // Smart Insight Triggering System
   useEffect(() => {
     const entryCount = sessionContext.liveTranscript.length;
     
-    // Skip if no meaningful content yet
-    if (entryCount < 3) return;
+    // Skip if insufficient content
+    if (entryCount < 5) return;
     
-    // Auto-trigger insights every 5 entries (but not too frequently)
+    // Auto-trigger with throttling
     const lastInsightTime = sessionContext.aiInsights.length > 0 ? 
       sessionContext.aiInsights[sessionContext.aiInsights.length - 1].timestamp.getTime() : 0;
     const timeSinceLastInsight = Date.now() - lastInsightTime;
-    const MIN_TIME_BETWEEN_AUTO_INSIGHTS = 2 * 60 * 1000; // 2 minutes
+    const MIN_TIME_BETWEEN_AUTO_INSIGHTS = 3 * 60 * 1000; // 3 minutes
     
-    if (entryCount > 0 && entryCount % 5 === 0 && timeSinceLastInsight > MIN_TIME_BETWEEN_AUTO_INSIGHTS) {
-      // Add a small delay to avoid overwhelming the UI
+    // Auto-insights every 7 meaningful entries
+    if (entryCount > 0 && entryCount % 7 === 0 && timeSinceLastInsight > MIN_TIME_BETWEEN_AUTO_INSIGHTS) {
       setTimeout(() => {
         callAIAnalysis('insights');
-      }, 1500);
-    }
-    
-    // Auto-generate follow-up questions every 8 entries
-    if (entryCount > 0 && entryCount % 8 === 0 && timeSinceLastInsight > MIN_TIME_BETWEEN_AUTO_INSIGHTS) {
-      setTimeout(() => {
-        callAIAnalysis('followup');
-      }, 3000);
+      }, 2000);
     }
     
   }, [sessionContext.liveTranscript.length, sessionContext.aiInsights, callAIAnalysis]);
@@ -965,6 +970,60 @@ const RoundtableCanvasV2: React.FC = () => {
     return result;
   }, [lastSpeakerDetection]);
 
+  // TRANSCRIPT BUFFERING: Handle transcription updates with natural pause detection
+  const handleTranscriptionUpdate = useCallback((text: string, isFinal: boolean) => {
+    console.log('🎯 Transcript buffering:', {
+      text: text,
+      length: text.length,
+      isFinal: isFinal,
+      currentUtterance: currentUtterance
+    });
+
+    // Clear any existing timeout
+    if (utteranceTimeoutRef.current) {
+      clearTimeout(utteranceTimeoutRef.current);
+      utteranceTimeoutRef.current = null;
+    }
+    
+    if (isFinal) {
+      // Final result - add accumulated + final text
+      const completeText = (currentUtterance + ' ' + text).trim();
+      
+      if (completeText.length > 0) {
+        // Use smart speaker detection
+        const detectedSpeaker = detectSpeaker(completeText);
+        
+        // Only add if it's substantial (more than just a few characters)
+        if (completeText.length > 5) {
+          addTranscriptEntry({
+            text: completeText,
+            speaker: detectedSpeaker,
+            isAutoDetected: true,
+            confidence: 0.9
+          });
+        }
+        setCurrentUtterance('');
+      }
+    } else {
+      // Interim result - accumulate
+      setCurrentUtterance(prev => (prev + ' ' + text).trim());
+      
+      // Set timeout to commit after pause (1.5 seconds = end of natural utterance)
+      utteranceTimeoutRef.current = setTimeout(() => {
+        if (currentUtterance.length > 5) {
+          const detectedSpeaker = detectSpeaker(currentUtterance);
+          addTranscriptEntry({
+            text: currentUtterance,
+            speaker: detectedSpeaker,
+            isAutoDetected: true,
+            confidence: 0.8
+          });
+          setCurrentUtterance('');
+        }
+      }, 1500);
+    }
+  }, [currentUtterance, detectSpeaker, addTranscriptEntry]);
+
   // Helper function to extract discussion patterns
   const detectDiscussionPatterns = useCallback((transcript: TranscriptEntry[]) => {
     return {
@@ -1042,7 +1101,7 @@ const RoundtableCanvasV2: React.FC = () => {
     const guidance = currentQuestion?.facilitatorGuidance;
     
     switch(analysisType) {
-      case 'insight':
+      case 'insights':
         return {
           instruction: `Based on the "${currentQuestion?.title}" discussion, identify strategic insights specifically related to: ${guidance?.whatToListenFor?.join(', ') || 'key themes'}`,
           currentPhaseObjective: guidance?.objective || '',
@@ -1261,10 +1320,10 @@ const RoundtableCanvasV2: React.FC = () => {
                         }
                       }}
                       disabled={sessionContext.currentQuestionIndex === 0}
-                      className="inline-flex items-center px-3 py-2 text-sm font-medium bg-white border border-blue-300 text-blue-700 rounded-md hover:bg-blue-50 hover:border-blue-400 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all duration-200"
+                      className="flex items-center gap-2 px-6 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg transition-colors min-w-[120px] justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Previous phase"
                     >
-                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                       </svg>
                       Previous
@@ -1280,11 +1339,11 @@ const RoundtableCanvasV2: React.FC = () => {
                         }
                       }}
                       disabled={sessionContext.currentQuestionIndex >= AI_TRANSFORMATION_QUESTIONS.length - 1}
-                      className="inline-flex items-center px-3 py-2 text-sm font-medium bg-white border border-blue-300 text-blue-700 rounded-md hover:bg-blue-50 hover:border-blue-400 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all duration-200"
+                      className="flex items-center gap-2 px-6 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg transition-colors min-w-[120px] justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Next phase"
                     >
                       Next
-                      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </button>
@@ -1332,29 +1391,40 @@ const RoundtableCanvasV2: React.FC = () => {
                 <div className="space-y-4 mb-6">
                   {/* Opening line - prominent for audience */}
                   {currentQuestion.facilitatorGuidance.openingLine && (
-                    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
-                      <p className="text-lg italic text-blue-900">
-                        "{currentQuestion.facilitatorGuidance.openingLine}"
-                      </p>
+                    <div className="bg-white rounded-lg shadow-sm border border-blue-200 p-6">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                        <p className="text-lg italic text-gray-800 font-medium">
+                          "{currentQuestion.facilitatorGuidance.openingLine}"
+                        </p>
+                      </div>
                     </div>
                   )}
 
                   {/* Setup line (for Phase 2) */}
                   {currentQuestion.facilitatorGuidance.setupLine && (
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-gray-700">
-                        {currentQuestion.facilitatorGuidance.setupLine}
-                      </p>
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 w-2 h-2 bg-gray-500 rounded-full mt-2"></div>
+                        <p className="text-gray-800">
+                          {currentQuestion.facilitatorGuidance.setupLine}
+                        </p>
+                      </div>
                     </div>
                   )}
 
                   {/* Key prompt/question */}
                   {currentQuestion.facilitatorGuidance.keyPrompt && (
-                    <div className="bg-white rounded-lg shadow-sm border p-6">
-                      <h3 className="font-semibold text-gray-900 mb-2">Key Question:</h3>
-                      <p className="text-lg text-gray-800">
-                        {currentQuestion.facilitatorGuidance.keyPrompt}
-                      </p>
+                    <div className="bg-white rounded-lg shadow-sm border border-indigo-200 p-6">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 w-2 h-2 bg-indigo-500 rounded-full mt-2"></div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900 mb-2">Key Question:</h3>
+                          <p className="text-lg text-gray-800">
+                            {currentQuestion.facilitatorGuidance.keyPrompt}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -1397,53 +1467,82 @@ const RoundtableCanvasV2: React.FC = () => {
 
                   {/* Example (SalesRecon for Phase 2) */}
                   {currentQuestion.facilitatorGuidance.exampleToShare && (
-                    <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                      <h4 className="font-semibold text-green-900 mb-2">
-                        Example: {currentQuestion.facilitatorGuidance.exampleToShare.name}
-                      </h4>
-                      <ul className="list-disc list-inside text-sm text-green-800 space-y-1">
-                        {currentQuestion.facilitatorGuidance.exampleToShare.points?.map((point, idx) => (
-                          <li key={idx}>{point}</li>
-                        ))}
-                      </ul>
+                    <div className="bg-white rounded-lg shadow-sm border border-green-200 p-6">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-3">
+                            Example: {currentQuestion.facilitatorGuidance.exampleToShare.name}
+                          </h4>
+                          <ul className="space-y-2">
+                            {currentQuestion.facilitatorGuidance.exampleToShare.points?.map((point, idx) => (
+                              <li key={idx} className="flex items-start space-x-2">
+                                <span className="text-green-500 mr-1 font-bold">•</span>
+                                <span className="text-gray-700">{point}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
                     </div>
                   )}
 
                   {/* Key message */}
                   {currentQuestion.facilitatorGuidance.keyMessage && (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                      <p className="text-yellow-900 font-medium">
-                        {currentQuestion.facilitatorGuidance.keyMessage}
-                      </p>
+                    <div className="bg-white rounded-lg shadow-sm border border-yellow-200 p-6">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
+                        <p className="text-gray-800 font-medium">
+                          {currentQuestion.facilitatorGuidance.keyMessage}
+                        </p>
+                      </div>
                     </div>
                   )}
 
                   {/* Discussion prompts */}
                   {currentQuestion.facilitatorGuidance.discussionPrompts && (
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h4 className="font-semibold text-gray-900 mb-2">Discussion Points:</h4>
-                      <ul className="space-y-2">
-                        {currentQuestion.facilitatorGuidance.discussionPrompts.map((prompt, idx) => (
-                          <li key={idx} className="flex items-start">
-                            <span className="text-blue-500 mr-2">•</span>
-                            <span className="text-gray-700">{prompt}</span>
-                          </li>
-                        ))}
-                      </ul>
+                    <div className="bg-white rounded-lg shadow-sm border border-purple-200 p-6">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-3">Discussion Points:</h4>
+                          <ul className="space-y-2">
+                            {currentQuestion.facilitatorGuidance.discussionPrompts.map((prompt, idx) => (
+                              <li key={idx} className="flex items-start space-x-2">
+                                <span className="text-purple-500 mr-1 font-bold">•</span>
+                                <span className="text-gray-700">{prompt}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
                     </div>
                   )}
 
                   {/* Facilitator prompts */}
                   {(currentQuestion.facilitatorGuidance.facilitatorPrompt || 
                     currentQuestion.facilitatorGuidance.facilitatorPrompts) && (
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h4 className="font-semibold text-gray-900 mb-2">Questions for the Group:</h4>
-                      {currentQuestion.facilitatorGuidance.facilitatorPrompt && (
-                        <p className="text-gray-700">• {currentQuestion.facilitatorGuidance.facilitatorPrompt}</p>
-                      )}
-                      {currentQuestion.facilitatorGuidance.facilitatorPrompts?.map((prompt, idx) => (
-                        <p key={idx} className="text-gray-700">• {prompt}</p>
-                      ))}
+                    <div className="bg-white rounded-lg shadow-sm border border-orange-200 p-6">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 w-2 h-2 bg-orange-500 rounded-full mt-2"></div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-3">Questions for the Group:</h4>
+                          <div className="space-y-2">
+                            {currentQuestion.facilitatorGuidance.facilitatorPrompt && (
+                              <p className="flex items-start space-x-2">
+                                <span className="text-orange-500 mr-1 font-bold">•</span>
+                                <span className="text-gray-700">{currentQuestion.facilitatorGuidance.facilitatorPrompt}</span>
+                              </p>
+                            )}
+                            {currentQuestion.facilitatorGuidance.facilitatorPrompts?.map((prompt, idx) => (
+                              <p key={idx} className="flex items-start space-x-2">
+                                <span className="text-orange-500 mr-1 font-bold">•</span>
+                                <span className="text-gray-700">{prompt}</span>
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1709,7 +1808,7 @@ const RoundtableCanvasV2: React.FC = () => {
           </div>
 
           {/* Right Panel - Combined Facilitator Guide and AI Tools */}
-          <div className="facilitator-panel w-[32rem] bg-white border-l flex flex-col h-full shadow-lg">
+          <div className="facilitator-panel w-full lg:w-[32rem] bg-white border-l lg:border-l border-t lg:border-t-0 flex flex-col h-full shadow-lg">
             {/* Tab Navigation Bar */}
             <div className="border-b bg-gray-50 px-4 py-3 flex-shrink-0">
               <div className="flex gap-2">
@@ -1778,64 +1877,16 @@ const RoundtableCanvasV2: React.FC = () => {
 
             {/* Tab Content Area */}
             <div className="flex-1 overflow-y-auto p-6">
-              {/* Facilitator Guide Tab */}
+              {/* Facilitator Guide Tab - Comprehensive Panel */}
               {rightPanelTab === 'guide' && (
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Facilitator Guide</h3>
-                  {currentQuestion?.facilitatorGuidance && (
-                    <div className="space-y-4">
-                      {/* Keep ALL the existing guide content here - DO NOT MODIFY */}
-                      {/* Objective */}
-                      {currentQuestion.facilitatorGuidance.objective && (
-                        <div>
-                          <h4 className="font-medium text-gray-900 mb-1">Objective</h4>
-                          <p className="text-sm text-gray-600">
-                            {currentQuestion.facilitatorGuidance.objective}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* What to listen for */}
-                      {currentQuestion.facilitatorGuidance.whatToListenFor && (
-                        <div>
-                          <h4 className="font-medium text-gray-900 mb-1">What to Listen For</h4>
-                          <ul className="text-sm text-gray-600 space-y-1">
-                            {currentQuestion.facilitatorGuidance.whatToListenFor.map((item, idx) => (
-                              <li key={idx} className="flex items-start">
-                                <span className="text-blue-500 mr-2">•</span>
-                                <span>{item}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Facilitation tips */}
-                      {currentQuestion.facilitatorGuidance.facilitationTips && (
-                        <div>
-                          <h4 className="font-medium text-gray-900 mb-1">Facilitation Tips</h4>
-                          <ul className="text-sm text-gray-600 space-y-1">
-                            {currentQuestion.facilitatorGuidance.facilitationTips.map((tip, idx) => (
-                              <li key={idx} className="flex items-start">
-                                <span className="text-green-500 mr-2">✓</span>
-                                <span>{tip}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Transition line */}
-                      {currentQuestion.facilitatorGuidance.transitionLine && (
-                        <div>
-                          <h4 className="font-medium text-gray-900 mb-1">Transition to Next</h4>
-                          <p className="text-sm text-gray-600 italic">
-                            "{currentQuestion.facilitatorGuidance.transitionLine}"
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <div className="max-h-[600px] overflow-y-auto pr-2">
+                    <FacilitatorPanel 
+                      currentQuestion={currentQuestion || null} 
+                      isVisible={true} 
+                    />
+                  </div>
                 </div>
               )}
 
@@ -1845,11 +1896,11 @@ const RoundtableCanvasV2: React.FC = () => {
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-semibold text-gray-900">Strategic Insights</h3>
                     <button
-                      onClick={() => callAIAnalysis('insight')}
+                      onClick={() => callAIAnalysis('insights')}
                       disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
                       className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
                     >
-                      {isAnalyzing && analyzingType === 'insight' ? (
+                      {isAnalyzing && analyzingType === 'insights' ? (
                         <span className="flex items-center gap-2">
                           <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                           Generating...
@@ -1861,12 +1912,12 @@ const RoundtableCanvasV2: React.FC = () => {
                   </div>
                   
                   <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-                    {getInsightsForType('insight').length === 0 ? (
+                    {getInsightsForType('insights').length === 0 ? (
                       <p className="text-center py-8 text-gray-500">
                         No insights generated yet. Start recording or add transcript entries, then click "Generate New" to analyze.
                       </p>
                     ) : (
-                      getInsightsForType('insight').slice(-5).reverse().map((insight, idx) => (
+                      getInsightsForType('insights').slice(-5).reverse().map((insight, idx) => (
                         <div key={insight.id || idx} className="bg-white rounded-lg p-4 border border-blue-100 shadow-sm hover:shadow-md transition-shadow">
                           <p className="text-sm text-gray-800">{insight.content}</p>
                           <span className="text-xs text-gray-500 mt-2 block">
@@ -2222,53 +2273,7 @@ const RoundtableCanvasV2: React.FC = () => {
       {sessionState === 'intro' && renderIntroState()}
       {sessionState === 'discussion' && renderDiscussionState()}
       {sessionState === 'summary' && renderSummaryState()}
-      
-      {/* Manual Entry Modal (simplified version at the end) */}
-      {showManualModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold mb-4">Add Manual Entry</h3>
-            
-            <textarea
-              value={manualEntryText}
-              onChange={(e) => setManualEntryText(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md h-24"
-              placeholder="What was discussed? (e.g., 'We agreed that AI should focus on decision support rather than replacement')"
-            />
-            
-            <div className="flex space-x-3 mt-4">
-              <button
-                onClick={() => {
-                  setShowManualModal(false);
-                  setManualEntryText('');
-                }}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  if (manualEntryText.trim()) {
-                    // Use smart speaker detection instead of currentSpeaker
-                    const detectedSpeaker = detectSpeaker(manualEntryText.trim());
-                    addTranscriptEntry({
-                      text: manualEntryText.trim(),
-                      speaker: detectedSpeaker,
-                      isAutoDetected: true, // Now using auto-detection
-                    });
-                    setShowManualModal(false);
-                    setManualEntryText('');
-                  }
-                }}
-                disabled={!manualEntryText.trim()}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded disabled:bg-gray-300"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* REMOVED: Duplicate manual entry modal - using the complete version above instead */}
       
       {/* Speaker Attribution Review Modal */}
       {showSpeakerAttribution && attributionResults && (
