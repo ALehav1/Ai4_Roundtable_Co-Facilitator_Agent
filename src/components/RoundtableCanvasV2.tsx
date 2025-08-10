@@ -382,7 +382,7 @@ const RoundtableCanvasV2: React.FC = () => {
       const requestPayload = {
         // CORRECTED: Match API schema exactly
         sessionTopic: sessionContext.currentTopic || 'AI Transformation Strategy',
-        currentTranscript: transcriptText,
+        liveTranscript: transcriptText,  // ✅ FIXED: Use correct API schema key
         analysisType: analysisType,
         
         // Enhanced context for better analysis
