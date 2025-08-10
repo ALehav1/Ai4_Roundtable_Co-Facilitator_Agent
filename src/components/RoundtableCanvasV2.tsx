@@ -65,55 +65,74 @@ const TopNavigation = ({
   setPresentationMode: (mode: boolean) => void;
   setShowTemplateSelector: (show: boolean) => void;
 }) => (
-  <div className="sticky top-0 z-50 bg-white border-b shadow-sm p-4">
-    <div className="flex justify-between items-center max-w-7xl mx-auto">
-      <div className="flex items-center gap-4">
+  <div className="sticky top-0 z-50 bg-white border-b shadow-sm p-2 md:p-4">
+    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2 max-w-7xl mx-auto">
+      {/* Mobile: Stack vertically, Desktop: Side by side */}
+      
+      {/* Phase Navigation - Full width on mobile */}
+      <div className="flex items-center justify-between gap-2 w-full md:w-auto">
         <button
           onClick={goToPreviousQuestion}
           disabled={sessionContext.currentQuestionIndex === 0}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+          className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
             sessionContext.currentQuestionIndex === 0
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
           }`}
         >
-          ← Previous
+          ← Prev
         </button>
         
-        <span className="text-sm text-gray-600">
-          Phase {sessionContext.currentQuestionIndex + 1} of {totalQuestions}
-        </span>
+        {/* Phase indicator with progress */}
+        <div className="flex items-center gap-2 flex-1 justify-center">
+          <span className="text-xs md:text-sm text-gray-600 whitespace-nowrap">
+            Phase {sessionContext.currentQuestionIndex + 1}/{totalQuestions}
+          </span>
+          {/* Progress bar - hidden on very small screens */}
+          <div className="hidden sm:block w-16 h-1.5 bg-gray-200 rounded-full">
+            <div 
+              className="h-full bg-blue-500 rounded-full transition-all"
+              style={{ 
+                width: `${((sessionContext.currentQuestionIndex + 1) / totalQuestions) * 100}%` 
+              }}
+            />
+          </div>
+        </div>
         
         <button
           onClick={goToNextQuestion}
           disabled={sessionContext.currentQuestionIndex >= totalQuestions - 1}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+          className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${
             sessionContext.currentQuestionIndex >= totalQuestions - 1
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
               : 'bg-blue-600 text-white hover:bg-blue-700'
           }`}
         >
-          Next Phase →
+          Next →
         </button>
       </div>
       
-      <div className="flex items-center gap-3">
-        {/* Template Selection Button */}
+      {/* Action buttons - Responsive layout */}
+      <div className="flex items-center justify-between md:justify-end gap-2 w-full md:w-auto">
+        {/* Templates button */}
         <button
           onClick={() => setShowTemplateSelector(true)}
-          className="px-3 py-2 rounded-lg bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors font-medium"
-          title="Choose executive session template"
+          className="px-3 py-1.5 text-sm rounded-lg bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors font-medium"
+          title="Choose template"
         >
-          📋 Templates
+          📋 <span className="hidden sm:inline">Templates</span>
         </button>
         
-        {/* Presentation Mode Toggle */}
+        {/* Presentation Mode - Icon only on mobile */}
         <button
           onClick={() => setPresentationMode(!presentationMode)}
-          className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors"
-          title="Toggle Presentation Mode (Cmd+P)"
+          className="px-3 py-1.5 text-sm rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors"
+          title="Presentation Mode (Cmd+P)"
         >
-          {presentationMode ? '👁️ Exit Presentation' : '📊 Presentation Mode'}
+          {presentationMode ? '👁️' : '📊'} 
+          <span className="hidden sm:inline ml-1">
+            {presentationMode ? 'Exit' : 'Present'}
+          </span>
         </button>
       </div>
     </div>
@@ -954,21 +973,25 @@ const RoundtableCanvasV2: React.FC = () => {
         {/* Professional Header - Minimal & Informative */}
         <header className="header bg-white border-b shadow-sm">
           <div className="header-content max-w-full px-6 py-4">
-            <div className="header-left">
-              <h1 className="app-title">
-                🎙️ AI Roundtable Co-Facilitator
-              </h1>
-              <div className="session-status">
-                {/* PROMINENT Phase Navigation - Enhanced for User Orientation */}
-                <div className="flex items-center gap-4 bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+            <div className="flex items-center justify-between w-full">
+              {/* Left Section - Title */}
+              <div className="flex-shrink-0">
+                <h1 className="text-lg font-semibold text-gray-900">
+                  🎙️ AI Roundtable Co-Facilitator
+                </h1>
+              </div>
+              
+              {/* Center Section - Phase Navigation */}
+              <div className="flex-1 flex justify-center mx-4">
+                <div className="flex items-center gap-4 bg-white border border-gray-200 rounded-lg p-2 shadow-sm">
                   <div className="flex items-center gap-3">
-                    <span className="inline-flex items-center px-3 py-1.5 bg-blue-500 text-white text-sm font-semibold rounded-full shadow-sm">
+                    <span className="inline-flex items-center px-2 py-1 bg-blue-500 text-white text-xs font-semibold rounded-full">
                       Phase {sessionContext.currentQuestionIndex + 1} of {AI_TRANSFORMATION_QUESTIONS.length}
                     </span>
                     
-                    {/* Progress Bar */}
+                    {/* Compact Progress Bar */}
                     <div className="flex items-center gap-2">
-                      <div className="w-24 h-2 bg-blue-200 rounded-full overflow-hidden">
+                      <div className="w-20 h-1.5 bg-blue-200 rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-blue-500 transition-all duration-300"
                           style={{ 
@@ -982,7 +1005,7 @@ const RoundtableCanvasV2: React.FC = () => {
                     </div>
                   </div>
                   
-                  {/* Enhanced Navigation Buttons */}
+                  {/* Navigation Buttons */}
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => {
@@ -994,10 +1017,10 @@ const RoundtableCanvasV2: React.FC = () => {
                         }
                       }}
                       disabled={sessionContext.currentQuestionIndex === 0}
-                      className="flex items-center gap-2 px-6 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg transition-colors min-w-[120px] justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Previous phase"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                       </svg>
                       Previous
@@ -1013,29 +1036,29 @@ const RoundtableCanvasV2: React.FC = () => {
                         }
                       }}
                       disabled={sessionContext.currentQuestionIndex >= AI_TRANSFORMATION_QUESTIONS.length - 1}
-                      className="flex items-center gap-2 px-6 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg transition-colors min-w-[120px] justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Next phase"
                     >
                       Next
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </button>
                   </div>
                 </div>
               </div>
-            </div>
-            
-            <div className="header-right">
-              {sessionContext.startTime && (
-                <span className="flex items-center gap-2 text-sm text-gray-600">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  {Math.round((Date.now() - sessionContext.startTime.getTime()) / 60000)}m
-                </span>
-              )}
-
+              
+              {/* Right Section - Timer */}
+              <div className="flex-shrink-0">
+                {sessionContext.startTime && (
+                  <span className="flex items-center gap-2 text-sm text-gray-600">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {Math.round((Date.now() - sessionContext.startTime.getTime()) / 60000)}m
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </header>
