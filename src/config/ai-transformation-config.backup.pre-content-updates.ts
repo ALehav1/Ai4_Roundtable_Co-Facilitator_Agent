@@ -69,25 +69,23 @@ export interface SessionConfig {
 export const AI_TRANSFORMATION_QUESTIONS: RoundtableQuestion[] = [
   {
     id: "phase-1-provocation",
-    title: "Phase 1: Welcome & Strategic Provocation — Setting the Stakes",
+    title: "Phase 1: Welcome & Strategic Provocation",
     description: "Introductions and strategic framing",
     timeLimit: 8,
     facilitatorGuidance: {
-      openingLine: "Welcome to our executive roundtable on AI transformation. Let's start with quick introductions — and begin surfacing what's really at stake for your organization.",
-      objective: "Build context through introductions, then surface assumptions, fears, and levels of maturity — and note whether participants frame their priorities as one-off projects or as evolving feedback loops.",
-      keyPrompt: "Please introduce yourself: Name, organization, role — and briefly, what's your biggest AI priority and your biggest challenge right now? Frame it in terms of what could compound value for your organization over time.",
+      openingLine: "Welcome to our executive roundtable on AI transformation. Let's start with quick introductions to understand who's in the room.",
+      objective: "Build context through introductions, then surface assumptions, fears, and levels of maturity",
+      keyPrompt: "Please introduce yourself: Name, organization, role, and briefly - what's your biggest AI priority and biggest challenge right now?",
       whatToListenFor: [
         "Range of AI maturity levels across participants",
         "Common challenges and priorities emerging",
         "Industry/functional diversity in the room",
-        "Leadership vs. tactical perspectives",
-        "Signs of loop-based thinking vs. tool/project thinking"
+        "Leadership vs. tactical perspectives"
       ],
       facilitationTips: [
         "Keep introductions crisp (1-2 minutes each)",
         "Note AI maturity patterns for strategic framing",
-        "Listen for common themes to reference later",
-        "If someone gives a loop example ('this keeps getting better over time'), highlight it for the group as a different kind of thinking"
+        "Listen for common themes to reference later"
       ],
       transitionLine: "Thank you. Now that we know who's here, let's get provocative. Most enterprises say they're using AI. But very few have changed how they work, decide, or learn. Fast-forward 3–5 years: What's the best outcome—and the worst—for your organization because of AI? And what are you doing today to tilt toward the best?"
     },
@@ -104,8 +102,8 @@ export const AI_TRANSFORMATION_QUESTIONS: RoundtableQuestion[] = [
     description: "Introduce the Assistance → Automation → Amplification framework",
     timeLimit: 15,
     facilitatorGuidance: {
-      setupLine: "In our work, we've seen a clear progression — and where you sit on this curve determines the ceiling on your AI strategy. This progression is also a shift from AI as a one-way helper to AI as a bidirectional collaborator.",
-      objective: "Help participants see beyond current AI use to systemic transformation — specifically, toward AI as a bidirectional collaborator embedded in reflexive systems.",
+      setupLine: "In our work, we've seen a clear progression. And where you sit on this curve determines the ceiling on your AI strategy.",
+      objective: "Help participants see beyond current AI use to systemic transformation",
       framework: {
         title: "The Core Shift: Assistance → Automation → Amplification",
         stages: [
@@ -121,8 +119,8 @@ export const AI_TRANSFORMATION_QUESTIONS: RoundtableQuestion[] = [
           },
           {
             name: "Amplification",
-            definition: "Bidirectional collaborators — agentic systems that learn from humans, ask clarifying questions, and teach back",
-            limitation: "Requires architecture + culture"
+            definition: "Agentic systems that learn, adapt, and evolve",
+            limitation: "Requires architectural and cultural readiness"
           }
         ]
       },
@@ -145,8 +143,7 @@ export const AI_TRANSFORMATION_QUESTIONS: RoundtableQuestion[] = [
       whatToListenFor: [
         "Where organizations self-identify on the spectrum",
         "Barriers they identify to reaching amplification",
-        "Understanding of feedback loops and learning systems",
-        "Recognition of loops, not just tools, and awareness of cultural/architectural readiness"
+        "Understanding of feedback loops and learning systems"
       ]
     },
     aiPromptContext: "Participants are discussing the Assistance → Automation → Amplification framework. Focus on where they see themselves and what's blocking progress. Look for understanding of systemic transformation vs. tool adoption.",
@@ -158,36 +155,36 @@ export const AI_TRANSFORMATION_QUESTIONS: RoundtableQuestion[] = [
   },
   {
     id: "phase-3-prioritization",
-    title: "Phase 3: Where AI Creates Compounding Advantage",
+    title: "Phase 3: Where AI Should Live First",
     description: "Identify high-leverage systems for AI transformation",
     timeLimit: 15,
     facilitatorGuidance: {
-      openingLine: "Not all systems are equally worth transforming. Focus where learning compounds — where today's insight makes tomorrow's decision better.",
-      objective: "Help participants identify their highest-value AI transformation opportunities — and ensure those opportunities are framed as loops, not point solutions.",
+      setupLine: "Not all systems are equally worth transforming. Some domains, when made agentic, unlock disproportionate advantage.",
+      objective: "Help participants identify their highest-value AI transformation opportunities",
       keyFramework: {
-        title: "High-Leverage Systems for Compounding Advantage",
+        title: "High-Leverage Systems for Shared Intelligence",
         systems: [
           {
             name: "Customer Intelligence",
-            rationale: "Every interaction teaches the system"
+            rationale: "Touches sales, product, marketing, CX, strategy—all compound here"
           },
           {
-            name: "Operational Decisions",
-            rationale: "Patterns improve with each cycle"
+            name: "People & Talent",
+            rationale: "Performance, onboarding, internal mobility"
           },
           {
-            name: "Knowledge Work",
-            rationale: "Expertise scales across teams"
+            name: "Risk & Controls", 
+            rationale: "Often bottlenecks—but great signal sources"
           },
           {
-            name: "Process Optimization",
-            rationale: "Self-improving systems"
+            name: "Decision-making",
+            rationale: "Meetings, approvals, alignment, strategy"
           }
         ]
       },
       facilitatorPrompts: [
-        "Which system in your org would most benefit from learning and improving every time it's used?",
-        "Where do you already have valuable learning exhaust that's going unused — and what would happen if it fed a feedback loop?"
+        "Which system in your org could become your reflexive core—the place where intelligence compounds over time?",
+        "Where are you already producing learning exhaust but not using it?"
       ],
       facilitation: [
         "Push beyond obvious use cases",
@@ -209,12 +206,12 @@ export const AI_TRANSFORMATION_QUESTIONS: RoundtableQuestion[] = [
     description: "Identify what needs to be true today to enable the AI-transformed future",
     timeLimit: 10,
     facilitatorGuidance: {
-      setupLine: "If that future state is compelling — what needs to be true today? Let's walk it backwards, starting from the loops you want running in the future.",
-      objective: "Connect long-term vision to near-term actions — focusing on making loops possible and visible.",
+      setupLine: "If that future of amplification is where you want to go—what needs to be true today to make it possible?",
+      objective: "Connect future vision to present-day architectural and cultural requirements",
       discussionPrompts: [
         "Are your current systems designed to learn with use—or just execute faster?",
         "Where are your feedback loops incomplete or broken?",
-        "Are your people in the loop to teach the system, or just monitor it? Do your systems ask for clarification when needed — and are loops visible to the people contributing to them?",
+        "Are your people in the loop to teach the system, or just monitor it?",
         "What signal are you collecting—but not structuring or reusing?"
       ],
       keyCapabilities: [
@@ -243,16 +240,14 @@ export const AI_TRANSFORMATION_QUESTIONS: RoundtableQuestion[] = [
     description: "Personal reflection and commitment to action",
     timeLimit: 5,
     facilitatorGuidance: {
-      openingLine: "We've covered a lot of ground. Let's make it actionable — and identify one loop you can start or strengthen right away.",
       objective: "Anchor insights in personal commitment",
       facilitatorPrompts: [
         "What's one mindset shift you're taking back?",
         "What's one thing your org is underinvesting in?",
-        "What's one system you want to make agentic over the next 12 months?",
-        "What's one feedback loop in your org you now see differently?"
+        "What's one system you want to make agentic over the next 12 months?"
       ],
       approach: "Round-robin or popcorn style",
-      closingMessage: "This is a systems transformation — from tools to reflexive systems that retain and compound intelligence. The measure of AI's impact isn't time saved. It's intelligence saved — and shared.",
+      closingMessage: "This isn't about better dashboards or faster automation. It's about whether you're building a system that learns. Because that's what it really means when AI becomes how the enterprise works.",
       closing: "Loop back to the session title and core thesis"
     },
     aiPromptContext: "Final reflections and commitments. Look for themes in what participants are taking away. Focus on concrete actions and mindset shifts.",
