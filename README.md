@@ -43,7 +43,7 @@ A sophisticated AI-powered platform designed for facilitating strategic roundtab
   - **Smart Accumulation**: Interim speech results accumulate in buffer instead of immediate transcript entry
   - **Natural Pause Detection**: 1.5-second timeout triggers complete transcript entry after speech pauses
   - **Length Filtering**: Only substantial text (>5 characters) added to transcript for quality
-  - **Enhanced Integration**: Buffered entries use smart speaker detection and maintain confidence scoring
+  - **Enhanced Integration**: Buffered entries use unified speaker labeling and maintain confidence scoring
 - ✅ **Build Stability**: Resolved duplicate state declarations and TypeScript errors for reliable compilation
 - ✅ **Speech Quality**: Whisper integration now produces complete thoughts instead of fragmented words
 
