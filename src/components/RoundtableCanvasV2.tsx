@@ -174,19 +174,18 @@ const RoundtableCanvasV2: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   // REMOVED: Duplicate manual entry state - using showManualModal instead
   const [manualText, setManualText] = useState('');
-  const [currentSpeaker, setCurrentSpeaker] = useState('Participant'); // DEFAULT TO PARTICIPANT per new guide
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzingType, setAnalyzingType] = useState<string | null>(null);
 
   const [interimTranscript, setInterimTranscript] = useState<string>('');
   const [speechError, setSpeechError] = useState<string | null>(null);
-  const [showManualModal, setShowManualModal] = useState(false);
-  const [manualEntryText, setManualEntryText] = useState('');
-  const [entryMode, setEntryMode] = useState<'single' | 'bulk'>('single');
-  const [manualSpeakerName, setManualSpeakerName] = useState('Speaker');
   const [customSpeakerName, setCustomSpeakerName] = useState('');
   const [bulkTranscriptText, setBulkTranscriptText] = useState('');
+  
+  // TRANSCRIPT BUFFERING: Accumulate speech until natural pause
+  const [currentUtterance, setCurrentUtterance] = useState('');
+  const utteranceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('blank_template');
   const [isExporting, setIsExporting] = useState(false);
   
@@ -201,6 +200,13 @@ const RoundtableCanvasV2: React.FC = () => {
   
   // Enhanced Speaker Mode State
   const [speakerMode, setSpeakerMode] = useState<'facilitator' | 'participant'>('facilitator');
+  const [currentSpeaker, setCurrentSpeaker] = useState('Participant');
+  
+  // Manual Entry Modal States
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [entryMode, setEntryMode] = useState<'single' | 'bulk'>('single');
+  const [manualEntryText, setManualEntryText] = useState('');
+  const [manualSpeakerName, setManualSpeakerName] = useState('Speaker');
   
   // Presentation Mode State (Phase 1.1 - Critical UI Fix)
   const [presentationMode, setPresentationMode] = useState(false);
@@ -226,21 +232,20 @@ const RoundtableCanvasV2: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
 
-  // Refs and Hooks
+
+
   const speechTranscription = useSpeechTranscription(
-    (partialText: string) => setInterimTranscript(partialText),
+    (partialText: string) => {
+      setInterimTranscript(partialText);
+      // Use buffering for interim results - don't finalize immediately
+      handleTranscriptionUpdate(partialText, false);
+    },
     (finalEvent: TranscriptEvent) => {
       console.log('🎯 Final transcript received:', finalEvent.text);
       setInterimTranscript('');
       
-      // Use smart speaker detection for speech transcription too
-      const detectedSpeaker = detectSpeaker(finalEvent.text);
-      addTranscriptEntry({
-        text: finalEvent.text,
-        speaker: detectedSpeaker,
-        isAutoDetected: true,
-        confidence: finalEvent.confidence
-      });
+      // Use buffering for final results - this will complete any accumulated text
+      handleTranscriptionUpdate(finalEvent.text, true);
     },
     (error: string) => {
       // Only set error for critical issues, not for no-speech
@@ -965,6 +970,60 @@ const RoundtableCanvasV2: React.FC = () => {
     return result;
   }, [lastSpeakerDetection]);
 
+  // TRANSCRIPT BUFFERING: Handle transcription updates with natural pause detection
+  const handleTranscriptionUpdate = useCallback((text: string, isFinal: boolean) => {
+    console.log('🎯 Transcript buffering:', {
+      text: text,
+      length: text.length,
+      isFinal: isFinal,
+      currentUtterance: currentUtterance
+    });
+
+    // Clear any existing timeout
+    if (utteranceTimeoutRef.current) {
+      clearTimeout(utteranceTimeoutRef.current);
+      utteranceTimeoutRef.current = null;
+    }
+    
+    if (isFinal) {
+      // Final result - add accumulated + final text
+      const completeText = (currentUtterance + ' ' + text).trim();
+      
+      if (completeText.length > 0) {
+        // Use smart speaker detection
+        const detectedSpeaker = detectSpeaker(completeText);
+        
+        // Only add if it's substantial (more than just a few characters)
+        if (completeText.length > 5) {
+          addTranscriptEntry({
+            text: completeText,
+            speaker: detectedSpeaker,
+            isAutoDetected: true,
+            confidence: 0.9
+          });
+        }
+        setCurrentUtterance('');
+      }
+    } else {
+      // Interim result - accumulate
+      setCurrentUtterance(prev => (prev + ' ' + text).trim());
+      
+      // Set timeout to commit after pause (1.5 seconds = end of natural utterance)
+      utteranceTimeoutRef.current = setTimeout(() => {
+        if (currentUtterance.length > 5) {
+          const detectedSpeaker = detectSpeaker(currentUtterance);
+          addTranscriptEntry({
+            text: currentUtterance,
+            speaker: detectedSpeaker,
+            isAutoDetected: true,
+            confidence: 0.8
+          });
+          setCurrentUtterance('');
+        }
+      }, 1500);
+    }
+  }, [currentUtterance, detectSpeaker, addTranscriptEntry]);
+
   // Helper function to extract discussion patterns
   const detectDiscussionPatterns = useCallback((transcript: TranscriptEntry[]) => {
     return {
@@ -1042,7 +1101,7 @@ const RoundtableCanvasV2: React.FC = () => {
     const guidance = currentQuestion?.facilitatorGuidance;
     
     switch(analysisType) {
-      case 'insight':
+      case 'insights':
         return {
           instruction: `Based on the "${currentQuestion?.title}" discussion, identify strategic insights specifically related to: ${guidance?.whatToListenFor?.join(', ') || 'key themes'}`,
           currentPhaseObjective: guidance?.objective || '',
@@ -1837,11 +1896,11 @@ const RoundtableCanvasV2: React.FC = () => {
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-semibold text-gray-900">Strategic Insights</h3>
                     <button
-                      onClick={() => callAIAnalysis('insight')}
+                      onClick={() => callAIAnalysis('insights')}
                       disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
                       className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
                     >
-                      {isAnalyzing && analyzingType === 'insight' ? (
+                      {isAnalyzing && analyzingType === 'insights' ? (
                         <span className="flex items-center gap-2">
                           <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                           Generating...
@@ -1853,12 +1912,12 @@ const RoundtableCanvasV2: React.FC = () => {
                   </div>
                   
                   <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-                    {getInsightsForType('insight').length === 0 ? (
+                    {getInsightsForType('insights').length === 0 ? (
                       <p className="text-center py-8 text-gray-500">
                         No insights generated yet. Start recording or add transcript entries, then click "Generate New" to analyze.
                       </p>
                     ) : (
-                      getInsightsForType('insight').slice(-5).reverse().map((insight, idx) => (
+                      getInsightsForType('insights').slice(-5).reverse().map((insight, idx) => (
                         <div key={insight.id || idx} className="bg-white rounded-lg p-4 border border-blue-100 shadow-sm hover:shadow-md transition-shadow">
                           <p className="text-sm text-gray-800">{insight.content}</p>
                           <span className="text-xs text-gray-500 mt-2 block">
