@@ -12,13 +12,9 @@ import FacilitatorPanel from './FacilitatorPanel';
 import TemplateSelector from './TemplateSelector';
 // Centralized types and constants
 import { SessionState, TranscriptEntry, SessionContext } from '@/types/session';
-import { FACILITATOR_SEMANTIC_PATTERNS, MIN_WORDS_FOR_INSIGHTS } from '../constants/speech';
+import { MIN_WORDS_FOR_INSIGHTS } from '../constants/speech';
 import { useToast } from '@/components/ToastProvider';
 import { DebugPanel } from '@/components/DebugPanel';
-
-// Types now imported from centralized files
-// SessionState, TranscriptEntry, SessionContext imported from @/types/session
-// FACILITATOR_PATTERNS, MIN_WORDS_FOR_INSIGHTS imported from @/constants/speech
 
 // Helper function to format AI-generated content with better spacing and readability
 const formatAIContent = (content: string): string => {
@@ -51,30 +47,6 @@ const RecordingIndicator = ({ isRecording }: { isRecording: boolean }) => {
   );
 };
 
-// Simplified Speaker Indicator Component
-const SpeakerIndicator = ({ currentSpeaker, isVisible }: {
-  currentSpeaker: string;
-  isVisible: boolean;
-}) => {
-  if (!isVisible) return null;
-  
-  const isFacilitator = currentSpeaker === 'Facilitator';
-  
-  return (
-    <div className="flex items-center gap-2 text-sm text-gray-600">
-      <div className={`w-2 h-2 rounded-full ${
-        isFacilitator ? 'bg-blue-500' : 'bg-green-500'
-      }`} />
-      <span className="font-medium">
-        Current Speaker: {currentSpeaker}
-      </span>
-      <span className="text-xs opacity-75">
-        (Auto-detected)
-      </span>
-    </div>
-  );
-};
-
 // Enhanced TopNavigation Component for better UX
 const TopNavigation = ({ 
   sessionContext, 
@@ -83,8 +55,6 @@ const TopNavigation = ({
   totalQuestions,
   presentationMode,
   setPresentationMode,
-  showParticipantDetection,
-  setShowParticipantDetection,
   setShowTemplateSelector
 }: {
   sessionContext: SessionContext;
@@ -93,8 +63,6 @@ const TopNavigation = ({
   totalQuestions: number;
   presentationMode: boolean;
   setPresentationMode: (mode: boolean) => void;
-  showParticipantDetection: boolean;
-  setShowParticipantDetection: (show: boolean) => void;
   setShowTemplateSelector: (show: boolean) => void;
 }) => (
   <div className="sticky top-0 z-50 bg-white border-b shadow-sm p-4">
@@ -139,19 +107,6 @@ const TopNavigation = ({
           📋 Templates
         </button>
         
-        {/* Phase 1.3: Participant Detection Toggle */}
-        <button
-          onClick={() => setShowParticipantDetection(!showParticipantDetection)}
-          className={`px-3 py-2 rounded-lg font-medium transition-colors ${
-            showParticipantDetection 
-              ? 'bg-blue-100 text-blue-700 border border-blue-300'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-          title="Toggle speaker detection controls"
-        >
-          {showParticipantDetection ? '🎯 Hide Detection' : '🎯 Show Detection'}
-        </button>
-        
         {/* Presentation Mode Toggle */}
         <button
           onClick={() => setPresentationMode(!presentationMode)}
@@ -188,7 +143,6 @@ const RoundtableCanvasV2: React.FC = () => {
 
   // UI State
   const [isRecording, setIsRecording] = useState(false);
-  // REMOVED: Duplicate manual entry state - using showManualModal instead
   const [manualText, setManualText] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -208,32 +162,17 @@ const RoundtableCanvasV2: React.FC = () => {
   // Add this new state for right panel tab navigation
   const [rightPanelTab, setRightPanelTab] = useState<'guide' | 'insights' | 'synthesis' | 'followup' | 'executive'>('guide');
   
-
-  
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [templateModalMode, setTemplateModalMode] = useState<'save' | 'load' | 'manage' | 'create'>('save');
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   
-  // Enhanced Speaker Mode State
-  const [speakerMode, setSpeakerMode] = useState<'facilitator' | 'participant'>('facilitator');
-  const [currentSpeaker, setCurrentSpeaker] = useState('Participant');
-  
-  // Manual Entry Modal States
+  // Manual Entry Modal States  
   const [showManualModal, setShowManualModal] = useState(false);
   const [entryMode, setEntryMode] = useState<'single' | 'bulk'>('single');
   const [manualEntryText, setManualEntryText] = useState('');
-  const [manualSpeakerName, setManualSpeakerName] = useState('Speaker');
   
-  // Presentation Mode State (Phase 1.1 - Critical UI Fix)
+  // Presentation Mode State
   const [presentationMode, setPresentationMode] = useState(false);
-  
-  // Participant Detection UI Toggle (Phase 1.3 - Critical UX Fix)
-  const [showParticipantDetection, setShowParticipantDetection] = useState(false); // HIDDEN BY DEFAULT per executive UX guide
-  const [participantCounter, setParticipantCounter] = useState(1);
-  
-  // Speaker Attribution UI State
-  const [showSpeakerAttribution, setShowSpeakerAttribution] = useState(false);
-  const [attributionResults, setAttributionResults] = useState<any>(null);
 
   // Keyboard Shortcut for Presentation Mode (Cmd+P)
   useEffect(() => {
@@ -247,8 +186,6 @@ const RoundtableCanvasV2: React.FC = () => {
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
-
-
 
   const speechTranscription = useSpeechTranscription(
     (partialText: string) => {
@@ -630,36 +567,6 @@ const RoundtableCanvasV2: React.FC = () => {
     
   }, [sessionContext.liveTranscript.length, sessionContext.aiInsights, callAIAnalysis]);
   
-
-  // Keyboard shortcuts for speaker switching and presentation mode
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      // Only work when not typing in an input
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      
-      // Phase 1.2: Cmd+P for presentation mode toggle
-      if ((e.metaKey || e.ctrlKey) && (e.key === 'p' || e.key === 'P')) {
-        e.preventDefault(); // Prevent browser print dialog
-        setPresentationMode(prev => !prev);
-        return;
-      }
-      
-      if (e.key === 'f' || e.key === 'F') {
-        setSpeakerMode('facilitator');
-        setCurrentSpeaker('Facilitator');
-      } else if (e.key === 'p' || e.key === 'P') {
-        setSpeakerMode('participant');
-        if (!currentSpeaker.startsWith('Participant')) {
-          setCurrentSpeaker(`Participant ${participantCounter}`);
-          setParticipantCounter(prev => prev + 1);
-        }
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [currentSpeaker, participantCounter, setPresentationMode]);
-
   const goToNextQuestion = useCallback(() => {
     const totalQuestions = getTotalQuestions();
     if (sessionContext.currentQuestionIndex < totalQuestions - 1) {
@@ -713,7 +620,7 @@ const RoundtableCanvasV2: React.FC = () => {
     setShowManualModal(true);
     setEntryMode('single'); // Default to single entry mode
     setManualEntryText(''); // Clear any previous text
-    setManualSpeakerName('Speaker'); // Reset to default speaker
+    // Manual entry now uses unified 'Speaker' label by default
     console.log('📝 Opening manual entry modal');
   }, []);
 
@@ -759,8 +666,7 @@ const RoundtableCanvasV2: React.FC = () => {
       setShowManualModal(false);
       console.log(`✅ Added ${entriesAdded} entries from bulk paste`);
     }
-  }, [entryMode, manualEntryText, manualSpeakerName, customSpeakerName, 
-      bulkTranscriptText, addTranscriptEntry]);
+  }, [entryMode, manualEntryText, bulkTranscriptText, addTranscriptEntry]);
 
   const toggleRecording = useCallback(() => {
     if (speechTranscription.isListening) {
@@ -781,71 +687,8 @@ const RoundtableCanvasV2: React.FC = () => {
       currentTopic: preset.sessionTopic || prev.currentTopic
     }));
     
-    if (preset.facilitatorName) {
-      setCurrentSpeaker(preset.facilitatorName);
-    }
+    // Facilitator name no longer needed - using unified 'Speaker' label
   }, []);
-
-  const runSpeakerAttribution = useCallback(async () => {
-    try {
-      const response = await fetch('/api/identify-speakers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          transcript: sessionContext.liveTranscript.map(entry => ({
-            id: entry.id,
-            text: entry.text,
-            speaker: entry.speaker,
-            timestamp: entry.timestamp.toISOString()
-          }))
-        })
-      });
-
-      if (!response.ok) {
-        // Toast: API error
-        showToast({
-          type: response.status === 429 ? 'warning' : 'error',
-          title: response.status === 429 ? 'Rate limit reached' : 'Speaker identification failed',
-          message: response.status === 429
-            ? 'Too many requests. Please wait a minute and try again.'
-            : 'Unable to identify speakers. Please try again shortly.'
-        });
-        return;
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        setAttributionResults(data);
-        setShowSpeakerAttribution(true);
-      } else {
-        console.error('Speaker attribution failed:', data.error);
-        showToast({
-          type: 'error',
-          title: 'Speaker identification failed',
-          message: data.error || 'Please try again.'
-        });
-      }
-    } catch (error) {
-      console.error('Failed to run speaker attribution:', error);
-      showToast({
-        type: 'error',
-        title: 'Network error',
-        message: 'Unable to identify speakers. Please check your connection and try again.'
-      });
-    }
-  }, [sessionContext.liveTranscript, showToast]);
-
-  // Session-level speaker continuity tracking
-  const [lastSpeakerDetection, setLastSpeakerDetection] = useState<{
-    speaker: string;
-    timestamp: number;
-    confidence: 'high' | 'medium' | 'low';
-  } | null>(null);
-
-  const CONTINUITY_WINDOW_MS = 30000; // 30 seconds for speaker continuity
-
-  // Smart Speaker Detection Function using imported patterns + context-sensitive logic + proximity
-  // Removed detectSpeaker function - now using unified "Speaker" labels
 
   // TRANSCRIPT BUFFERING: Handle transcription updates with natural pause detection
   const handleTranscriptionUpdate = useCallback((text: string, isFinal: boolean) => {
@@ -896,34 +739,6 @@ const RoundtableCanvasV2: React.FC = () => {
       }, 1500);
     }
   }, [currentUtterance, addTranscriptEntry]);
-
-  // Helper function to extract discussion patterns
-  const detectDiscussionPatterns = useCallback((transcript: TranscriptEntry[]) => {
-    return {
-      facilitatorQuestionCount: transcript.filter(e => 
-        e.speaker === 'Facilitator' && e.text.includes('?')
-      ).length,
-      
-      participantResponseTypes: {
-        challenges: transcript.filter(e => 
-          e.speaker === 'Participant' && 
-          /challenge|difficult|struggle|problem|issue/i.test(e.text)
-        ).length,
-        
-        opportunities: transcript.filter(e => 
-          e.speaker === 'Participant' && 
-          /opportunity|potential|could|transform|improve/i.test(e.text)
-        ).length,
-        
-        examples: transcript.filter(e => 
-          e.speaker === 'Participant' && 
-          /for example|in our company|we do|at our org/i.test(e.text)
-        ).length
-      },
-      
-      recentTopics: transcript.slice(-5).map(e => e.text.substring(0, 50))
-    };
-  }, []);
 
   // Helper function to get previous follow-up questions for deduplication
   const getPreviousFollowupQuestions = useCallback(() => {
@@ -1030,7 +845,7 @@ const RoundtableCanvasV2: React.FC = () => {
       default:
         return { instruction: 'Provide analysis based on the discussion' };
     }
-  }, []);
+  }, [sessionContext, getPreviousFollowupQuestions]);
 
   // Template Selection Handler
   const handleTemplateSelection = useCallback((templateSessionContext: any) => {
@@ -1117,23 +932,9 @@ const RoundtableCanvasV2: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-3">
-                  Facilitator Name
-                </label>
-                <input
-                  type="text"
-                  value={currentSpeaker}
-                  onChange={(e) => setCurrentSpeaker(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Facilitator name"
-                />
-              </div>
-
               <button
                 onClick={startSession}
-                disabled={!currentSpeaker.trim()}
-                className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 font-medium"
+                className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
               >
                 Launch Session
               </button>
@@ -1425,7 +1226,7 @@ const RoundtableCanvasV2: React.FC = () => {
               <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-semibold text-gray-900">Discussion Transcript</h3>
-                  <span className="text-xs text-gray-500">Speakers auto-detected</span>
+                  <span className="text-xs text-gray-500">All entries labeled as "Speaker"</span>
                 </div>
                 <div className="transcript-section">
                   <div className="transcript-container">
@@ -1436,7 +1237,7 @@ const RoundtableCanvasV2: React.FC = () => {
                         </svg>
                         <p className="text-gray-500 text-lg font-medium mb-2">No Discussion Yet</p>
                         <p className="text-gray-400 text-sm max-w-sm">
-                          Start smart recording or add manual entries to begin capturing the roundtable discussion.
+                          Start recording or add manual entries to begin capturing the roundtable discussion.
                         </p>
                       </div>
                     ) : (
@@ -1448,7 +1249,7 @@ const RoundtableCanvasV2: React.FC = () => {
                             <div key={entry.id || index} className="transcript-entry">
                               {/* Timeline Visual - Unified gray style */}
                               <div className="timeline">
-                                <div className="timeline-dot speaker">
+                                <div className="timeline-dot bg-gray-500">
                                   <span className="text-xs font-bold text-white bg-gray-500 rounded-full w-6 h-6 flex items-center justify-center ring-2 ring-gray-200">S</span>
                                 </div>
                                 {!isLast && <div className="timeline-line" />}
@@ -1457,7 +1258,7 @@ const RoundtableCanvasV2: React.FC = () => {
                               {/* Entry Content */}
                               <div className="entry-content">
                                 <div className="entry-header">
-                                  <span className="speaker-name speaker">
+                                  <span className="speaker-name bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-medium">
                                     Speaker
                                   </span>
                                   <span className="timestamp">
@@ -1571,104 +1372,6 @@ const RoundtableCanvasV2: React.FC = () => {
                   </p>
                 )}
               </div>
-
-
-
-              {/* AI Speaker Review - Only show after meaningful content */}
-              {sessionContext.liveTranscript.length > 10 && !isRecording && (
-                <div className="mt-4">
-                  <button
-                    onClick={runSpeakerAttribution}
-                    className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-2"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
-                    Run AI Speaker Identification
-                  </button>
-                </div>
-              )}
-              
-              {/* Smart Detection Status Bar - Hidden by default for executive UX */}
-              {showParticipantDetection && (
-                <div className="smart-detection-status">
-                  <div className="detection-info">
-                    <div className="detection-mode">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                      </svg>
-                      <span>Smart Detection: {isRecording ? 'Active' : 'Standby'}</span>
-                    </div>
-                    <div className="current-speaker">
-                      Current: <span className="speaker-name">{currentSpeaker || 'Waiting...'}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="recording-controls">
-                    <button
-                      onClick={() => {
-                        if (isRecording) {
-                          setIsRecording(false);
-                          speechTranscription.stop();
-                          setInterimTranscript('');
-                        } else {
-                          setIsRecording(true);
-                          speechTranscription.start();
-                        }
-                      }}
-                      className={`recording-button ${
-                        isRecording ? 'recording-button--active' : 'recording-button--inactive'
-                      }`}
-                      title={isRecording ? 'Stop recording' : 'Start voice recording with smart speaker detection'}
-                    >
-                      {isRecording ? (
-                        <>
-                          <div className="recording-indicator animate-pulse" />
-                          Stop Recording
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                          </svg>
-                          Start Smart Recording
-                        </>
-                      )}
-                    </button>
-                    
-                    <button
-                      onClick={() => setShowManualModal(true)}
-                      className="btn btn--secondary"
-                      title="Add discussion point manually"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                      Manual Entry
-                    </button>
-                    
-                    <button
-                      onClick={runSpeakerAttribution}
-                      disabled={sessionContext.liveTranscript.length < 3}
-                      className="btn btn--secondary"
-                      title="Use AI to identify and organize speakers"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                      </svg>
-                      AI Speaker ID
-                    </button>
-                  </div>
-                </div>
-              )}
-              
-              {/* Speaker Indicator - Phase 1.3: Hidden by default for executive UX */}
-              {showParticipantDetection && (
-                <SpeakerIndicator 
-                  currentSpeaker={currentSpeaker} 
-                  isVisible={sessionContext.liveTranscript.length > 0 || isRecording} 
-                />
-              )}
             </div>
           </div>
 
@@ -1987,8 +1690,14 @@ const RoundtableCanvasV2: React.FC = () => {
                {entryMode === 'single' && (
                  <div className="space-y-4">
                    <div>
-                     <label className="block text-sm font-medium mb-2">Speaker: Speaker</label>
-                     <p className="text-sm text-gray-500 mb-3">All entries will be labeled as "Speaker"</p>
+                     <label className="block text-sm font-medium mb-2">Speaker</label>
+                     <input
+                       type="text"
+                       value="Speaker"
+                       disabled
+                       className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600 cursor-not-allowed"
+                     />
+                     <p className="text-xs text-gray-500 mt-1">All entries use unified speaker labels</p>
                    </div>
                    <div>
                      <label className="block text-sm font-medium mb-2">Entry Text</label>
@@ -2011,14 +1720,14 @@ const RoundtableCanvasV2: React.FC = () => {
                        Paste transcript in format: <code>Speaker Name: Text content</code>
                      </p>
                      <p className="text-xs text-blue-600 mt-1">
-                       Each speaker entry should be on a new line
+                       Each speaker entry should be on a new line. All entries will be labeled as "Speaker".
                      </p>
                    </div>
                    <textarea
                      value={bulkTranscriptText}
                      onChange={(e) => setBulkTranscriptText(e.target.value)}
                      className="w-full px-3 py-2 border border-gray-300 rounded-md h-64 resize-none font-mono text-sm"
-                     placeholder="John: I think we should focus on AI training first.&#10;Sarah: Good point. What about data preparation?&#10;John: That's essential too..."
+                     placeholder="Speaker: I think we should focus on AI training first.&#10;Speaker: Good point. What about data preparation?&#10;Speaker: That's essential too..."
                      autoFocus
                    />
                  </div>
@@ -2109,8 +1818,6 @@ const RoundtableCanvasV2: React.FC = () => {
         totalQuestions={AI_TRANSFORMATION_QUESTIONS.length}
         presentationMode={presentationMode}
         setPresentationMode={setPresentationMode}
-        showParticipantDetection={showParticipantDetection}
-        setShowParticipantDetection={setShowParticipantDetection}
         setShowTemplateSelector={setShowTemplateSelector}
       />
       
@@ -2120,167 +1827,6 @@ const RoundtableCanvasV2: React.FC = () => {
       {sessionState === 'intro' && renderIntroState()}
       {sessionState === 'discussion' && renderDiscussionState()}
       {sessionState === 'summary' && renderSummaryState()}
-      {/* REMOVED: Duplicate manual entry modal - using the complete version above instead */}
-      
-      {/* Speaker Attribution Review Modal */}
-      {showSpeakerAttribution && attributionResults && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-gray-900">
-                🤖 AI Speaker Identification Results
-              </h3>
-              <button
-                onClick={() => {
-                  setShowSpeakerAttribution(false);
-                  setAttributionResults(null);
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            {/* AI Summary */}
-            {attributionResults.summary && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <h4 className="font-semibold text-blue-900 mb-2">Analysis Summary:</h4>
-                <p className="text-blue-800 text-sm">{attributionResults.summary}</p>
-              </div>
-            )}
-            
-            {/* Suggested Speaker Assignments */}
-            {attributionResults.suggestedSpeakers && attributionResults.suggestedSpeakers.length > 0 && (
-              <div className="mb-6">
-                <h4 className="font-semibold text-gray-900 mb-3">Suggested Speaker Identifications:</h4>
-                <div className="space-y-2">
-                  {attributionResults.suggestedSpeakers.map((suggestion: any, index: number) => (
-                    <div key={index} className="bg-gray-50 rounded-lg p-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="font-medium text-gray-900">
-                            {suggestion.currentLabel} → {suggestion.suggestedLabel}
-                          </span>
-                          {suggestion.confidence && (
-                            <span className={`ml-2 px-2 py-1 rounded text-xs ${
-                              suggestion.confidence > 0.8 
-                                ? 'bg-green-100 text-green-700' 
-                                : suggestion.confidence > 0.6
-                                  ? 'bg-yellow-100 text-yellow-700'
-                                  : 'bg-red-100 text-red-700'
-                            }`}>
-                              {Math.round(suggestion.confidence * 100)}% confident
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      {suggestion.reasoning && (
-                        <p className="text-sm text-gray-600 mt-1">{suggestion.reasoning}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* Transcript Review with Suggested Changes */}
-            <div className="mb-6">
-              <h4 className="font-semibold text-gray-900 mb-3">Transcript Review:</h4>
-              <div className="max-h-64 overflow-y-auto border rounded-lg">
-                {sessionContext.liveTranscript.map((entry, index) => {
-                  const suggestion = attributionResults.suggestions?.find(
-                    (s: any) => s.entryId === entry.id
-                  );
-                  
-                  return (
-                    <div 
-                      key={entry.id}
-                      className={`p-3 border-b last:border-b-0 ${
-                        suggestion ? 'bg-yellow-50' : 'bg-white'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${
-                              entry.speaker === 'Facilitator' 
-                                ? 'bg-blue-100 text-blue-700' 
-                                : 'bg-green-100 text-green-700'
-                            }`}>
-                              {entry.speaker}
-                            </span>
-                            {suggestion && (
-                              <>
-                                <span className="text-gray-400">→</span>
-                                <span className="px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-700">
-                                  {suggestion.suggestedSpeaker}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                          <p className="text-gray-700 text-sm">{entry.text}</p>
-                          {suggestion?.reasoning && (
-                            <p className="text-xs text-gray-500 mt-1 italic">
-                              AI: {suggestion.reasoning}
-                            </p>
-                          )}
-                        </div>
-                        <span className="text-xs text-gray-400 ml-2">
-                          {entry.timestamp.toLocaleTimeString()}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            
-            {/* Action Buttons */}
-            <div className="flex justify-between items-center">
-              <div className="text-sm text-gray-600">
-                💡 Review the AI suggestions above and apply changes as needed.
-              </div>
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => {
-                    setShowSpeakerAttribution(false);
-                    setAttributionResults(null);
-                  }}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    // Apply AI suggestions to transcript
-                    if (attributionResults.suggestions) {
-                      const updatedTranscript = sessionContext.liveTranscript.map(entry => {
-                        const suggestion = attributionResults.suggestions.find(
-                          (s: any) => s.entryId === entry.id
-                        );
-                        return suggestion ? { ...entry, speaker: suggestion.suggestedSpeaker } : entry;
-                      });
-                      
-                      setSessionContext(prev => ({
-                        ...prev,
-                        liveTranscript: updatedTranscript
-                      }));
-                    }
-                    
-                    setShowSpeakerAttribution(false);
-                    setAttributionResults(null);
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  Apply AI Suggestions
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Template Selector Modal */}
       <TemplateSelector

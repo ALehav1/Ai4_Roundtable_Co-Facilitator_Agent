@@ -312,7 +312,7 @@ export const uiText = {
   },
   
   labels: {
-    participantName: "Speaker Name",
+    participantName: "Entry", // CHANGED from "Speaker Name"
     questionNumber: "Phase",
     timeRemaining: "Time Remaining",
     sessionProgress: "Session Progress",
@@ -322,7 +322,7 @@ export const uiText = {
   },
   
   placeholders: {
-    participantNameInput: "Enter speaker name",
+    participantNameInput: "All entries labeled as 'Speaker'", // CHANGED
     responseInput: "Enter response or click microphone to record",
     manualEntryInput: "Type or paste response here"
   },
