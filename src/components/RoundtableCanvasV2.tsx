@@ -172,7 +172,7 @@ const RoundtableCanvasV2: React.FC = () => {
 
   // UI State
   const [isRecording, setIsRecording] = useState(false);
-  const [showManualEntry, setShowManualEntry] = useState(false);
+  // REMOVED: Duplicate manual entry state - using showManualModal instead
   const [manualText, setManualText] = useState('');
   const [currentSpeaker, setCurrentSpeaker] = useState('Participant'); // DEFAULT TO PARTICIPANT per new guide
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -2222,53 +2222,7 @@ const RoundtableCanvasV2: React.FC = () => {
       {sessionState === 'intro' && renderIntroState()}
       {sessionState === 'discussion' && renderDiscussionState()}
       {sessionState === 'summary' && renderSummaryState()}
-      
-      {/* Manual Entry Modal (simplified version at the end) */}
-      {showManualModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold mb-4">Add Manual Entry</h3>
-            
-            <textarea
-              value={manualEntryText}
-              onChange={(e) => setManualEntryText(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md h-24"
-              placeholder="What was discussed? (e.g., 'We agreed that AI should focus on decision support rather than replacement')"
-            />
-            
-            <div className="flex space-x-3 mt-4">
-              <button
-                onClick={() => {
-                  setShowManualModal(false);
-                  setManualEntryText('');
-                }}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  if (manualEntryText.trim()) {
-                    // Use smart speaker detection instead of currentSpeaker
-                    const detectedSpeaker = detectSpeaker(manualEntryText.trim());
-                    addTranscriptEntry({
-                      text: manualEntryText.trim(),
-                      speaker: detectedSpeaker,
-                      isAutoDetected: true, // Now using auto-detection
-                    });
-                    setShowManualModal(false);
-                    setManualEntryText('');
-                  }
-                }}
-                disabled={!manualEntryText.trim()}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded disabled:bg-gray-300"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* REMOVED: Duplicate manual entry modal - using the complete version above instead */}
       
       {/* Speaker Attribution Review Modal */}
       {showSpeakerAttribution && attributionResults && (
