@@ -82,31 +82,50 @@ export const useSpeechTranscription = (
     };
 
     recognition.onerror = (event: any) => {
-      console.log('Speech recognition error:', event.error);
+      console.log('🚨 Speech recognition error:', event.error);
       
-      // DO NOT SHOW MODAL - Just handle gracefully
+      // FIXED: Improved error handling to reduce fragmentation
       switch (event.error) {
         case 'no-speech':
-          // Just wait, don't show error
-          setError('Listening...');
-          scheduleRestart();
+          // FIXED: Don't restart immediately, just continue listening
+          console.log('⏳ No speech detected, continuing to listen...');
+          setError(null); // Don't show "Listening..." error
+          // No restart - let natural flow continue
           break;
         case 'audio-capture':
-          setError('Microphone not found');
+          setError('Microphone not found - check device settings');
+          shouldBeListeningRef.current = false; // Stop trying
           break;
         case 'not-allowed':
-          setError('Microphone access denied');
+          setError('Microphone access denied - please allow and refresh');
+          shouldBeListeningRef.current = false; // Stop trying
           break;
         case 'network':
-          setError('Connection issue');
-          scheduleRestart();
+          console.log('🌐 Network issue, will retry gracefully...');
+          setError('Connection issue - retrying...');
+          // FIXED: Delay restart longer to prevent rapid cycling
+          setTimeout(() => {
+            if (shouldBeListeningRef.current) {
+              scheduleRestart();
+            }
+          }, 3000); // 3 second delay instead of immediate
+          break;
+        case 'aborted':
+          // FIXED: Handle user-initiated stops gracefully
+          console.log('🛑 Recognition aborted (user stop)');
+          setError(null);
+          // Don't restart if user stopped intentionally
           break;
         default:
+          console.log('🔧 Minor error, continuing...');
           setError(null);
-          scheduleRestart();
+          // FIXED: Only restart for truly critical errors, not minor ones
+          if (shouldBeListeningRef.current) {
+            setTimeout(() => scheduleRestart(), 2000);
+          }
       }
       
-      // DO NOT call onError for minor issues
+      // FIXED: Only trigger onError callback for critical access issues
       if (['not-allowed', 'audio-capture'].includes(event.error) && onError) {
         onError(event.error);
       }
@@ -126,33 +145,47 @@ export const useSpeechTranscription = (
   }, [isSupported, onPartial, onFinal, onError]);
 
   const scheduleRestart = useCallback(() => {
+    // FIXED: Clear any existing restart to prevent competing restarts
     if (restartTimeoutRef.current) {
       clearTimeout(restartTimeoutRef.current);
     }
     
+    // FIXED: Only schedule restart if we should be listening and aren't already
+    if (!shouldBeListeningRef.current || isListening) {
+      console.log('🔄 Skipping restart - not needed');
+      return;
+    }
+    
     restartTimeoutRef.current = setTimeout(() => {
-      if (shouldBeListeningRef.current && recognitionRef.current) {
+      if (shouldBeListeningRef.current && recognitionRef.current && !isListening) {
         try {
+          console.log('🔄 Attempting graceful restart...');
           recognitionRef.current.start();
         } catch (error) {
-          console.log('Restart attempt failed, will retry...');
-          scheduleRestart();
+          console.log('⚠️ Restart attempt failed, will retry in 2s...');
+          // FIXED: Longer delay on failed restart to prevent rapid cycling
+          setTimeout(() => {
+            if (shouldBeListeningRef.current) {
+              scheduleRestart();
+            }
+          }, 2000);
         }
       }
-    }, 1000);
-  }, []);
+    }, 1500); // Slightly longer delay for more stable restarts
+  }, [isListening]);
 
   const startSilenceTimeout = useCallback(() => {
     clearSilenceTimeout();
     
-    // Restart before browser 60-second limit
+    // FIXED: Extend timeout to reduce fragmentation (55 seconds instead of 45)
+    // Only restart after true silence, not during active speech
     silenceTimeoutRef.current = setTimeout(() => {
       if (shouldBeListeningRef.current && recognitionRef.current) {
-        console.log('Preventing browser timeout with restart...');
+        console.log('🔄 Graceful restart after prolonged silence...');
         recognitionRef.current.stop();
-        // Will auto-restart via onend
+        // Will auto-restart via onend - but only if truly needed
       }
-    }, 45000);
+    }, 55000); // Increased from 45s to 55s for less fragmentation
   }, []);
 
   const clearSilenceTimeout = useCallback(() => {
