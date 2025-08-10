@@ -1261,10 +1261,10 @@ const RoundtableCanvasV2: React.FC = () => {
                         }
                       }}
                       disabled={sessionContext.currentQuestionIndex === 0}
-                      className="inline-flex items-center px-3 py-2 text-sm font-medium bg-white border border-blue-300 text-blue-700 rounded-md hover:bg-blue-50 hover:border-blue-400 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all duration-200"
+                      className="flex items-center gap-2 px-6 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg transition-colors min-w-[120px] justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Previous phase"
                     >
-                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                       </svg>
                       Previous
@@ -1280,11 +1280,11 @@ const RoundtableCanvasV2: React.FC = () => {
                         }
                       }}
                       disabled={sessionContext.currentQuestionIndex >= AI_TRANSFORMATION_QUESTIONS.length - 1}
-                      className="inline-flex items-center px-3 py-2 text-sm font-medium bg-white border border-blue-300 text-blue-700 rounded-md hover:bg-blue-50 hover:border-blue-400 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all duration-200"
+                      className="flex items-center gap-2 px-6 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg transition-colors min-w-[120px] justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Next phase"
                     >
                       Next
-                      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </button>
