@@ -361,16 +361,29 @@ const RoundtableCanvasV2: React.FC = () => {
       const currentQuestion = getCurrentQuestion(sessionContext.currentQuestionIndex);
       const totalQuestions = getTotalQuestions();
       
+      // Build enhanced context
+      const discussionPatterns = detectDiscussionPatterns(sessionContext.liveTranscript);
+      const phaseSpecificGuidance = getPhaseSpecificContext(
+        analysisType, 
+        currentQuestion,
+        sessionContext.currentQuestionIndex
+      );
+
       console.log('🔍 Starting AI Analysis:', {
         type: analysisType,
         transcriptLength: transcriptText.length,
         entryCount: sessionContext.liveTranscript.length,
         topic: sessionContext.currentTopic,
         currentQuestion: currentQuestion?.title,
-        questionProgress: `${sessionContext.currentQuestionIndex + 1} of ${totalQuestions}`
+        questionProgress: `${sessionContext.currentQuestionIndex + 1} of ${totalQuestions}`,
+        phaseGuidance: phaseSpecificGuidance.instruction,
+        discussionStats: {
+          questions: discussionPatterns.facilitatorQuestionCount,
+          challenges: discussionPatterns.participantResponseTypes.challenges,
+          opportunities: discussionPatterns.participantResponseTypes.opportunities
+        }
       });
-
-      // Build enhanced context
+      
       const enhancedContext = {
         sessionTopic: sessionContext.currentTopic || 'Strategic Planning Session',
         liveTranscript: transcriptText || "No conversation content has been captured yet in this live session.",
@@ -378,7 +391,8 @@ const RoundtableCanvasV2: React.FC = () => {
         participantCount: new Set(sessionContext.liveTranscript.map(e => e.speaker)).size || 5,
         sessionDuration: Math.floor((Date.now() - sessionContext.startTime.getTime()) / 60000),
         clientId: 'live-session',
-        // Add question context
+        
+        // Enhanced question context with phase guidance
         questionContext: {
           index: sessionContext.currentQuestionIndex,
           total: totalQuestions,
@@ -386,13 +400,29 @@ const RoundtableCanvasV2: React.FC = () => {
             title: currentQuestion.title,
             content: currentQuestion.description,
             guidance: currentQuestion.facilitatorGuidance
-          } : null
+          } : null,
+          phaseSpecificGuidance: phaseSpecificGuidance
         },
-        // Add previous insights for context
+        
+        // Discussion patterns for better insights
+        discussionPatterns: discussionPatterns,
+        
+        // Previous insights for context and deduplication
         previousInsights: sessionContext.aiInsights
-          .filter(i => i.type === 'insight' && !i.isError)
+          .filter(i => i.type === analysisType && !i.isError)
           .slice(-3)
-          .map(i => ({ type: i.type, content: i.content.substring(0, 200) }))
+          .map(i => ({ 
+            type: i.type, 
+            content: i.content.substring(0, 200),
+            timestamp: i.timestamp 
+          })),
+          
+        // Timing context
+        timing: {
+          minutesIntoSession: Math.floor((Date.now() - sessionContext.startTime.getTime()) / 60000),
+          minutesInCurrentPhase: sessionContext.questionStartTime ? 
+            Math.floor((Date.now() - new Date(sessionContext.questionStartTime).getTime()) / 60000) : 0
+        }
       };
 
       // TRY NEW /api/analyze-live endpoint first (strict JSON)
@@ -408,18 +438,48 @@ const RoundtableCanvasV2: React.FC = () => {
           console.log('✅ Live AI Analysis (new endpoint):', liveData);
           
           if (liveData.success) {
+            // Validate content before adding
+            const validation = validateInsightContent(liveData.content || '', analysisType, sessionContext.aiInsights);
+            
+            if (!validation.isValid) {
+              // Show validation error toast
+              showToast({
+                type: 'error',
+                title: 'Invalid Content',
+                message: validation.message || 'Content validation failed'
+              });
+              return;
+            }
+            
             // Add AI insight to session context with enhanced metadata
             setSessionContext(prev => ({
               ...prev,
-              aiInsights: [...prev.aiInsights, {
-                id: `insight_${Date.now()}`,
-                type: analysisType,
-                content: liveData.content,
-                timestamp: new Date(),
-                confidence: liveData.confidence,
-                suggestions: liveData.suggestions || [],
-                metadata: liveData.metadata
-              }],
+              aiInsights: analysisType === 'synthesis' 
+                ? [
+                    // For synthesis, replace previous synthesis entries (overwrite behavior)
+                    ...prev.aiInsights.filter(insight => insight.type !== 'synthesis'),
+                    {
+                      id: `insight_${Date.now()}`,
+                      type: analysisType,
+                      content: liveData.content || '',
+                      timestamp: new Date(),
+                      confidence: liveData.confidence,
+                      suggestions: liveData.suggestions || [],
+                      metadata: liveData.metadata
+                    }
+                  ]
+                : [
+                    // For other types, append normally
+                    ...prev.aiInsights, {
+                      id: `insight_${Date.now()}`,
+                      type: analysisType,
+                      content: liveData.content || '',
+                      timestamp: new Date(),
+                      confidence: liveData.confidence,
+                      suggestions: liveData.suggestions || [],
+                      metadata: liveData.metadata
+                    }
+                  ],
             }));
             
             // Show success toast
@@ -459,13 +519,27 @@ const RoundtableCanvasV2: React.FC = () => {
       const data = await response.json();
       console.log('✅ Legacy AI Analysis (fallback):', data);
 
+      // Validate content before adding (legacy endpoint)
+      const legacyContent = data.insights || data.analysis || data.result || '';
+      const validation = validateInsightContent(legacyContent, analysisType, sessionContext.aiInsights);
+      
+      if (!validation.isValid) {
+        // Show validation error toast
+        showToast({
+          type: 'error',
+          title: 'Invalid Content',
+          message: validation.message || 'Content validation failed'
+        });
+        return;
+      }
+
       // Add AI insight to session context (legacy format)
       setSessionContext(prev => ({
         ...prev,
         aiInsights: [...prev.aiInsights, {
           id: `insight_${Date.now()}`,
           type: analysisType,
-          content: data.insights || data.analysis || data.result,
+          content: legacyContent,
           timestamp: new Date(),
           confidence: 0.8, // Default confidence for legacy endpoint
           isLegacy: true
@@ -535,18 +609,6 @@ const RoundtableCanvasV2: React.FC = () => {
     
   }, [sessionContext.liveTranscript.length, sessionContext.aiInsights, callAIAnalysis]);
   
-  // Phase Transition Insight Triggers
-  useEffect(() => {
-    // Trigger synthesis when moving between phases (with small delay for smooth UX)
-    const currentPhase = sessionContext.currentQuestionIndex;
-    
-    // Only trigger if we have content and are not on the first phase
-    if (currentPhase > 0 && sessionContext.liveTranscript.length >= 3) {
-      setTimeout(() => {
-        callAIAnalysis('synthesis');
-      }, 2000);
-    }
-  }, [sessionContext.currentQuestionIndex, callAIAnalysis, sessionContext.liveTranscript.length]);
 
   // Keyboard shortcuts for speaker switching and presentation mode
   useEffect(() => {
@@ -902,6 +964,141 @@ const RoundtableCanvasV2: React.FC = () => {
     setLastSpeakerDetection({ speaker: result, timestamp: now, confidence: 'low' });
     return result;
   }, [lastSpeakerDetection]);
+
+  // Helper function to extract discussion patterns
+  const detectDiscussionPatterns = useCallback((transcript: TranscriptEntry[]) => {
+    return {
+      facilitatorQuestionCount: transcript.filter(e => 
+        e.speaker === 'Facilitator' && e.text.includes('?')
+      ).length,
+      
+      participantResponseTypes: {
+        challenges: transcript.filter(e => 
+          e.speaker === 'Participant' && 
+          /challenge|difficult|struggle|problem|issue/i.test(e.text)
+        ).length,
+        
+        opportunities: transcript.filter(e => 
+          e.speaker === 'Participant' && 
+          /opportunity|potential|could|transform|improve/i.test(e.text)
+        ).length,
+        
+        examples: transcript.filter(e => 
+          e.speaker === 'Participant' && 
+          /for example|in our company|we do|at our org/i.test(e.text)
+        ).length
+      },
+      
+      recentTopics: transcript.slice(-5).map(e => e.text.substring(0, 50))
+    };
+  }, []);
+
+  // Helper function to get previous follow-up questions for deduplication
+  const getPreviousFollowupQuestions = useCallback(() => {
+    return sessionContext.aiInsights
+      .filter(insight => insight.type === 'followup')
+      .map(insight => insight.content)
+      .slice(-10); // Last 10 follow-up questions
+  }, [sessionContext.aiInsights]);
+
+  // Helper function to validate insight content before adding
+  const validateInsightContent = useCallback((content: string, analysisType: string, existingInsights: any[]) => {
+    // Check for empty or very short content
+    const cleanContent = content?.trim() || '';
+    if (!cleanContent || cleanContent.length < 10) {
+      return {
+        isValid: false,
+        reason: 'Content too short or empty',
+        message: 'AI analysis returned insufficient content. Please try again.'
+      };
+    }
+
+    // Check for duplicate content (case-insensitive, first 100 chars)
+    const contentPrefix = cleanContent.toLowerCase().substring(0, 100);
+    const isDuplicate = existingInsights
+      .filter(insight => insight.type === analysisType && !insight.isError)
+      .some(insight => {
+        const existingPrefix = (insight.content || '').toLowerCase().substring(0, 100);
+        return existingPrefix === contentPrefix;
+      });
+
+    if (isDuplicate) {
+      return {
+        isValid: false,
+        reason: 'Duplicate content detected',
+        message: `This ${analysisType} analysis appears to be a duplicate. Please try generating a new one.`
+      };
+    }
+
+    return { isValid: true };
+  }, []);
+
+  // Helper function to get phase-specific context
+  const getPhaseSpecificContext = useCallback((
+    analysisType: string, 
+    currentQuestion: any,
+    phase: number
+  ) => {
+    const guidance = currentQuestion?.facilitatorGuidance;
+    
+    switch(analysisType) {
+      case 'insight':
+        return {
+          instruction: `Based on the "${currentQuestion?.title}" discussion, identify strategic insights specifically related to: ${guidance?.whatToListenFor?.join(', ') || 'key themes'}`,
+          currentPhaseObjective: guidance?.objective || '',
+          keyThemesToExtract: guidance?.whatToListenFor || []
+        };
+        
+      case 'synthesis':
+        return {
+          instruction: `Create a comprehensive synthesis of the ENTIRE session discussion so far. Structure your response with these sections:
+      1. Key Themes Discussed - Major topics and patterns
+      2. Opportunities Identified - Positive possibilities and potential benefits
+      3. Challenges Acknowledged - Concerns, obstacles, and risks raised
+      4. Areas of Consensus - Where participants seemed to agree
+      5. Diverse Perspectives - Different viewpoints and approaches mentioned
+      
+      Focus on ideas and themes, not individual speakers. This synthesis should be comprehensive and get richer with each update.`,
+          includeAllPhases: true,
+          sessionTopic: sessionContext.currentTopic
+        };
+        
+      case 'followup':
+        const previousQuestions = getPreviousFollowupQuestions();
+        return {
+          instruction: `Generate follow-up questions based on gaps in the "${currentQuestion?.title}" discussion. Avoid duplicating previous questions and consider unused prompts from the guide.`,
+          suggestedPrompts: guidance?.discussionPrompts || [],
+          facilitatorQuestions: guidance?.facilitatorPrompts || [],
+          previousQuestions: previousQuestions,
+          deduplicationNote: previousQuestions.length > 0 ? `Ensure new questions don't repeat these ${previousQuestions.length} previous follow-up questions.` : null
+        };
+        
+      case 'executive':
+        return {
+          instruction: `Create a final session summary for "${sessionContext.currentTopic}" facilitated by ${sessionContext.facilitator || 'Facilitator'}. 
+      
+      Structure the summary with these sections:
+      1. Session Overview - Brief context and purpose
+      2. Key Discussion Points - Major topics covered across all phases
+      3. Opportunities Identified - Positive possibilities and innovations discussed
+      4. Challenges & Concerns - Obstacles and risks acknowledged
+      5. Areas of Agreement - Where consensus emerged
+      6. Diverse Perspectives - Different viewpoints that enriched the discussion
+      7. Key Decisions & Next Steps - Action items or conclusions reached
+      
+      Do NOT mention participant names or count. Focus entirely on the content of ideas discussed.
+      Session Duration: ${Math.floor((Date.now() - sessionContext.startTime.getTime()) / 60000)} minutes`,
+          sessionMetadata: {
+            title: sessionContext.currentTopic,
+            facilitator: sessionContext.facilitator || 'Facilitator',
+            phases: AI_TRANSFORMATION_QUESTIONS.map(q => q.title)
+          }
+        };
+        
+      default:
+        return { instruction: 'Provide analysis based on the discussion' };
+    }
+  }, []);
 
   // Template Selection Handler
   const handleTemplateSelection = useCallback((templateSessionContext: any) => {
@@ -1562,14 +1759,19 @@ const RoundtableCanvasV2: React.FC = () => {
                 </button>
                 <button 
                   onClick={() => setRightPanelTab('executive')}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                    rightPanelTab === 'executive' 
-                      ? 'bg-white text-indigo-700 shadow-sm border border-indigo-200' 
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                  disabled={sessionContext.currentQuestionIndex < getTotalQuestions() - 1}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                    sessionContext.currentQuestionIndex < getTotalQuestions() - 1
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
+                      : rightPanelTab === 'executive' 
+                        ? 'bg-purple-100 text-purple-800 shadow-sm' 
+                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                   }`}
-                  title="Executive Summary"
+                  title={sessionContext.currentQuestionIndex < getTotalQuestions() - 1 
+                    ? "Final Session Summary (Available in last phase only)" 
+                    : "Final Session Summary"}
                 >
-                  📊 Executive
+                  📊 Final Summary
                 </button>
               </div>
             </div>
@@ -1658,7 +1860,7 @@ const RoundtableCanvasV2: React.FC = () => {
                     </button>
                   </div>
                   
-                  <div className="space-y-3">
+                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
                     {getInsightsForType('insight').length === 0 ? (
                       <p className="text-center py-8 text-gray-500">
                         No insights generated yet. Start recording or add transcript entries, then click "Generate New" to analyze.
@@ -1702,13 +1904,13 @@ const RoundtableCanvasV2: React.FC = () => {
                     </button>
                   </div>
                   
-                  <div className="space-y-3">
+                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
                     {getInsightsForType('synthesis').length === 0 ? (
                       <p className="text-center py-8 text-gray-500">
                         No synthesis generated yet. Click "Generate New" to summarize key themes.
                       </p>
                     ) : (
-                      getInsightsForType('synthesis').slice(-5).reverse().map((insight, idx) => (
+                      getInsightsForType('synthesis').slice(-1).map((insight, idx) => (
                         <div key={insight.id || idx} className="bg-white rounded-lg p-4 border border-green-100 shadow-sm hover:shadow-md transition-shadow">
                           <p className="text-sm text-gray-800">{insight.content}</p>
                           <span className="text-xs text-gray-500 mt-2 block">
@@ -1746,7 +1948,7 @@ const RoundtableCanvasV2: React.FC = () => {
                     </button>
                   </div>
                   
-                  <div className="space-y-3">
+                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
                     {getInsightsForType('followup').length === 0 ? (
                       <p className="text-center py-8 text-gray-500">
                         No follow-up questions yet. Click "Generate New" to get AI-suggested questions.
@@ -1769,31 +1971,41 @@ const RoundtableCanvasV2: React.FC = () => {
                 </div>
               )}
 
-              {/* Executive Summary Tab */}
+              {/* Final Session Summary Tab */}
               {rightPanelTab === 'executive' && (
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Executive Summary</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-gray-900">Final Session Summary</h3>
                     <button
                       onClick={() => callAIAnalysis('executive')}
-                      disabled={isAnalyzing || sessionContext.liveTranscript.length === 0}
-                      className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-sm font-medium rounded-lg hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                      className="flex items-center space-x-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                      disabled={isAnalyzing || sessionContext.currentQuestionIndex < AI_TRANSFORMATION_QUESTIONS.length - 1}
                     >
                       {isAnalyzing && analyzingType === 'executive' ? (
-                        <span className="flex items-center gap-2">
-                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Generating...
-                        </span>
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>Generating...</span>
+                        </>
+                      ) : sessionContext.currentQuestionIndex < AI_TRANSFORMATION_QUESTIONS.length - 1 ? (
+                        <>
+                          <span>⏳</span>
+                          <span>Available in Final Phase</span>
+                        </>
                       ) : (
-                        'Generate New'
+                        <>
+                          <span>📋</span>
+                          <span>Generate Summary</span>
+                        </>
                       )}
                     </button>
                   </div>
                   
-                  <div className="space-y-3">
+                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
                     {getInsightsForType('executive').length === 0 ? (
                       <p className="text-center py-8 text-gray-500">
-                        No executive summary yet. Click "Generate New" for a high-level overview.
+                        {sessionContext.currentQuestionIndex < AI_TRANSFORMATION_QUESTIONS.length - 1 
+                          ? "Final session summary will be available in the last phase." 
+                          : "No final summary yet. Click \"Generate Summary\" for a comprehensive session overview."}
                       </p>
                     ) : (
                       getInsightsForType('executive').slice(-5).reverse().map((insight, idx) => (

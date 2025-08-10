@@ -28,6 +28,18 @@ A sophisticated AI-powered platform designed for facilitating strategic roundtab
 - **📄 Professional Export**: Executive-ready PDF summaries and CSV data export
 
 ### Latest Updates (January 2025)
+
+#### AI Features Enhancement (January 2025)
+- ✅ **Enhanced AI Panel UX**: All content tabs now feature scrollable containers with max-height for better navigation
+- ✅ **Intelligent Content Management**: Synthesis discussions now overwrite previous entries instead of appending for cleaner output
+- ✅ **Smart Content Validation**: Real-time validation prevents empty/duplicate insights with user-friendly toast notifications
+- ✅ **Structured AI Instructions**: Comprehensive 5-section synthesis format and 7-section executive summary with strategic focus
+- ✅ **Auto-Generation Intelligence**: Smart triggers for insights every 5 entries and follow-up questions every 8 entries with throttling
+- ✅ **Advanced Deduplication**: Context-aware functions prevent repeated content and enhance AI analysis quality
+- ✅ **Final Session Summary**: Executive summary renamed and restricted to last phase only with comprehensive structured output
+- ✅ **Consistency Improvements**: Unified question counting and phase detection across all components
+
+#### Previous Enhancements
 - ✅ Enhanced error handling with user-friendly toast notifications
 - ✅ Fixed API rate limiting bugs
 - ✅ Executive-focused AI prompts and templates
@@ -437,23 +449,41 @@ interface SessionSummaryProps {
 ```
 
 ### AI Analysis Flow
+
+#### Manual Analysis Trigger
 ```
-1. User clicks AI button
+1. User clicks AI button (Insights/Follow-up/Synthesis/Final Summary)
    ↓
-2. callAIAnalysis(type) called
+2. callAIAnalysis(type) called with enhanced context
    ↓
-3. Prepare context + transcript
+3. Content validation (length, duplicates) with toast notifications
    ↓
-4. POST to /api/analyze
+4. Prepare structured context + transcript + phase-specific instructions
    ↓
-5. OpenAI GPT-4o processing
+5. POST to /api/analyze with comprehensive context
    ↓
-6. Format and return insights
+6. OpenAI GPT-4o processing with structured prompts
    ↓
-7. Update sessionContext.aiInsights
+7. Format and return structured insights
    ↓
-8. Display in AI panel
+8. Update sessionContext.aiInsights (overwrite for synthesis, append for others)
+   ↓
+9. Display in AI panel with appropriate filtering/display logic
 ```
+
+#### Auto-Generation Intelligence
+```
+Insights: Auto-triggered every 5 transcript entries (2-minute throttling)
+Follow-up Questions: Auto-triggered every 8 transcript entries (2-minute throttling)
+Synthesis: Manual only (overwrites previous synthesis)
+Final Summary: Manual only, restricted to last phase
+```
+
+#### Structured AI Instructions
+- **Synthesis (5 sections)**: Key Themes → Opportunities → Challenges → Consensus → Diverse Perspectives
+- **Final Summary (7 sections)**: Session Overview → Discussion Points → Opportunities → Challenges → Agreement → Perspectives → Next Steps
+- **Content Validation**: Prevents empty content (<10 chars) and duplicate insights
+- **Deduplication**: Context-aware functions track previous questions and insights
 
 ## 🚀 Deployment
 
