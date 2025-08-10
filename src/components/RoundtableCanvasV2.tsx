@@ -1749,7 +1749,7 @@ const RoundtableCanvasV2: React.FC = () => {
           </div>
 
           {/* Right Panel - Combined Facilitator Guide and AI Tools */}
-          <div className="facilitator-panel w-[32rem] bg-white border-l flex flex-col h-full shadow-lg">
+          <div className="facilitator-panel w-full lg:w-[32rem] bg-white border-l lg:border-l border-t lg:border-t-0 flex flex-col h-full shadow-lg">
             {/* Tab Navigation Bar */}
             <div className="border-b bg-gray-50 px-4 py-3 flex-shrink-0">
               <div className="flex gap-2">
