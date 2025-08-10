@@ -1332,29 +1332,40 @@ const RoundtableCanvasV2: React.FC = () => {
                 <div className="space-y-4 mb-6">
                   {/* Opening line - prominent for audience */}
                   {currentQuestion.facilitatorGuidance.openingLine && (
-                    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
-                      <p className="text-lg italic text-blue-900">
-                        "{currentQuestion.facilitatorGuidance.openingLine}"
-                      </p>
+                    <div className="bg-white rounded-lg shadow-sm border border-blue-200 p-6">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                        <p className="text-lg italic text-gray-800 font-medium">
+                          "{currentQuestion.facilitatorGuidance.openingLine}"
+                        </p>
+                      </div>
                     </div>
                   )}
 
                   {/* Setup line (for Phase 2) */}
                   {currentQuestion.facilitatorGuidance.setupLine && (
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-gray-700">
-                        {currentQuestion.facilitatorGuidance.setupLine}
-                      </p>
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 w-2 h-2 bg-gray-500 rounded-full mt-2"></div>
+                        <p className="text-gray-800">
+                          {currentQuestion.facilitatorGuidance.setupLine}
+                        </p>
+                      </div>
                     </div>
                   )}
 
                   {/* Key prompt/question */}
                   {currentQuestion.facilitatorGuidance.keyPrompt && (
-                    <div className="bg-white rounded-lg shadow-sm border p-6">
-                      <h3 className="font-semibold text-gray-900 mb-2">Key Question:</h3>
-                      <p className="text-lg text-gray-800">
-                        {currentQuestion.facilitatorGuidance.keyPrompt}
-                      </p>
+                    <div className="bg-white rounded-lg shadow-sm border border-indigo-200 p-6">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 w-2 h-2 bg-indigo-500 rounded-full mt-2"></div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900 mb-2">Key Question:</h3>
+                          <p className="text-lg text-gray-800">
+                            {currentQuestion.facilitatorGuidance.keyPrompt}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -1397,53 +1408,82 @@ const RoundtableCanvasV2: React.FC = () => {
 
                   {/* Example (SalesRecon for Phase 2) */}
                   {currentQuestion.facilitatorGuidance.exampleToShare && (
-                    <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                      <h4 className="font-semibold text-green-900 mb-2">
-                        Example: {currentQuestion.facilitatorGuidance.exampleToShare.name}
-                      </h4>
-                      <ul className="list-disc list-inside text-sm text-green-800 space-y-1">
-                        {currentQuestion.facilitatorGuidance.exampleToShare.points?.map((point, idx) => (
-                          <li key={idx}>{point}</li>
-                        ))}
-                      </ul>
+                    <div className="bg-white rounded-lg shadow-sm border border-green-200 p-6">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-3">
+                            Example: {currentQuestion.facilitatorGuidance.exampleToShare.name}
+                          </h4>
+                          <ul className="space-y-2">
+                            {currentQuestion.facilitatorGuidance.exampleToShare.points?.map((point, idx) => (
+                              <li key={idx} className="flex items-start space-x-2">
+                                <span className="text-green-500 mr-1 font-bold">•</span>
+                                <span className="text-gray-700">{point}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
                     </div>
                   )}
 
                   {/* Key message */}
                   {currentQuestion.facilitatorGuidance.keyMessage && (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                      <p className="text-yellow-900 font-medium">
-                        {currentQuestion.facilitatorGuidance.keyMessage}
-                      </p>
+                    <div className="bg-white rounded-lg shadow-sm border border-yellow-200 p-6">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
+                        <p className="text-gray-800 font-medium">
+                          {currentQuestion.facilitatorGuidance.keyMessage}
+                        </p>
+                      </div>
                     </div>
                   )}
 
                   {/* Discussion prompts */}
                   {currentQuestion.facilitatorGuidance.discussionPrompts && (
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h4 className="font-semibold text-gray-900 mb-2">Discussion Points:</h4>
-                      <ul className="space-y-2">
-                        {currentQuestion.facilitatorGuidance.discussionPrompts.map((prompt, idx) => (
-                          <li key={idx} className="flex items-start">
-                            <span className="text-blue-500 mr-2">•</span>
-                            <span className="text-gray-700">{prompt}</span>
-                          </li>
-                        ))}
-                      </ul>
+                    <div className="bg-white rounded-lg shadow-sm border border-purple-200 p-6">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-3">Discussion Points:</h4>
+                          <ul className="space-y-2">
+                            {currentQuestion.facilitatorGuidance.discussionPrompts.map((prompt, idx) => (
+                              <li key={idx} className="flex items-start space-x-2">
+                                <span className="text-purple-500 mr-1 font-bold">•</span>
+                                <span className="text-gray-700">{prompt}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
                     </div>
                   )}
 
                   {/* Facilitator prompts */}
                   {(currentQuestion.facilitatorGuidance.facilitatorPrompt || 
                     currentQuestion.facilitatorGuidance.facilitatorPrompts) && (
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h4 className="font-semibold text-gray-900 mb-2">Questions for the Group:</h4>
-                      {currentQuestion.facilitatorGuidance.facilitatorPrompt && (
-                        <p className="text-gray-700">• {currentQuestion.facilitatorGuidance.facilitatorPrompt}</p>
-                      )}
-                      {currentQuestion.facilitatorGuidance.facilitatorPrompts?.map((prompt, idx) => (
-                        <p key={idx} className="text-gray-700">• {prompt}</p>
-                      ))}
+                    <div className="bg-white rounded-lg shadow-sm border border-orange-200 p-6">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 w-2 h-2 bg-orange-500 rounded-full mt-2"></div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-3">Questions for the Group:</h4>
+                          <div className="space-y-2">
+                            {currentQuestion.facilitatorGuidance.facilitatorPrompt && (
+                              <p className="flex items-start space-x-2">
+                                <span className="text-orange-500 mr-1 font-bold">•</span>
+                                <span className="text-gray-700">{currentQuestion.facilitatorGuidance.facilitatorPrompt}</span>
+                              </p>
+                            )}
+                            {currentQuestion.facilitatorGuidance.facilitatorPrompts?.map((prompt, idx) => (
+                              <p key={idx} className="flex items-start space-x-2">
+                                <span className="text-orange-500 mr-1 font-bold">•</span>
+                                <span className="text-gray-700">{prompt}</span>
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
