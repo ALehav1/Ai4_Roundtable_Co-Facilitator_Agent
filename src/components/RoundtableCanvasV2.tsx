@@ -1,6 +1,14 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+
+// TypeScript declarations for browser APIs
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
+}
 import { sessionConfig, uiText, AI_TRANSFORMATION_QUESTIONS, getCurrentQuestion, getTotalQuestions } from '../config/ai-transformation-config';
 import { useSpeechTranscription, TranscriptEvent } from '../hooks/useSpeechTranscription';
 import { saveSession, loadSession, clearSession, SessionSnapshot } from '../utils/storage';
@@ -43,6 +51,46 @@ const formatAIContent = (content: string): string => {
     .trim();
 };
 
+const correctCommonMisrecognitions = (text: string): string => {
+  // Define common misrecognitions for your session
+  const corrections = {
+    // Name corrections
+    'ari mojave': 'Ari Lehavi',
+    'ari mahave': 'Ari Lehavi', 
+    'ari mojavi': 'Ari Lehavi',
+    'ari mohave': 'Ari Lehavi',
+    'ari mohavi': 'Ari Lehavi',
+    'ari lahavi': 'Ari Lehavi',  // Added missing spelling
+    'arimojave': 'Ari Lehavi',
+    'arie mojave': 'Ari Lehavi',
+    'larry': 'Ari', // sometimes mishears Ari as Larry
+    'harry': 'Ari', // another common mistake
+    
+    // Company corrections
+    'moody\'s': 'Moody\'s',
+    'moodys': 'Moody\'s',
+    'moodies': 'Moody\'s',
+    
+    // Common AI terms
+    'large language model': 'Large Language Model',
+    'llm': 'LLM',
+    'a.i.': 'AI',
+    'machine learning': 'machine learning',
+    
+    // Add more corrections as you discover them
+  };
+  
+  let correctedText = text;
+  
+  // Apply corrections (case-insensitive)
+  Object.entries(corrections).forEach(([wrong, right]) => {
+    const regex = new RegExp(`\\b${wrong}\\b`, 'gi');
+    correctedText = correctedText.replace(regex, right);
+  });
+  
+  return correctedText;
+};
+
 // ==========================================
 // SUB-COMPONENTS
 // ==========================================
@@ -57,6 +105,67 @@ const RecordingIndicator: React.FC<{ isRecording: boolean }> = ({ isRecording })
         <div className="absolute inset-0 w-2 h-2 bg-white rounded-full animate-ping" />
       </div>
       <span className="font-medium">Recording</span>
+    </div>
+  );
+};
+
+const MobileRecordingHint: React.FC<{ isRecording: boolean }> = ({ isRecording }) => {
+  const [showHint, setShowHint] = useState(true);
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  
+  if (!isMobile || !isRecording || !showHint) return null;
+  
+  return (
+    <div className="md:hidden bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 mx-4">
+      <div className="flex justify-between items-start">
+        <div className="flex-1">
+          <p className="text-sm font-medium text-amber-800 mb-1">
+            📱 Mobile Recording Active
+          </p>
+          <ul className="text-xs text-amber-700 space-y-1">
+            <li>• Keep screen on for continuous recording</li>
+            <li>• Stay in this browser tab</li>
+            <li>• Use manual entry if recording stops</li>
+          </ul>
+        </div>
+        <button
+          onClick={() => setShowHint(false)}
+          className="text-amber-600 hover:text-amber-800 text-lg ml-2"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const SpeechTrainingHint: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  return (
+    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+      <div className="flex justify-between items-start">
+        <div className="flex-1">
+          <h4 className="font-semibold text-blue-900 mb-2">
+            💡 Tip: Improve Name Recognition
+          </h4>
+          <p className="text-sm text-blue-800 mb-3">
+            Speech recognition often struggles with proper names. To improve accuracy:
+          </p>
+          <ul className="text-sm text-blue-700 space-y-1">
+            <li>• Say "My name is Ari Lehavi" slowly and clearly at the start</li>
+            <li>• Spell out difficult names: "Ari, A-R-I, Lehavi, L-E-H-A-V-I"</li>
+            <li>• Or use manual entry for speaker introductions</li>
+          </ul>
+          <p className="text-xs text-blue-600 mt-3">
+            Common misrecognitions will be auto-corrected (Mojave → Lehavi)
+          </p>
+        </div>
+        <button
+          onClick={onClose}
+          className="text-blue-600 hover:text-blue-800 text-xl ml-2"
+        >
+          ×
+        </button>
+      </div>
     </div>
   );
 };
@@ -133,26 +242,34 @@ const RoundtableCanvasV2: React.FC = () => {
 
   // UI State
   const [isRecording, setIsRecording] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analyzingType, setAnalyzingType] = useState<string | null>(null);
-  const [interimTranscript, setInterimTranscript] = useState<string>('');
-  const [speechError, setSpeechError] = useState<string | null>(null);
-  const [currentUtterance, setCurrentUtterance] = useState('');
-  const [isExporting, setIsExporting] = useState(false);
-  const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>('guide');
+  const [analyzingType, setAnalyzingType] = useState('');
   const [presentationMode, setPresentationMode] = useState(false);
+  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [manualSpeaker, setManualSpeaker] = useState('');
+  const [manualText, setManualText] = useState('');
+  const [interimTranscript, setInterimTranscript] = useState('');
+  const [speechError, setSpeechError] = useState<string | null>(null);
+  const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>('guide');
   
-  // Manual Entry Modal State
+  // Session Recovery Modal State
+  const [showRecoveryModal, setShowRecoveryModal] = useState(false);
+  const [savedSessionData, setSavedSessionData] = useState<SessionSnapshot | null>(null);
+  
+  // Speech Training Hint State
+  const [showSpeechTrainingHint, setShowSpeechTrainingHint] = useState(false);
+  
+  // Additional UI State (needed for existing functions)
+  const [isExporting, setIsExporting] = useState(false);
+  const [currentUtterance, setCurrentUtterance] = useState('');
   const [showManualModal, setShowManualModal] = useState(false);
-  const [entryMode, setEntryMode] = useState<EntryMode>('single');
+  const [entryMode, setEntryMode] = useState<'single' | 'bulk'>('single');
   const [manualEntryText, setManualEntryText] = useState('');
   const [bulkTranscriptText, setBulkTranscriptText] = useState('');
   
-  // Refs
-  const utteranceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
+  const utteranceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // ==========================================
   // HOOKS AND EFFECTS
@@ -215,19 +332,12 @@ const RoundtableCanvasV2: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
 
-  // Session recovery on mount
+  // Check for saved session on mount
   useEffect(() => {
     const savedSession = loadSession();
     if (savedSession && sessionState === 'intro') {
-      const recoveredContext = snapshotToSessionContext(savedSession);
-      setSessionContext(recoveredContext);
-      setSessionState(recoveredContext.state);
-      
-      showToast({
-        type: 'info',
-        title: 'Session Restored',
-        message: 'Your previous session has been restored.'
-      });
+      setSavedSessionData(savedSession);
+      setShowRecoveryModal(true);
     }
   }, []); // Only run on mount
 
@@ -244,20 +354,31 @@ const RoundtableCanvasV2: React.FC = () => {
     sessionState
   ]);
 
-  // Auto-trigger AI insights
+  // Auto-trigger AI insights - with better timing
   useEffect(() => {
     const entryCount = sessionContext.liveTranscript.length;
-    if (entryCount < 5) return;
+    
+    // Don't trigger until we have substantial content
+    if (entryCount < 10) return;  // Changed from < 5
+    
+    // Calculate total word count to ensure meaningful content
+    const totalWords = sessionContext.liveTranscript
+      .reduce((sum, entry) => sum + entry.text.split(' ').length, 0);
+    
+    // Need at least 200 words for meaningful insights
+    if (totalWords < 200) return;
     
     const lastInsightTime = sessionContext.aiInsights.length > 0 ? 
       sessionContext.aiInsights[sessionContext.aiInsights.length - 1].timestamp.getTime() : 0;
     const timeSinceLastInsight = Date.now() - lastInsightTime;
-    const MIN_TIME_BETWEEN_AUTO_INSIGHTS = 3 * 60 * 1000; // 3 minutes
+    const MIN_TIME_BETWEEN_AUTO_INSIGHTS = 5 * 60 * 1000; // 5 minutes (increased from 3)
     
-    if (entryCount > 0 && entryCount % 7 === 0 && timeSinceLastInsight > MIN_TIME_BETWEEN_AUTO_INSIGHTS) {
+    // Only trigger every 10 entries (not 7) and with proper time gap
+    if (entryCount % 10 === 0 && timeSinceLastInsight > MIN_TIME_BETWEEN_AUTO_INSIGHTS) {
+      // Longer delay to ensure it doesn't feel rushed
       setTimeout(() => {
         callAIAnalysis('insights');
-      }, 2000);
+      }, 5000);
     }
   }, [sessionContext.liveTranscript.length, sessionContext.aiInsights]);
 
@@ -355,14 +476,84 @@ const RoundtableCanvasV2: React.FC = () => {
     }));
   }, []);
 
-  const startSession = useCallback(() => {
+  const startSession = useCallback(async () => {
     setSessionState('discussion');
     setSessionContext(prev => ({
       ...prev,
       state: 'discussion',
       startTime: new Date(),
     }));
-  }, []);
+    
+    // Detect mobile device
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    // Auto-start recording with mobile considerations
+    try {
+      // Check browser support first
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      
+      if (!SpeechRecognition) {
+        throw new Error('Speech recognition not supported');
+      }
+      
+      // Mobile-specific warnings
+      if (isMobile) {
+        showToast({
+          type: 'info',
+          title: 'Mobile Recording Tips',
+          message: 'Keep screen on and stay in browser for continuous recording',
+          durationMs: 6000
+        });
+        
+        // Prevent screen sleep on mobile (works on some devices)
+        if ('wakeLock' in navigator) {
+          try {
+            await (navigator as any).wakeLock.request('screen');
+          } catch (err) {
+            console.log('Wake lock failed:', err);
+          }
+        }
+      }
+      
+      await speechTranscription.start();
+      setIsRecording(true);
+      
+      showToast({
+        type: 'success',
+        title: 'Recording Started',
+        message: isMobile 
+          ? 'Voice recording active. Keep browser open.'
+          : 'Voice recording is now active. Speak naturally to capture discussion.',
+        durationMs: 4000
+      });
+      
+      // Show speech training hint on first successful recording start (for better UX)
+      if (sessionContext.liveTranscript.length === 0) {
+        setTimeout(() => {
+          setShowSpeechTrainingHint(true);
+        }, 2000); // Show after success toast
+      }
+      
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      
+      // Mobile-specific fallback message
+      const errorMessage = isMobile
+        ? 'Voice recording not available on this mobile browser. Please use manual entry to add discussion points.'
+        : 'Voice recording could not start. You can still add entries manually.';
+      
+      showToast({
+        type: 'warning',
+        title: 'Recording Not Available',
+        message: errorMessage,
+        durationMs: 6000,
+        action: isMobile ? {
+          label: 'Use Manual Entry',
+          onClick: () => setShowManualModal(true)
+        } : undefined
+      });
+    }
+  }, [speechTranscription, showToast]);
 
   const endSession = useCallback(async () => {
     // Confirm before ending session
@@ -377,6 +568,12 @@ const RoundtableCanvasV2: React.FC = () => {
     
     if (speechTranscription.isListening) {
       await speechTranscription.stop();
+      showToast({
+        type: 'info',
+        title: 'Recording Stopped',
+        message: 'Voice recording has ended.',
+        durationMs: 3000
+      });
     }
 
     setSessionContext(prev => ({
@@ -384,7 +581,7 @@ const RoundtableCanvasV2: React.FC = () => {
       state: 'summary',
       duration: Math.round((Date.now() - prev.startTime.getTime()) / 1000),
     }));
-  }, [speechTranscription]);
+  }, [speechTranscription, showToast]);
 
   const goToNextQuestion = useCallback(() => {
     if (sessionContext.currentQuestionIndex < totalQuestions - 1) {
@@ -509,15 +706,15 @@ Phases Completed: ${exportData.sessionContext.currentQuestionIndex + 1} of ${tot
     }
   }, [sessionContext, isExporting, showToast]);
 
-  const toggleRecording = useCallback(() => {
-    if (speechTranscription.isListening) {
-      speechTranscription.stop();
-      setIsRecording(false);
-    } else {
-      speechTranscription.start();
-      setIsRecording(true);
-    }
-  }, [speechTranscription]);
+  // const toggleRecording = useCallback(() => {
+  //   if (speechTranscription.isListening) {
+  //     speechTranscription.stop();
+  //     setIsRecording(false);
+  //   } else {
+  //     speechTranscription.start();
+  //     setIsRecording(true);
+  //   }
+  // }, [speechTranscription]);
 
   const handleTranscriptionUpdate = useCallback((text: string, isFinal: boolean) => {
     if (utteranceTimeoutRef.current) {
@@ -529,8 +726,11 @@ Phases Completed: ${exportData.sessionContext.currentQuestionIndex + 1} of ${tot
       const completeText = (currentUtterance + ' ' + text).trim();
       
       if (completeText.length > 5) {
+        // Apply corrections before adding to transcript
+        const correctedText = correctCommonMisrecognitions(completeText);
+        
         addTranscriptEntry({
-          text: completeText,
+          text: correctedText,
           speaker: 'Speaker',
           isAutoDetected: false,
           confidence: 1.0
@@ -542,8 +742,11 @@ Phases Completed: ${exportData.sessionContext.currentQuestionIndex + 1} of ${tot
       
       utteranceTimeoutRef.current = setTimeout(() => {
         if (currentUtterance.length > 5) {
+          // Apply corrections here too
+          const correctedText = correctCommonMisrecognitions(currentUtterance);
+          
           addTranscriptEntry({
-            text: currentUtterance,
+            text: correctedText,
             speaker: 'Speaker',
             isAutoDetected: false,
             confidence: 1.0
@@ -675,25 +878,50 @@ Phases Completed: ${exportData.sessionContext.currentQuestionIndex + 1} of ${tot
         };
         
       case 'executive':
+        const transcriptLength = sessionContext.liveTranscript.length;
+        const totalWords = sessionContext.liveTranscript
+          .reduce((sum, entry) => sum + entry.text.split(' ').length, 0);
+        
+        // Detect if this is a short/test session
+        const isTestSession = totalWords < 500 || transcriptLength < 10;
+        
         return {
-          instruction: `Create a final session summary for "${sessionContext.currentTopic}" session at Ai4 Conference in Las Vegas on August 12, 2025. Facilitated by ${sessionContext.facilitator || 'Ari Lehavi'}, Head of Applied AI at Moody's. 
-      
-      Structure the summary with these sections:
-      1. Session Overview - Brief context, purpose, and key participants
-      2. Key Discussion Points - Major topics covered across all phases
-      3. Opportunities Identified - Positive possibilities and innovations discussed
-      4. Challenges & Concerns - Obstacles and risks acknowledged
-      5. Areas of Agreement - Where consensus emerged
-      6. Diverse Perspectives - Different viewpoints that enriched the discussion
-      7. Key Decisions & Next Steps - Action items or conclusions reached
-      
-      Include session metadata but do NOT mention participant names or count. Focus entirely on the content of ideas discussed.`,
+          instruction: `Create a final session summary for "${sessionContext.currentTopic}" session at Ai4 Conference in Las Vegas on August 12, 2025. Facilitated by ${sessionContext.facilitator || 'Ari Lehavi'}, Head of Applied AI at Moody's.
+          
+          ${isTestSession ? `
+          IMPORTANT: This appears to be a brief test or demo session with limited content (${totalWords} words, ${transcriptLength} entries). 
+          Create a SHORT, HONEST summary that acknowledges the limited discussion. DO NOT pad with generic business jargon.
+          
+          If there's minimal content, structure your response as:
+          1. Session Overview - Acknowledge this was a brief session
+          2. Content Captured - Summarize what little was discussed
+          3. Status - Note that this appears to be a test/setup session
+          
+          Be concise and factual. Don't invent content that wasn't discussed.
+          ` : `
+          Structure the summary with these sections:
+          1. Session Overview - Brief context, purpose, and key participants
+          2. Key Discussion Points - Major topics covered across all phases
+          3. Opportunities Identified - Positive possibilities and innovations discussed
+          4. Challenges & Concerns - Obstacles and risks acknowledged
+          5. Areas of Agreement - Where consensus emerged
+          6. Diverse Perspectives - Different viewpoints that enriched the discussion
+          7. Key Decisions & Next Steps - Action items or conclusions reached
+          `}
+          
+          Use ONLY content from the actual transcript. Quote specific statements when available.
+          Do NOT invent or embellish content. If sections have no relevant content, omit them.
+          Focus on what was ACTUALLY discussed, not what might have been discussed.`,
+          
           sessionMetadata: {
             title: sessionContext.currentTopic,
             event: 'Ai4 Conference, Las Vegas',
             date: 'August 12, 2025',
             facilitator: 'Ari Lehavi, Head of Applied AI, Moody\'s',
-            phases: AI_TRANSFORMATION_QUESTIONS.map(q => q.title)
+            duration: `${Math.floor((Date.now() - sessionContext.startTime.getTime()) / 60000)} minutes`,
+            transcriptEntries: transcriptLength,
+            totalWords: totalWords,
+            isTestSession: isTestSession
           }
         };
         
@@ -719,11 +947,16 @@ Phases Completed: ${exportData.sessionContext.currentQuestionIndex + 1} of ${tot
         .map(entry => `${entry.speaker}: ${entry.text}`)
         .join('\n');
       
-      if (transcriptText.length < 200 && analysisType !== 'summary') {
+      // Count actual words, not just characters
+      const wordCount = transcriptText.split(/\s+/).filter(word => word.length > 0).length;
+      const minWordsRequired = analysisType === 'executive' ? 100 : 50;
+
+      if (wordCount < minWordsRequired) {
         showToast({
-          type: 'warning',
-          title: 'More Discussion Needed',
-          message: 'Please continue the conversation before requesting AI analysis.'
+          type: 'info', // Changed from 'warning' to be less alarming
+          title: 'Building Context',
+          message: `Please add more discussion content before generating ${analysisType} analysis. (${wordCount}/${minWordsRequired} words)`,
+          durationMs: 3000
         });
         return;
       }
@@ -917,7 +1150,7 @@ Phases Completed: ${exportData.sessionContext.currentQuestionIndex + 1} of ${tot
       throw error;
     } finally {
       setIsAnalyzing(false);
-      setAnalyzingType(null);
+      setAnalyzingType('');
     }
   }, [sessionContext, isAnalyzing, showToast, validateInsightContent, getPhaseSpecificContext]);
 
@@ -970,6 +1203,9 @@ Phases Completed: ${exportData.sessionContext.currentQuestionIndex + 1} of ${tot
               >
                 Launch Session
               </button>
+              <p className="text-xs text-gray-500 text-center mt-3">
+                🎤 Voice recording will start automatically when you launch the session
+              </p>
             </div>
           </div>
         </div>
@@ -1115,6 +1351,9 @@ Phases Completed: ${exportData.sessionContext.currentQuestionIndex + 1} of ${tot
 
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
+          {/* Mobile Recording Hint */}
+          <MobileRecordingHint isRecording={isRecording} />
+          
           {/* Left Panel - Main Content */}
           <div className="flex-1 overflow-y-auto bg-gray-50 pb-64 md:pb-6">
             <div className="max-w-3xl mx-auto p-6">
@@ -1378,53 +1617,67 @@ Phases Completed: ${exportData.sessionContext.currentQuestionIndex + 1} of ${tot
                 )}
               </div>
 
-              {/* Recording Controls */}
+              {/* Recording Status */}
               <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold">🎙️ Live Capture</h3>
-                  
-                  {isRecording && (
-                    <div className="flex items-center gap-3 text-sm">
-                      {speechTranscription.isListening && (
-                        <div className="flex items-center gap-2">
-                          <div className="relative">
-                            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                            <div className="absolute inset-0 w-3 h-3 bg-red-400 rounded-full animate-ping" />
-                          </div>
-                          <span className="text-gray-600">Recording</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-bold">🎙️ Live Capture</h3>
+                    
+                    {isRecording ? (
+                      <div className="flex items-center gap-2 text-sm">
+                        <div className="relative">
+                          <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                          <div className="absolute inset-0 w-3 h-3 bg-red-400 rounded-full animate-ping" />
                         </div>
-                      )}
-                      
-                      {speechError && speechError !== 'Listening...' && (
-                        <span className="text-amber-600">{speechError}</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex gap-3">
-                  <button
-                    onClick={toggleRecording}
-                    className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
-                      isRecording 
-                        ? 'bg-red-500 hover:bg-red-600 text-white' 
-                        : 'bg-blue-500 hover:bg-blue-600 text-white'
-                    }`}
-                  >
-                    {isRecording ? '⏹️ Stop Recording' : '🎤 Start Recording'}
-                  </button>
+                        <span className="text-gray-600 font-medium">Recording Active</span>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-500">Recording not active</span>
+                    )}
+                    
+                    {speechError && (
+                      <span className="text-sm text-amber-600">({speechError})</span>
+                    )}
+                  </div>
                   
                   <button
                     onClick={() => setShowManualModal(true)}
-                    className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
                   >
-                    ✏️ Manual Entry
+                    ✏️ {(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) ? 'Add' : 'Manual Entry'}
                   </button>
                 </div>
                 
-                {isRecording && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    Speak naturally - recording continues until you stop it. No timeouts.
+                {isRecording && (() => {
+                  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+                  
+                  return (
+                    <>
+                      <p className="text-xs text-gray-500 mt-3">
+                        Voice recording is active. Speak naturally - all speech will be captured until you end the session.
+                      </p>
+                      
+                      {isMobile && (
+                        <div className="mt-3 p-2 bg-blue-50 rounded text-xs">
+                          {isIOS ? (
+                            <p className="text-blue-700">
+                              ⚠️ iOS Safari has limited speech support. Consider using Chrome or manual entry.
+                            </p>
+                          ) : (
+                            <p className="text-blue-700">
+                              💡 Tip: Disable battery saver and keep screen on for best results.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+                
+                {!isRecording && speechError && (
+                  <p className="text-xs text-amber-600 mt-3">
+                    Voice recording unavailable: {speechError}. You can still add entries manually.
                   </p>
                 )}
               </div>
@@ -1531,9 +1784,12 @@ Phases Completed: ${exportData.sessionContext.currentQuestionIndex + 1} of ${tot
                     
                     <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
                       {getInsightsForType('insights').length === 0 ? (
-                        <p className="text-center py-8 text-gray-500">
-                          No insights generated yet. Start recording or add transcript entries, then click "Generate New" to analyze.
-                        </p>
+                        <div className="text-center py-8">
+                          <p className="text-gray-600 font-medium mb-2">Ready to Generate Insights</p>
+                          <p className="text-gray-500 text-sm">
+                            Once you have some discussion content, click "Generate New" for AI-powered insights.
+                          </p>
+                        </div>
                       ) : (
                         getInsightsForType('insights').slice(-5).reverse().map((insight, idx) => (
                           <AIInsightCard key={insight.id || idx} insight={insight} type="insights" />
@@ -1907,9 +2163,82 @@ Phases Completed: ${exportData.sessionContext.currentQuestionIndex + 1} of ${tot
     <>
       <RecordingIndicator isRecording={isRecording} />
       
+      {/* Speech Training Hint - Show when triggered for better UX */}
+      {showSpeechTrainingHint && (
+        <div className="fixed top-4 left-4 right-4 z-40 md:left-auto md:right-4 md:max-w-md">
+          <SpeechTrainingHint onClose={() => setShowSpeechTrainingHint(false)} />
+        </div>
+      )}
+      
       {sessionState === 'intro' && renderIntroState()}
       {sessionState === 'discussion' && renderDiscussionState()}
       {sessionState === 'summary' && renderSummaryState()}
+
+      {/* Session Recovery Modal */}
+      {showRecoveryModal && savedSessionData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+            <h3 className="text-xl font-bold mb-4">Previous Session Found</h3>
+            
+            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+              <p className="text-sm text-gray-600 mb-2">
+                <strong>Topic:</strong> {savedSessionData.currentTopic || 'AI Transformation Strategy'}
+              </p>
+              <p className="text-sm text-gray-600 mb-2">
+                <strong>Progress:</strong> Phase {savedSessionData.currentQuestionIndex + 1} of 5
+              </p>
+              <p className="text-sm text-gray-600 mb-2">
+                <strong>Entries:</strong> {savedSessionData.liveTranscript.length} recorded
+              </p>
+              <p className="text-sm text-gray-600">
+                <strong>Last Active:</strong> {new Date(savedSessionData.timestamp).toLocaleString()}
+              </p>
+            </div>
+            
+            <p className="text-gray-700 mb-6">
+              Would you like to restore this session or start fresh?
+            </p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  // Start fresh
+                  clearSession();
+                  setShowRecoveryModal(false);
+                  setSavedSessionData(null);
+                  showToast({
+                    type: 'info',
+                    title: 'Starting Fresh',
+                    message: 'Previous session data cleared. Starting new session.'
+                  });
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Start New Session
+              </button>
+              
+              <button
+                onClick={() => {
+                  // Restore session
+                  const recoveredContext = snapshotToSessionContext(savedSessionData);
+                  setSessionContext(recoveredContext);
+                  setSessionState(recoveredContext.state);
+                  setShowRecoveryModal(false);
+                  setSavedSessionData(null);
+                  showToast({
+                    type: 'success',
+                    title: 'Session Restored',
+                    message: 'Your previous session has been restored.'
+                  });
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Restore Session
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

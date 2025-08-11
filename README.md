@@ -47,6 +47,28 @@ A sophisticated AI-powered platform designed for facilitating strategic roundtab
 - ✅ **Build Stability**: Resolved duplicate state declarations and TypeScript errors for reliable compilation
 - ✅ **Speech Quality**: Whisper integration now produces complete thoughts instead of fragmented words
 
+#### UX & Session Management Overhaul (August 2025)
+- ✅ **Session Recovery Modal**: Replaced aggressive auto-recovery with user-choice modal asking "Restore Session or Start Fresh?"
+  - **Session Details**: Shows topic, progress (Phase X of 5), entry count, and last active time
+  - **User Control**: Two-button interface for clear decision making
+  - **Graceful UX**: No more surprise session restoration interrupting user workflow
+- ✅ **Intelligent AI Timing**: Fixed overly aggressive AI analysis triggers for better user experience
+  - **Smart Thresholds**: Now triggers after 10 entries (was 5), every 10th entry (was 7th)
+  - **Word-Based Logic**: Requires 200+ words (was character-based), different thresholds for analysis types
+  - **Respectful Timing**: 5-minute gaps between auto-insights with 5-second delays
+- ✅ **Auto-Start/Stop Recording**: Seamless recording workflow tied to session lifecycle
+  - **Session Launch**: Recording starts automatically when session begins
+  - **Session End**: Recording stops automatically when session concludes
+  - **Mobile Optimization**: Device detection, wake lock API, mobile-specific guidance
+- ✅ **Speech Recognition Enhancements**: Comprehensive name correction and user training
+  - **Auto-Correction**: Real-time fixes for "Ari Mojave" → "Ari Lehavi" and common mishearings
+  - **Training Hints**: Dismissible tips appear on first recording start with pronunciation guidance
+  - **Mobile Support**: Device-specific recording hints and fallback instructions
+- ✅ **Executive Summary Intelligence**: Smart content adaptation based on session length
+  - **Test Session Detection**: Recognizes short sessions (<500 words, <10 entries) for honest reporting
+  - **Content-Based Structure**: Uses only actual transcript content, avoids generic business padding
+  - **Rich Metadata**: Includes word count, duration, session classification for transparency
+
 #### AI Features Enhancement (January 2025)
 - ✅ **Enhanced AI Panel UX**: All content tabs now feature scrollable containers with max-height for better navigation
 - ✅ **Intelligent Content Management**: Synthesis discussions now overwrite previous entries instead of appending for cleaner output
