@@ -109,6 +109,7 @@ const RecordingIndicator: React.FC<{ isRecording: boolean }> = ({ isRecording })
   );
 };
 
+/* Temporarily disabled - disrupts facilitation flow
 const MobileRecordingHint: React.FC<{ isRecording: boolean }> = ({ isRecording }) => {
   const [showHint, setShowHint] = useState(true);
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -138,7 +139,9 @@ const MobileRecordingHint: React.FC<{ isRecording: boolean }> = ({ isRecording }
     </div>
   );
 };
+*/
 
+/* Temporarily disabled - disrupts facilitation flow
 const SpeechTrainingHint: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   return (
     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
@@ -169,6 +172,7 @@ const SpeechTrainingHint: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     </div>
   );
 };
+*/
 
 const AIInsightCard: React.FC<{ insight: AIInsight; type: string }> = ({ insight, type }) => {
   const bgColors = {
@@ -256,8 +260,8 @@ const RoundtableCanvasV2: React.FC = () => {
   const [showRecoveryModal, setShowRecoveryModal] = useState(false);
   const [savedSessionData, setSavedSessionData] = useState<SessionSnapshot | null>(null);
   
-  // Speech Training Hint State
-  const [showSpeechTrainingHint, setShowSpeechTrainingHint] = useState(false);
+  // Speech Training Hint State - Temporarily disabled - disrupts facilitation flow
+  // const [showSpeechTrainingHint, setShowSpeechTrainingHint] = useState(false);
   
   // Additional UI State (needed for existing functions)
   const [isExporting, setIsExporting] = useState(false);
@@ -527,12 +531,12 @@ const RoundtableCanvasV2: React.FC = () => {
         durationMs: 4000
       });
       
-      // Show speech training hint on first successful recording start (for better UX)
-      if (sessionContext.liveTranscript.length === 0) {
-        setTimeout(() => {
-          setShowSpeechTrainingHint(true);
-        }, 2000); // Show after success toast
-      }
+      // Show speech training hint on first successful recording start (for better UX) - Temporarily disabled - disrupts facilitation flow
+      // if (sessionContext.liveTranscript.length === 0) {
+      //   setTimeout(() => {
+      //     setShowSpeechTrainingHint(true);
+      //   }, 2000); // Show after success toast
+      // }
       
     } catch (error) {
       console.error('Failed to start recording:', error);
@@ -1351,8 +1355,8 @@ Phases Completed: ${exportData.sessionContext.currentQuestionIndex + 1} of ${tot
 
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
-          {/* Mobile Recording Hint */}
-          <MobileRecordingHint isRecording={isRecording} />
+          {/* Mobile Recording Hint - Temporarily disabled - disrupts facilitation flow */}
+          {/* <MobileRecordingHint isRecording={isRecording} /> */}
           
           {/* Left Panel - Main Content */}
           <div className="flex-1 overflow-y-auto bg-gray-50 pb-64 md:pb-6">
@@ -2163,12 +2167,12 @@ Phases Completed: ${exportData.sessionContext.currentQuestionIndex + 1} of ${tot
     <>
       <RecordingIndicator isRecording={isRecording} />
       
-      {/* Speech Training Hint - Show when triggered for better UX */}
-      {showSpeechTrainingHint && (
+      {/* Speech Training Hint - Temporarily disabled - disrupts facilitation flow */}
+      {/* {showSpeechTrainingHint && (
         <div className="fixed top-4 left-4 right-4 z-40 md:left-auto md:right-4 md:max-w-md">
           <SpeechTrainingHint onClose={() => setShowSpeechTrainingHint(false)} />
         </div>
-      )}
+      )} */}
       
       {sessionState === 'intro' && renderIntroState()}
       {sessionState === 'discussion' && renderDiscussionState()}
